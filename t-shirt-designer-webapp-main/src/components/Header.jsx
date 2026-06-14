@@ -58,7 +58,8 @@ const Header = () => {
   };
 
   return (
-    <div className="w-full flex justify-between items-center gap-4 px-4 py-3 md:px-8 md:py-4">
+    <div className="w-full flex justify-between items-center gap-4 pl-16 pr-4 py-3 md:pr-8 md:py-4 lg:pl-8">
+      {/* pl-16 на <lg звільняє місце під fixed-кнопкою меню (ToolsSidebar) */}
       <div className="flex items-center gap-3 min-w-0">
         <picture>
           <source srcSet="/logo-mm.webp" type="image/webp" />
