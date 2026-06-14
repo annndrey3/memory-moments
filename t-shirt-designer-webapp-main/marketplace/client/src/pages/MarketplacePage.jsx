@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HeroBanner } from "@/components/HeroBanner";
@@ -9,6 +9,7 @@ import { Input, Button } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useSeo } from "@/lib/seo";
+import { scrollToCatalog } from "@/lib/scroll";
 
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,8 +21,17 @@ export default function MarketplacePage() {
 
   const category = searchParams.get("category") || "";
   const page = Number(searchParams.get("page") || 1);
+  const location = useLocation();
 
   useSeo();
+
+  // Перехід із шапки на іншій сторінці веде на /#catalog — доскролюємо до
+  // секції каталогу після монтування головної.
+  useEffect(() => {
+    if (location.hash === "#catalog") {
+      requestAnimationFrame(() => scrollToCatalog());
+    }
+  }, [location.hash]);
 
   useEffect(() => {
     api.getCategories().then(setCategories).catch(console.error);

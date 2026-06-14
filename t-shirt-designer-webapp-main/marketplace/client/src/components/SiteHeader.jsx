@@ -1,12 +1,25 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Palette, Store, ShoppingCart, Tag } from "lucide-react";
 import { Button } from "./ui";
 import { useCart } from "@/lib/cart";
+import { scrollToCatalog } from "@/lib/scroll";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5173";
 
 export function SiteHeader() {
   const { count } = useCart();
+  const location = useLocation();
+
+  // «Каталог»: на головній — плавно скролимо до секції; на інших сторінках
+  // даємо <Link> перейти на /#catalog (доскролить уже MarketplacePage).
+  const handleCatalog = (e) => {
+    if (location.pathname === "/") {
+      e.preventDefault();
+      scrollToCatalog();
+      window.history?.replaceState?.(null, "", "/#catalog");
+    }
+  };
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl animate-fade-in">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
@@ -28,7 +41,7 @@ export function SiteHeader() {
               <span className="hidden sm:inline">Конструктор</span>
             </Button>
           </a>
-          <Link to="/">
+          <Link to="/#catalog" onClick={handleCatalog}>
             <Button variant="ghost" size="sm" className="rounded-xl">
               <Store className="h-4 w-4" />
               <span className="hidden sm:inline">Каталог</span>
