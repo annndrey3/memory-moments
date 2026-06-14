@@ -180,6 +180,7 @@ export const TSHIRT_COLOR_CODES = [
 ];
 
 export const FONT_OPTIONS = [
+  // Системні
   { value: "arial", label: "Arial" },
   { value: "calibri", label: "Calibri" },
   { value: "times-new-roman", label: "Times New Roman" },
@@ -190,6 +191,22 @@ export const FONT_OPTIONS = [
   { value: "tahoma", label: "Tahoma" },
   { value: "trebuchet-ms", label: "Trebuchet MS" },
   { value: "impact", label: "Impact" },
+  // Google Fonts (value = точна назва сімейства; підключені в index.html)
+  { value: "Playfair Display", label: "Playfair Display" },
+  { value: "PT Serif", label: "PT Serif" },
+  { value: "Cinzel", label: "Cinzel" },
+  { value: "Lora", label: "Lora" },
+  { value: "Bodoni Moda", label: "Bodoni Moda" },
+  { value: "Montserrat", label: "Montserrat" },
+  { value: "Open Sans", label: "Open Sans" },
+  { value: "Inter", label: "Inter" },
+  { value: "Oswald", label: "Oswald" },
+  { value: "Roboto", label: "Roboto" },
+  { value: "Pacifico", label: "Pacifico" },
+  { value: "Caveat", label: "Caveat" },
+  { value: "Satisfy", label: "Satisfy" },
+  { value: "Great Vibes", label: "Great Vibes" },
+  { value: "Shadows Into Light", label: "Shadows Into Light" },
 ];
 
 // ── Опції товару: розмір футболки та тип паперу для фотодруку ────────────────

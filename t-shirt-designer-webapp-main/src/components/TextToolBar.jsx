@@ -60,6 +60,17 @@ const TextToolBar = ({ manualSync }) => {
     selectedObject.set("fontFamily", newFont);
     activeCanvas.renderAll();
     manualSync();
+    // Веб-шрифт (Google Fonts) міг ще не завантажитись — fabric намалює запасним.
+    // Дочекаємось завантаження й перемалюємо, щоб текст одразу був правильним.
+    if (document.fonts?.load) {
+      document.fonts
+        .load(`${selectedObject.fontSize || 20}px "${newFont}"`)
+        .then(() => {
+          activeCanvas.renderAll();
+          manualSync();
+        })
+        .catch(() => {});
+    }
   };
 
   const handleFontSizeChange = (e) => {
@@ -100,7 +111,11 @@ const TextToolBar = ({ manualSync }) => {
           <SelectContent>
             <SelectGroup>
               {FONT_OPTIONS.map((font) => (
-                <SelectItem key={font.value} value={font.value}>
+                <SelectItem
+                  key={font.value}
+                  value={font.value}
+                  style={{ fontFamily: font.value }}
+                >
                   {font.label}
                 </SelectItem>
               ))}
