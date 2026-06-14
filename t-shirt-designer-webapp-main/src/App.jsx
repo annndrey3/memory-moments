@@ -52,12 +52,12 @@ function App() {
   }, [dispatch]);
 
   return (
-    <div className="min-h-screen bg-mesh">
+    <div className="min-h-screen bg-mesh-animated">
       <div className="flex min-h-screen">
         <ToolsSidebar manualSync={manualSync} />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-30 glass border-b border-border/50">
+          <header className="sticky top-0 z-30 glass border-b border-border/50 animate-fade-in">
             <Header />
           </header>
 
@@ -65,8 +65,8 @@ function App() {
             <div className="mx-auto max-w-7xl">
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 xl:gap-12 items-start">
                 {/* Preview panel */}
-                <section className="order-2 xl:order-1">
-                  <div className="rounded-2xl border border-border/60 bg-card shadow-soft overflow-hidden">
+                <section className="order-2 xl:order-1 animate-fade-in-up">
+                  <div className="rounded-2xl border border-border/60 bg-card shadow-soft overflow-hidden transition-shadow hover:shadow-elevated">
                     <div className="px-5 py-4 border-b border-border/50 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50">
                       <h2 className="text-sm font-semibold text-foreground/80 tracking-wide uppercase">
                         Попередній перегляд
@@ -148,7 +148,7 @@ function App() {
                 </section>
 
                 {/* Design canvas panel */}
-                <section className="order-1 xl:order-2">
+                <section className="order-1 xl:order-2 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
                   <DesignArea />
                 </section>
               </div>

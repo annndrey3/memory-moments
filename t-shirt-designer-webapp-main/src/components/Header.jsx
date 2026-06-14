@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from "react-redux";
-import { ShoppingCart, Trash2, Plus, Minus, Gift, Store } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -59,21 +59,26 @@ const Header = () => {
 
   return (
     <div className="w-full flex justify-between items-center gap-4 px-4 py-3 md:px-8 md:py-4">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-glow">
-          <Gift className="h-5 w-5 text-white" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-gradient truncate">
-            Memory Moments
-          </h1>
-          <p className="text-xs md:text-sm text-muted-foreground truncate hidden sm:block">
-            Створіть унікальний дизайн для футболки, чашки чи фотоформату
-          </p>
-        </div>
-      </div>
+      <a
+        href={MARKETPLACE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center gap-3 min-w-0"
+      >
+        <picture>
+          <source srcSet="/logo-mm.webp" type="image/webp" />
+          <img
+            src="/logo-mm.png"
+            alt="Memory Moments"
+            className="h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+          />
+        </picture>
+        <p className="hidden md:block max-w-[260px] text-xs md:text-sm text-muted-foreground truncate">
+          Створіть унікальний дизайн для футболки, чашки чи фотоформату
+        </p>
+      </a>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 font-brand tracking-wide">
         <a href={MARKETPLACE_URL} target="_blank" rel="noopener noreferrer">
           <Button variant="outline" size="lg" className="rounded-xl border-border/60 shadow-sm hover:border-primary/30 hidden sm:inline-flex">
             <Store className="h-5 w-5" />
