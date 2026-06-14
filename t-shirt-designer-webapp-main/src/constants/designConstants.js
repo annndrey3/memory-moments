@@ -22,6 +22,9 @@ const RECTANGLE_PATHS = {
   instax_inner: "M 175 95 H 635 V 715 H 175 Z",
   square: "M 105 105 H 705 V 705 H 105 Z",
   mug: "M 165 220 C 165 130 645 130 645 220 L 610 650 C 600 730 210 730 200 650 Z M 645 300 C 760 300 770 570 625 570 L 638 505 C 705 500 705 370 640 365 Z",
+  // Розгортка друку чашки: широкий прямокутник (обвід чашки мінус зазор під
+  // ручкою). Співвідношення довжина:висота ≈ 2.45:1 — як у 3D-моделі (MugModel).
+  mug_wrap: "M 45 258 H 765 V 552 H 45 Z",
 };
 
 export const PRODUCT_TYPES = {
@@ -49,11 +52,22 @@ export const PRODUCT_TYPES = {
   },
   mug: {
     name: "Чашка",
-    description: "Друк навколо чашки",
+    description: "Друк навколо чашки — макет це розгортка (обгортає чашку)",
     previewMode: "3d",
     previewShape: "mug",
+    // Редактор чашки = РОЗГОРТКА друку: широкий прямокутник зі співвідношенням
+    // ≈2.45:1 (обвід мінус зазор під ручкою — як у 3D-моделі). Дизайн обгортає
+    // чашку, краї прямокутника сходяться біля ручки. surfaceColor білий, бо
+    // друкують по білому боку (колір чашки — це внутрішня частина/ручка у 3D).
     views: {
-      front: { label: "Макет", path: RECTANGLE_PATHS.mug, viewBox: "0 0 810 810" },
+      front: {
+        label: "Розгортка",
+        path: RECTANGLE_PATHS.mug_wrap,
+        viewBox: "0 0 810 810",
+        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        surfaceColor: "#ffffff",
+        seamHint: true,
+      },
     },
   },
   polaroid: {
