@@ -70,22 +70,28 @@ export async function sendOrderNotification(order, images = [], documents = []) 
     .filter((p) => p.blob)
     .slice(0, 10); // ліміт Telegram
 
-  if (photos.length === 1) {
-    const form = new FormData();
-    form.append("chat_id", chatId());
-    form.append("photo", photos[0].blob, `design.${photos[0].ext}`);
-    if (photos[0].caption) form.append("caption", photos[0].caption);
-    await tgCall("sendPhoto", form, true);
-  } else if (photos.length >= 2) {
-    const form = new FormData();
-    const media = photos.map((p, i) => {
-      const fn = `design${i}.${p.ext}`;
-      form.append(fn, p.blob, fn);
-      return { type: "photo", media: `attach://${fn}`, caption: p.caption || undefined };
-    });
-    form.append("chat_id", chatId());
-    form.append("media", JSON.stringify(media));
-    await tgCall("sendMediaGroup", form, true);
+  // Прев'ю стійко: збій фото (напр. Telegram відхилив зображення) НЕ має
+  // блокувати відправку друкарських файлів-документів нижче.
+  try {
+    if (photos.length === 1) {
+      const form = new FormData();
+      form.append("chat_id", chatId());
+      form.append("photo", photos[0].blob, `design.${photos[0].ext}`);
+      if (photos[0].caption) form.append("caption", photos[0].caption);
+      await tgCall("sendPhoto", form, true);
+    } else if (photos.length >= 2) {
+      const form = new FormData();
+      const media = photos.map((p, i) => {
+        const fn = `design${i}.${p.ext}`;
+        form.append(fn, p.blob, fn);
+        return { type: "photo", media: `attach://${fn}`, caption: p.caption || undefined };
+      });
+      form.append("chat_id", chatId());
+      form.append("media", JSON.stringify(media));
+      await tgCall("sendMediaGroup", form, true);
+    }
+  } catch (e) {
+    console.warn("Telegram preview (photo) failed:", e.message);
   }
 
   // 3) Друкарські макети — як ДОКУМЕНТИ (без перестиску, повна якість для друку).
@@ -94,12 +100,19 @@ export async function sendOrderNotification(order, images = [], documents = []) 
     .filter((p) => p.blob)
     .slice(0, 10);
 
-  for (const d of docs) {
-    const form = new FormData();
-    form.append("chat_id", chatId());
-    form.append("document", d.blob, `print.${d.ext}`);
-    if (d.caption) form.append("caption", d.caption);
-    await tgCall("sendDocument", form, true);
+  console.log(`Telegram: ${photos.length} прев'ю (фото), ${docs.length} макет(ів) (документ)`);
+
+  // Кожен документ — окремо й стійко: збій одного не має блокувати решту.
+  for (const [i, d] of docs.entries()) {
+    try {
+      const form = new FormData();
+      form.append("chat_id", chatId());
+      form.append("document", d.blob, `print-${i + 1}.${d.ext}`);
+      if (d.caption) form.append("caption", d.caption);
+      await tgCall("sendDocument", form, true);
+    } catch (e) {
+      console.warn(`Telegram sendDocument #${i + 1} failed:`, e.message);
+    }
   }
 
   return true;
