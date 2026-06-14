@@ -47,11 +47,14 @@ export function HeroBanner() {
 
         {/* Логотип */}
         <div className="drop-shadow-xl animate-float">
-          <img
-            src="/logo-mm.png"
-            alt="Memory Moments"
-            className="h-28 md:h-36 w-auto object-contain animate-fade-in"
-          />
+          <picture>
+            <source srcSet="/logo-mm.webp" type="image/webp" />
+            <img
+              src="/logo-mm.png"
+              alt="Memory Moments"
+              className="h-28 md:h-36 w-auto object-contain animate-fade-in"
+            />
+          </picture>
         </div>
 
         {/* Слоган */}

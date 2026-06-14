@@ -11,11 +11,14 @@ export function SiteHeader({ showAdminLink = true }) {
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl animate-fade-in">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
         <Link to="/" className="flex items-center min-w-0">
-          <img
-            src="/logo-mm.png"
-            alt="Memory Moments"
-            className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105"
-          />
+          <picture>
+            <source srcSet="/logo-mm.webp" type="image/webp" />
+            <img
+              src="/logo-mm.png"
+              alt="Memory Moments"
+              className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105"
+            />
+          </picture>
         </Link>
 
         <nav className="flex items-center gap-2 font-brand tracking-wide">
