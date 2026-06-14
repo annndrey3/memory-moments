@@ -51,6 +51,27 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const triggerDownload = (href, filename) => {
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const downloadDesignJson = (designData, filename) => {
+    let text = designData;
+    try {
+      text = JSON.stringify(JSON.parse(designData), null, 2);
+    } catch {
+      /* лишаємо як є, якщо це не валідний JSON */
+    }
+    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    triggerDownload(url, filename);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const changeStatus = async (orderId, status) => {
     setUpdating(orderId);
     try {
@@ -150,14 +171,56 @@ export default function AdminOrdersPage() {
                       <div className="grid sm:grid-cols-2 gap-6">
                         <div>
                           <p className="font-medium text-slate-700 mb-2">Позиції</p>
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             {full.items?.map((item) => (
-                              <div key={item.id} className="flex justify-between">
-                                <span className="text-slate-600">
-                                  {item.product_name}
-                                  {item.variant_label ? ` (${item.variant_label})` : ""} × {item.quantity}
-                                </span>
-                                <span className="text-slate-700">{formatPrice(item.line_total)}</span>
+                              <div key={item.id} className="border-b border-slate-200/70 pb-2 last:border-0">
+                                <div className="flex justify-between gap-2">
+                                  <span className="text-slate-600">
+                                    {item.product_name}
+                                    {item.variant_label ? ` (${item.variant_label})` : ""} × {item.quantity}
+                                  </span>
+                                  <span className="text-slate-700 shrink-0">{formatPrice(item.line_total)}</span>
+                                </div>
+                                {(item.design_preview || item.design_data) && (
+                                  <div className="mt-2 flex items-center gap-3">
+                                    {item.design_preview && (
+                                      <a
+                                        href={item.design_preview}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title="Відкрити прев'ю макета"
+                                      >
+                                        <img
+                                          src={item.design_preview}
+                                          alt="макет"
+                                          className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain"
+                                        />
+                                      </a>
+                                    )}
+                                    <div className="flex flex-col gap-1">
+                                      {item.design_preview && (
+                                        <button
+                                          onClick={() =>
+                                            triggerDownload(item.design_preview, `${full.order_number}-${item.id}.png`)
+                                          }
+                                          className="text-xs text-violet-600 hover:underline text-left"
+                                        >
+                                          ⬇ Прев'ю (PNG)
+                                        </button>
+                                      )}
+                                      {item.design_data && (
+                                        <button
+                                          onClick={() =>
+                                            downloadDesignJson(item.design_data, `${full.order_number}-${item.id}.json`)
+                                          }
+                                          className="text-xs text-violet-600 hover:underline text-left"
+                                        >
+                                          ⬇ Макет (JSON)
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                             <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">

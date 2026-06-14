@@ -27,13 +27,15 @@ export const tshirtSlice = createSlice({
       state.selectedView = action.payload;
     },
     addToCart: (state, action) => {
-      const { id, productType, productName, designTextureFront, designTextureBack, color, quantity } = action.payload;
+      const { id, productType, productName, designTextureFront, designTextureBack, fabricFront, fabricBack, color, quantity } = action.payload;
       state.cartItems.push({
         id,
         productType,
         productName,
         designTextureFront,
         designTextureBack,
+        fabricFront,
+        fabricBack,
         color,
         quantity: quantity || 1,
       });

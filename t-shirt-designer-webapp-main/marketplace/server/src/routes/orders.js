@@ -127,6 +127,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
           product_id: product.id,
           variant_id: item.variant_id || null,
           design_id: item.design_id || null,
+          design_data: null,
+          design_preview: null,
           product_name: product.name,
           variant_label: variantLabel,
           unit_price: unitPrice,
@@ -156,6 +158,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
           product_id: null,
           variant_id: null,
           design_id: item.design_id || null,
+          // Макет покупця: fabric JSON + прев'ю — зберігаємо, щоб заказ був самодостатнім.
+          design_data: item.design_data || null,
+          design_preview: item.design_preview || null,
           product_name: productName,
           variant_label: variantLabel,
           unit_price: unitPrice,
@@ -194,8 +199,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
         holdStock(tx, r);
         tx.run(
           `INSERT INTO order_items
-           (order_id, product_id, variant_id, design_id, product_name, variant_label, unit_price, quantity, line_total)
-           VALUES (:order_id, :product_id, :variant_id, :design_id, :product_name, :variant_label, :unit_price, :quantity, :line_total)`,
+           (order_id, product_id, variant_id, design_id, design_data, design_preview, product_name, variant_label, unit_price, quantity, line_total)
+           VALUES (:order_id, :product_id, :variant_id, :design_id, :design_data, :design_preview, :product_name, :variant_label, :unit_price, :quantity, :line_total)`,
           { order_id: insertId, ...r }
         );
       }

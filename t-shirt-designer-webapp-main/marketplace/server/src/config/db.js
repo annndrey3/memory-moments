@@ -230,6 +230,8 @@ db.exec(`
     product_id INTEGER,
     variant_id INTEGER,
     design_id INTEGER,
+    design_data TEXT,
+    design_preview TEXT,
     product_name TEXT NOT NULL,
     variant_label TEXT,
     unit_price REAL NOT NULL DEFAULT 0,
@@ -316,4 +318,14 @@ if (orderColumns.length && !orderColumns.some((col) => col.name === "source")) {
 const orderItemColumns = db.prepare("PRAGMA table_info(order_items)").all();
 if (orderItemColumns.length && !orderItemColumns.some((col) => col.name === "variant_id")) {
   db.exec("ALTER TABLE order_items ADD COLUMN variant_id INTEGER;");
+}
+
+// design_data (fabric JSON макета) + design_preview (PNG-прев'ю) — щоб замовлення
+// з конструктора зберігало сам макет покупця, а не лише прев'ю в Telegram.
+const orderItemColumns2 = db.prepare("PRAGMA table_info(order_items)").all();
+if (orderItemColumns2.length && !orderItemColumns2.some((col) => col.name === "design_data")) {
+  db.exec("ALTER TABLE order_items ADD COLUMN design_data TEXT;");
+}
+if (orderItemColumns2.length && !orderItemColumns2.some((col) => col.name === "design_preview")) {
+  db.exec("ALTER TABLE order_items ADD COLUMN design_preview TEXT;");
 }

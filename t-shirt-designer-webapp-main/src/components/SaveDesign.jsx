@@ -28,6 +28,9 @@ const SaveDesign = () => {
 
     const designTextureFront = frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null;
     const designTextureBack = backCanvas ? canvasSyncManager.getCanvasTexture(backCanvas) : null;
+    // Сам макет (fabric JSON) — щоб замовлення зберегло редаговане джерело, а не лише прев'ю.
+    const fabricFront = frontCanvas ? frontCanvas.toJSON() : null;
+    const fabricBack = backCanvas ? backCanvas.toJSON() : null;
     const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
 
     dispatch(addToCart({
@@ -36,6 +39,8 @@ const SaveDesign = () => {
       productName: product.name,
       designTextureFront,
       designTextureBack,
+      fabricFront,
+      fabricBack,
       color: tshirtColor,
       quantity: 1,
     }));

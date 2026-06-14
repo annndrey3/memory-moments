@@ -29,6 +29,9 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
       product_type: item.productType,
       color: item.color || null,
       quantity: item.quantity,
+      // Сам макет: fabric JSON (front+back) + прев'ю — сервер збереже в позицію заказу.
+      design_data: JSON.stringify({ front: item.fabricFront || null, back: item.fabricBack || null }),
+      design_preview: item.designTextureFront || null,
     })),
     images,
   };
