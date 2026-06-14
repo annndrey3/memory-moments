@@ -7,13 +7,22 @@ const MARKETPLACE_API = import.meta.env.VITE_MARKETPLACE_API || "http://localhos
 // Сервер зберігає його в адмінці ТА надсилає сповіщення в Telegram
 // (токен бота — лише на сервері). Прев'ю макетів передаємо в полі images.
 export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
+  // images — стиснені прев'ю (інлайн у чаті); documents — друкарські макети
+  // у повній роздільності (Telegram надсилає їх без перестиску → готові до друку).
   const images = [];
+  const documents = [];
   for (const item of cartItems) {
     if (item.designTextureFront) {
       images.push({ data: item.designTextureFront, caption: `${item.productName} — Спереду` });
     }
     if (item.designTextureBack) {
       images.push({ data: item.designTextureBack, caption: `${item.productName} — Ззаду` });
+    }
+    if (item.printFront) {
+      documents.push({ data: item.printFront, caption: `🖨 ${item.productName} — Спереду (друк)` });
+    }
+    if (item.printBack) {
+      documents.push({ data: item.printBack, caption: `🖨 ${item.productName} — Ззаду (друк)` });
     }
   }
 
@@ -36,6 +45,7 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
       design_preview: item.designTextureFront || null,
     })),
     images,
+    documents,
   };
 
   const res = await fetch(`${MARKETPLACE_API}/orders`, {
@@ -51,38 +61,69 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
   return res.json();
 };
 
+// Прямокутник зони друку (clipPath) у координатах полотна — куди обрізати експорт.
+const printRegion = (fabricCanvas) => {
+  if (!fabricCanvas?.clipPath) {
+    return { left: 0, top: 0, width: fabricCanvas.width, height: fabricCanvas.height };
+  }
+  const b = fabricCanvas.clipPath.getBoundingRect();
+  return {
+    left: b.left,
+    top: b.top,
+    width: Math.min(b.width, fabricCanvas.width - b.left),
+    height: Math.min(b.height, fabricCanvas.height - b.top),
+  };
+};
+
 // canvasSyncManager.js
 export const canvasSyncManager = {
-  getCanvasTexture: (fabricCanvas) => {
+  // Прев'ю для UI/3D — швидке, у роздільності полотна (multiplier 1 за замовч.).
+  getCanvasTexture: (fabricCanvas, { multiplier = 1 } = {}) => {
     if (!fabricCanvas) return null;
     try {
       // Force a render before getting the texture
       fabricCanvas.renderAll();
 
-      let options = {
+      const dataURL = fabricCanvas.toDataURL({
         format: "png",
         quality: 1,
-        multiplier: 1,
+        multiplier,
         enableRetinaScaling: true,
-      };
-
-      if (fabricCanvas.clipPath) {
-        const bbox = fabricCanvas.clipPath.getBoundingRect();
-        options = {
-          ...options,
-          left: bbox.left,
-          top: bbox.top,
-          width: Math.min(bbox.width, fabricCanvas.width - bbox.left),
-          height: Math.min(bbox.height, fabricCanvas.height - bbox.top)
-        };
-      }
-
-      // Use the upper canvas which contains the actual visible content
-      const dataURL = fabricCanvas.toDataURL(options);
+        ...printRegion(fabricCanvas),
+      });
 
       return dataURL;
     } catch (error) {
       console.error("Error generating texture:", error);
+      return null;
+    }
+  },
+
+  // Друкарський макет: лише зона друку, у максимальній роздільності.
+  // Множник підбираємо так, щоб довша сторона зони сягнула targetLongSide
+  // (≈300 DPI для типового розміру). Fabric ре-рендерить ОРИГІНАЛЬНІ зображення
+  // (вони зберігаються в повній якості й лише масштабуються), тож ми отримуємо
+  // фактично вихідну якість, обрізану по зоні друку. Множник обмежений, щоб
+  // не з'їсти забагато пам'яті на слабких пристроях.
+  getPrintTexture: (fabricCanvas, { targetLongSide = 2400, maxMultiplier = 12 } = {}) => {
+    if (!fabricCanvas) return null;
+    try {
+      fabricCanvas.discardActiveObject(); // прибрати рамку виділення з експорту
+      fabricCanvas.renderAll();
+
+      const region = printRegion(fabricCanvas);
+      const longest = Math.max(region.width, region.height) || 1;
+      const multiplier = Math.max(1, Math.min(maxMultiplier, targetLongSide / longest));
+
+      return fabricCanvas.toDataURL({
+        format: "png",
+        quality: 1,
+        multiplier,
+        enableRetinaScaling: false, // точний множник без подвоєння на retina
+        ...region,
+      });
+    } catch (error) {
+      console.error("Error generating print texture:", error);
       return null;
     }
   },

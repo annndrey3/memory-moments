@@ -9,6 +9,7 @@ import { canvasSyncManager } from "@/utils/canvasSyncManager";
 export const useTshirtCanvas = ({
   svgPath,
   viewBox = "0 0 810 810",
+  printZone,
   view,
   onDesignUpdate,
 }) => {
@@ -127,47 +128,67 @@ export const useTshirtCanvas = ({
     }
   }, [selectedView, dispatch, view]);
 
-  // Load SVG ClipPath & Saved Objects
+  // Load ClipPath (print area) & printArea
   useEffect(() => {
     const canvas = fabricCanvasRef.current;
-    if (!canvas || !svgPath) return;
+    if (!canvas) return;
 
-    const clipPath = new fabric.Path(svgPath);
-    const [, , viewBoxWidth, viewBoxHeight] = viewBox
-      .split(/\s+/)
-      .map(Number);
+    const [, , viewBoxWidth, viewBoxHeight] = viewBox.split(/\s+/).map(Number);
     const scale = Math.min(
       CANVAS_CONFIG.width / viewBoxWidth,
       CANVAS_CONFIG.height / viewBoxHeight
     );
-    
-    // Calculate centering offsets (matching svg preserveAspectRatio="xMidYMid meet")
-    const drawnWidth = viewBoxWidth * scale;
-    const drawnHeight = viewBoxHeight * scale;
-    const offsetX = (CANVAS_CONFIG.width - drawnWidth) / 2;
-    const offsetY = (CANVAS_CONFIG.height - drawnHeight) / 2;
 
-    const printArea = {
-      left: clipPath.left * scale + offsetX,
-      top: clipPath.top * scale + offsetY,
-      width: clipPath.width * scale,
-      height: clipPath.height * scale,
-    };
+    // Centering offsets (matching svg preserveAspectRatio="xMidYMid meet").
+    const offsetX = (CANVAS_CONFIG.width - viewBoxWidth * scale) / 2;
+    const offsetY = (CANVAS_CONFIG.height - viewBoxHeight * scale) / 2;
 
-    clipPath.set({
-      scaleX: scale,
-      scaleY: scale,
-      left: printArea.left,
-      top: printArea.top,
-      originX: "left",
-      originY: "top",
-      absolutePositioned: true,
-    });
+    let clipPath;
+    let printArea;
+
+    if (printZone) {
+      // Реальна прямокутна зона друку (футболка): дизайн обрізається саме по ній.
+      printArea = {
+        left: printZone.x * scale + offsetX,
+        top: printZone.y * scale + offsetY,
+        width: printZone.width * scale,
+        height: printZone.height * scale,
+      };
+      clipPath = new fabric.Rect({
+        left: printArea.left,
+        top: printArea.top,
+        width: printArea.width,
+        height: printArea.height,
+        originX: "left",
+        originY: "top",
+        absolutePositioned: true,
+      });
+    } else if (svgPath) {
+      // Інші товари (фото/чашка): зоною друку є сам контур-прямокутник макета.
+      clipPath = new fabric.Path(svgPath);
+      printArea = {
+        left: clipPath.left * scale + offsetX,
+        top: clipPath.top * scale + offsetY,
+        width: clipPath.width * scale,
+        height: clipPath.height * scale,
+      };
+      clipPath.set({
+        scaleX: scale,
+        scaleY: scale,
+        left: printArea.left,
+        top: printArea.top,
+        originX: "left",
+        originY: "top",
+        absolutePositioned: true,
+      });
+    } else {
+      return;
+    }
 
     canvas.clipPath = clipPath;
     canvas.printArea = printArea;
     canvas.renderAll();
-  }, [svgPath, viewBox]);
+  }, [svgPath, viewBox, printZone]);
 
   return { canvasRef, fabricCanvasRef, tshirtColor };
 };

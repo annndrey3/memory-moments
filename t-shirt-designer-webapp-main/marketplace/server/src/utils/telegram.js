@@ -53,16 +53,18 @@ function buildText(order) {
 
 /**
  * Надсилає сповіщення про замовлення в Telegram.
- * @param order  повний об'єкт замовлення (з items)
- * @param images масив { data: dataURL, caption?: string } — прев'ю макетів (необов'язково)
+ * @param order     повний об'єкт замовлення (з items)
+ * @param images    масив { data: dataURL, caption? } — стиснені прев'ю (інлайн у чаті)
+ * @param documents масив { data: dataURL, caption? } — друкарські макети у повній
+ *                  роздільності; ідуть як document, тож Telegram НЕ перестискає їх.
  */
-export async function sendOrderNotification(order, images = []) {
+export async function sendOrderNotification(order, images = [], documents = []) {
   if (!telegramEnabled()) return false;
 
   // 1) Текст замовлення окремим повідомленням (без обмеження довжини підпису фото).
   await tgCall("sendMessage", { chat_id: chatId(), text: buildText(order), parse_mode: "HTML" });
 
-  // 2) Прев'ю макетів (для замовлень з конструктора).
+  // 2) Прев'ю макетів (інлайн-перегляд у чаті; Telegram стискає фото — це ок для прев'ю).
   const photos = (Array.isArray(images) ? images : [])
     .map((img) => ({ ...dataUrlToBlob(img?.data), caption: img?.caption }))
     .filter((p) => p.blob)
@@ -84,6 +86,20 @@ export async function sendOrderNotification(order, images = []) {
     form.append("chat_id", chatId());
     form.append("media", JSON.stringify(media));
     await tgCall("sendMediaGroup", form, true);
+  }
+
+  // 3) Друкарські макети — як ДОКУМЕНТИ (без перестиску, повна якість для друку).
+  const docs = (Array.isArray(documents) ? documents : [])
+    .map((d) => ({ ...dataUrlToBlob(d?.data), caption: d?.caption }))
+    .filter((p) => p.blob)
+    .slice(0, 10);
+
+  for (const d of docs) {
+    const form = new FormData();
+    form.append("chat_id", chatId());
+    form.append("document", d.blob, `print.${d.ext}`);
+    if (d.caption) form.append("caption", d.caption);
+    await tgCall("sendDocument", form, true);
   }
 
   return true;

@@ -30,6 +30,9 @@ const SaveDesign = () => {
 
     const designTextureFront = frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null;
     const designTextureBack = backCanvas ? canvasSyncManager.getCanvasTexture(backCanvas) : null;
+    // Друкарські макети у повній роздільності (підуть у Telegram як документи).
+    const printFront = frontCanvas ? canvasSyncManager.getPrintTexture(frontCanvas) : null;
+    const printBack = backCanvas ? canvasSyncManager.getPrintTexture(backCanvas) : null;
     // Сам макет (fabric JSON) — щоб замовлення зберегло редаговане джерело, а не лише прев'ю.
     const fabricFront = frontCanvas ? frontCanvas.toJSON() : null;
     const fabricBack = backCanvas ? backCanvas.toJSON() : null;
@@ -48,6 +51,8 @@ const SaveDesign = () => {
       productName: product.name,
       designTextureFront,
       designTextureBack,
+      printFront,
+      printBack,
       fabricFront,
       fabricBack,
       color: tshirtColor,

@@ -29,9 +29,22 @@ export const PRODUCT_TYPES = {
     name: "Футболка",
     description: "Передня та задня сторона",
     previewMode: "3d",
+    // printZone — реальна прямокутна зона друку (DTG) на грудях, у координатах
+    // viewBox. Дизайн обрізається саме по ній (а не по силуету), і саме її
+    // віддаємо у друк. Координати можна підкоригувати під реальний трафарет.
     views: {
-      front: { label: "Спереду", path: CREW_NECK_FRONT_PATH, viewBox: "0 0 810 810" },
-      back: { label: "Ззаду", path: CREW_NECK_BACK_PATH, viewBox: "0 0 810 810" },
+      front: {
+        label: "Спереду",
+        path: CREW_NECK_FRONT_PATH,
+        viewBox: "0 0 810 810",
+        printZone: { x: 235, y: 210, width: 340, height: 410 },
+      },
+      back: {
+        label: "Ззаду",
+        path: CREW_NECK_BACK_PATH,
+        viewBox: "0 0 810 810",
+        printZone: { x: 235, y: 210, width: 340, height: 410 },
+      },
     },
   },
   mug: {

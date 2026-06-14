@@ -35,13 +35,15 @@ export const tshirtSlice = createSlice({
       state.paperType = action.payload;
     },
     addToCart: (state, action) => {
-      const { id, productType, productName, designTextureFront, designTextureBack, fabricFront, fabricBack, color, size, paperType, variantLabel, quantity } = action.payload;
+      const { id, productType, productName, designTextureFront, designTextureBack, printFront, printBack, fabricFront, fabricBack, color, size, paperType, variantLabel, quantity } = action.payload;
       state.cartItems.push({
         id,
         productType,
         productName,
         designTextureFront,
         designTextureBack,
+        printFront, // друкарський макет (повна роздільність) — спереду
+        printBack, //  — ззаду
         fabricFront,
         fabricBack,
         color,

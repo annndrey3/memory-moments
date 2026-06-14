@@ -211,8 +211,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
     const order = await getOrderWithItems(orderId);
 
     // Сповіщення в Telegram (best-effort — не валимо замовлення, якщо TG недоступний).
+    // images — стиснені прев'ю (інлайн), documents — друкарські макети (без перестиску).
     try {
-      await sendOrderNotification(order, req.body.images);
+      await sendOrderNotification(order, req.body.images, req.body.documents);
     } catch (e) {
       console.warn("Telegram notify failed:", e.message);
     }
