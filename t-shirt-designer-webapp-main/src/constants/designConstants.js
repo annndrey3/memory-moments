@@ -178,3 +178,44 @@ export const FONT_OPTIONS = [
   { value: "trebuchet-ms", label: "Trebuchet MS" },
   { value: "impact", label: "Impact" },
 ];
+
+// ── Опції товару: розмір футболки та тип паперу для фотодруку ────────────────
+export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+
+export const PAPER_TYPES = [
+  { value: "matte", label: "Матовий" },
+  { value: "melange", label: "Меланж" },
+  { value: "glossy", label: "Глянцевий" },
+];
+
+// Назви базових кольорів палітри — щоб у замовленні було «Білий», а не «#FFFFFF».
+export const COLOR_NAMES = {
+  "#FF0000": "Червоний",
+  "#0000FF": "Синій",
+  "#00FF00": "Зелений",
+  "#FFFF00": "Жовтий",
+  "#000000": "Чорний",
+  "#808080": "Сірий",
+  "#FFFFFF": "Білий",
+  "#FFFFDD": "Кремовий",
+  "#00FFDD": "Бірюзовий",
+};
+
+// Розмір — лише для футболки; тип паперу — для всіх пласких фотоформатів.
+export const productHasSize = (type) => type === "crew-neck";
+export const productHasPaper = (type) => PRODUCT_TYPES[type]?.previewMode === "flat";
+export const paperLabel = (value) =>
+  PAPER_TYPES.find((p) => p.value === value)?.label || value;
+const colorName = (hex) => (hex ? COLOR_NAMES[hex.toUpperCase?.()] || hex : null);
+
+// Людиночитний підпис обраних опцій — для кошика та позиції замовлення
+// (саме він іде на сервер як variant_label → в адмінку й Telegram).
+export function buildOptionsLabel({ productType, size, paperType, color }) {
+  const parts = [];
+  if (productHasSize(productType) && size) parts.push(`Розмір: ${size}`);
+  if (productHasPaper(productType) && paperType) parts.push(`Папір: ${paperLabel(paperType)}`);
+  if ((productType === "crew-neck" || productType === "mug") && color) {
+    parts.push(`Колір: ${colorName(color)}`);
+  }
+  return parts.length ? parts.join(" · ") : null;
+}

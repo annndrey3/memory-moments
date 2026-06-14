@@ -20,9 +20,13 @@ import {
   DEFAULT_TEXT_CONFIG,
   PRODUCT_TYPES,
   TSHIRT_COLOR_CODES,
+  TSHIRT_SIZES,
+  PAPER_TYPES,
+  productHasSize,
+  productHasPaper,
 } from "../constants/designConstants";
 
-import { setSelectedType, setTshirtColor } from "../features/tshirtSlice";
+import { setSelectedType, setTshirtColor, setSize, setPaperType } from "../features/tshirtSlice";
 import { useRef } from "react";
 import SaveDesign from "./SaveDesign";
 import { useCanvas } from "@/hooks/useCanvas";
@@ -40,6 +44,8 @@ const ToolBar = ({ manualSync }) => {
   const fileInputRef = useRef(null);
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
+  const size = useSelector((state) => state.tshirt.size);
+  const paperType = useSelector((state) => state.tshirt.paperType);
   const { activeCanvas, selectedObject } = useCanvas();
   const { toast } = useToast();
 
@@ -199,6 +205,55 @@ const ToolBar = ({ manualSync }) => {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Розмір — лише для футболки */}
+      {productHasSize(selectedType) && (
+        <div className="panel-section space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+            Розмір
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {TSHIRT_SIZES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => dispatch(setSize(s))}
+                className={cn(
+                  "h-9 min-w-9 px-2.5 rounded-lg text-sm font-medium border transition-all",
+                  size === s
+                    ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-transparent shadow-glow"
+                    : "bg-sidebar-accent/50 text-sidebar-foreground/90 border-sidebar-border/50 hover:bg-sidebar-accent hover:border-sidebar-primary/30"
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Тип паперу — для фотоформатів */}
+      {productHasPaper(selectedType) && (
+        <div className="panel-section space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+            Тип паперу
+          </p>
+          <Select value={paperType} onValueChange={(v) => dispatch(setPaperType(v))}>
+            <SelectTrigger className="w-full bg-sidebar-accent/60 border-sidebar-border text-sidebar-foreground rounded-lg h-9">
+              <SelectValue placeholder="Оберіть папір" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {PAPER_TYPES.map((p) => (
+                  <SelectItem key={p.value} value={p.value}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Tools */}
       <div className="panel-section space-y-2">

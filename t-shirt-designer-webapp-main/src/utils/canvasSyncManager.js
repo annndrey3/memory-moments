@@ -28,6 +28,8 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
       product_name: item.productName,
       product_type: item.productType,
       color: item.color || null,
+      // Розмір/папір/колір одним підписом → сервер збереже як variant_label.
+      variant_label: item.variantLabel || null,
       quantity: item.quantity,
       // Сам макет: fabric JSON (front+back) + прев'ю — сервер збереже в позицію заказу.
       design_data: JSON.stringify({ front: item.fabricFront || null, back: item.fabricBack || null }),

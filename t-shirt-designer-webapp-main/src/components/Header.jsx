@@ -134,7 +134,12 @@ const Header = () => {
                       </div>
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         <div className="flex justify-between items-start gap-2">
-                          <h4 className="font-semibold text-sm line-clamp-2">{item.productName}</h4>
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-sm line-clamp-2">{item.productName}</h4>
+                            {item.variantLabel && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.variantLabel}</p>
+                            )}
+                          </div>
                           <Button
                             variant="ghost"
                             size="icon"

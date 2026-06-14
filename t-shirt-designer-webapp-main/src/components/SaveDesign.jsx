@@ -5,7 +5,7 @@ import { useCanvas } from "@/hooks/useCanvas";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "@/features/tshirtSlice";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
-import { PRODUCT_TYPES } from "@/constants/designConstants";
+import { PRODUCT_TYPES, buildOptionsLabel } from "@/constants/designConstants";
 
 const SaveDesign = () => {
   const { toast } = useToast();
@@ -14,6 +14,8 @@ const SaveDesign = () => {
 
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const tshirtColor = useSelector((state) => state.tshirt.tshirtColor);
+  const size = useSelector((state) => state.tshirt.size);
+  const paperType = useSelector((state) => state.tshirt.paperType);
 
   const handleAddToCart = async () => {
     if (!frontCanvas && !backCanvas) {
@@ -32,6 +34,13 @@ const SaveDesign = () => {
     const fabricFront = frontCanvas ? frontCanvas.toJSON() : null;
     const fabricBack = backCanvas ? backCanvas.toJSON() : null;
     const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
+    // Підпис обраних опцій (розмір/папір/колір) — піде в кошик і в замовлення.
+    const variantLabel = buildOptionsLabel({
+      productType: selectedType,
+      size,
+      paperType,
+      color: tshirtColor,
+    });
 
     dispatch(addToCart({
       id: Date.now().toString(36) + Math.random().toString(36).substring(2),
@@ -42,6 +51,9 @@ const SaveDesign = () => {
       fabricFront,
       fabricBack,
       color: tshirtColor,
+      size,
+      paperType,
+      variantLabel,
       quantity: 1,
     }));
 
