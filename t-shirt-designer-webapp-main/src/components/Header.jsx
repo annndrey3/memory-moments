@@ -59,24 +59,19 @@ const Header = () => {
 
   return (
     <div className="w-full flex justify-between items-center gap-4 px-4 py-3 md:px-8 md:py-4">
-      <a
-        href={MARKETPLACE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group flex items-center gap-3 min-w-0"
-      >
+      <div className="flex items-center gap-3 min-w-0">
         <picture>
           <source srcSet="/logo-mm.webp" type="image/webp" />
           <img
             src="/logo-mm.png"
             alt="Memory Moments"
-            className="h-10 md:h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            className="h-10 md:h-12 w-auto object-contain"
           />
         </picture>
-        <p className="hidden md:block max-w-[260px] text-xs md:text-sm text-muted-foreground truncate">
+        <p className="hidden lg:block max-w-xs text-xs md:text-sm text-muted-foreground leading-snug">
           Створіть унікальний дизайн для футболки, чашки чи фотоформату
         </p>
-      </a>
+      </div>
 
       <div className="flex items-center gap-2 shrink-0 font-brand tracking-wide">
         <a href={MARKETPLACE_URL} target="_blank" rel="noopener noreferrer">
