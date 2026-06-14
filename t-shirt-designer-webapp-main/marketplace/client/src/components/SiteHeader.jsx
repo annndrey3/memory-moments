@@ -5,7 +5,7 @@ import { useCart } from "@/lib/cart";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5173";
 
-export function SiteHeader({ showAdminLink = true }) {
+export function SiteHeader() {
   const { count } = useCart();
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl animate-fade-in">
@@ -54,13 +54,6 @@ export function SiteHeader({ showAdminLink = true }) {
               </span>
             )}
           </Link>
-          {showAdminLink && (
-            <Link to="/admin">
-              <Button variant="ghost" size="sm" className="rounded-xl text-slate-500">
-                Адмін
-              </Button>
-            </Link>
-          )}
         </nav>
       </div>
     </header>
