@@ -4,6 +4,29 @@
 #  затем: ln -s ... /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx
 # ============================================================================
 
+# Боты соцсетей/мессенджеров НЕ выполняют JS → им нужен серверный пререндер
+# OG-тегов (уникальное превью товара). $mm_is_bot=1 для таких User-Agent.
+# Блок map должен быть в http-контексте (вне server{}). Если вы вставляете весь
+# этот файл как site-config, nginx разрешает map здесь же — он попадает в http.
+map $http_user_agent $mm_is_bot {
+    default                 0;
+    "~*facebookexternalhit" 1;
+    "~*Facebot"             1;
+    "~*Twitterbot"          1;
+    "~*TelegramBot"         1;
+    "~*WhatsApp"            1;
+    "~*Viber"               1;
+    "~*Slackbot"            1;
+    "~*Discordbot"          1;
+    "~*LinkedInBot"         1;
+    "~*Pinterest"           1;
+    "~*vkShare"             1;
+    "~*redditbot"           1;
+    "~*Googlebot"           1;
+    "~*bingbot"             1;
+    "~*Applebot"            1;
+}
+
 server {
     listen 80;
     server_name shop.example.com;
@@ -36,6 +59,23 @@ server {
     location /designer/ {
         alias /var/www/memory-moments/t-shirt-designer-webapp-main/dist/;
         try_files $uri $uri/ /designer/index.html;
+    }
+
+    # Страницы товара: ботам — серверный пререндер OG (Node), людям — SPA.
+    # proxy_pass внутри if — стандартный приём для prerender (как в prerender.io):
+    # if срабатывает только для ботов, для остальных выполняется try_files ниже.
+    location ~ ^/product/ {
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+
+        if ($mm_is_bot) {
+            proxy_pass http://127.0.0.1:3001;
+        }
+
+        try_files $uri $uri/ /index.html;
     }
 
     # SPA маркетплейса: всё остальное отдаёт index.html (React Router)

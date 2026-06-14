@@ -11,6 +11,7 @@ import uploadRoutes from "./routes/upload.js";
 import designRoutes from "./routes/designs.js";
 import orderRoutes from "./routes/orders.js";
 import serviceRoutes from "./routes/services.js";
+import prerenderRoutes from "./prerender.js";
 
 dotenv.config();
 
@@ -83,6 +84,10 @@ app.use("/api/designs", designRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/upload", uploadRoutes);
+
+// SSR-пререндер OG для сторінок товару (/product/:slug). nginx направляє сюди
+// лише ботів соцмереж/месенджерів; живі відвідувачі отримують SPA зі статики.
+app.use(prerenderRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
