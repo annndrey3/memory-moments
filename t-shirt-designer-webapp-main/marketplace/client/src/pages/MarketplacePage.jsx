@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { HeroBanner } from "@/components/HeroBanner";
 import { ProductGrid } from "@/components/ProductCard";
+import { Reveal } from "@/components/Reveal";
 import { Input, Button } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -68,14 +69,16 @@ export default function MarketplacePage() {
       <HeroBanner />
 
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-        <section className="mb-8 animate-fade-in-up">
+        {/* Якір для кнопки «Каталог товарів» з банера. scroll-mt-24 — відступ,
+            щоб заголовок не ховався під липким хедером. */}
+        <Reveal as="section" id="catalog" className="mb-8 scroll-mt-24">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
             Каталог <span className="text-gradient-animated">подарунків</span>
           </h1>
           <p className="mt-2 text-slate-500 max-w-xl">
             Оберіть товар і створіть унікальний дизайн у нашому конструкторі
           </p>
-        </section>
+        </Reveal>
 
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="lg:w-56 shrink-0">

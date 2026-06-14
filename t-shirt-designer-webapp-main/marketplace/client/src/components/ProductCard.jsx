@@ -1,17 +1,26 @@
 import { Link } from "react-router-dom";
 import { formatPrice, cn } from "@/lib/utils";
 import { Badge } from "./ui";
+import { useInView } from "./Reveal";
 import { Sparkles } from "lucide-react";
 
 export function ProductCard({ product, index = 0 }) {
+  const [ref, inView] = useInView();
   const hasDiscount =
     product.compare_at_price && Number(product.compare_at_price) > Number(product.price);
 
   return (
     <Link
+      ref={ref}
       to={`/product/${product.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft animate-fade-in-up transition-all duration-300 hover:shadow-elevated hover:-translate-y-1.5"
-      style={{ animationDelay: `${Math.min(index, 9) * 70}ms` }}
+      // До появи у в'юпорті — прихована (opacity-0); коли вкочується — програє
+      // fade-in-up. Анімація (а не transition) не конфліктує з hover-lift нижче.
+      // Stagger по колонці (index % 3) дає приємну хвилю зліва направо в рядку.
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft transition-all duration-300 hover:shadow-elevated hover:-translate-y-1.5",
+        inView ? "animate-fade-in-up" : "opacity-0"
+      )}
+      style={{ animationDelay: `${(index % 3) * 80}ms` }}
     >
       <div className="relative aspect-square overflow-hidden bg-slate-100">
         {product.primary_image ? (

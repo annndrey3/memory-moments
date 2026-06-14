@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { ShoppingBag, Palette } from "lucide-react";
 import { Button } from "./ui";
 
@@ -69,7 +68,9 @@ export function HeroBanner() {
 
         {/* CTA-кнопки */}
         <div className="flex flex-wrap gap-3 justify-center mt-2 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-          <Link to="/">
+          {/* Каталог — на цій самій сторінці нижче банера: плавно скролимо до нього
+              (#catalog). html { scroll-behavior: smooth } робить прокрутку анімованою. */}
+          <a href="#catalog">
             <Button
               size="lg"
               className="rounded-2xl px-7 shadow-lg"
@@ -78,7 +79,7 @@ export function HeroBanner() {
               <ShoppingBag className="h-4 w-4" />
               Каталог товарів
             </Button>
-          </Link>
+          </a>
           <a href={DESIGNER_URL}>
             <Button
               size="lg"
