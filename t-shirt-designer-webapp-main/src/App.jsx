@@ -4,7 +4,7 @@ import DesignArea from "./components/DesignArea";
 import Header from "./components/Header";
 import { Toaster } from "@/components/ui/toaster";
 import { Canvas } from "@react-three/fiber";
-import { Environment, Loader, OrbitControls } from "@react-three/drei";
+import { ContactShadows, Environment, Loader, OrbitControls } from "@react-three/drei";
 import { setSelectedView, setSelectedType } from "./features/tshirtSlice";
 import { useCanvas } from "./hooks/useCanvas";
 import { TshirtModel } from "./components/TShirtModel";
@@ -80,11 +80,11 @@ function App() {
                       <div className="h-[360px] md:h-[480px] relative rounded-xl bg-gradient-to-b from-muted/30 to-muted/10">
                         {product.previewMode === "3d" ? (
                           <>
-                            <Canvas>
-                              <OrbitControls
-                                maxPolarAngle={Math.PI / 2}
-                                minPolarAngle={Math.PI / 3}
-                              />
+                            <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
+                              {/* Студійне світло: м'яке заповнення + ключове + контровий підсвіт */}
+                              <ambientLight intensity={0.55} />
+                              <directionalLight position={[4, 6, 5]} intensity={1.3} />
+                              <directionalLight position={[-5, 2, -4]} intensity={0.45} />
                               <Suspense fallback={null}>
                                 {selectedType === "mug" ? (
                                   <MugModel
@@ -99,8 +99,31 @@ function App() {
                                     designTextureBack={designTextureBack}
                                   />
                                 )}
-                                <Environment preset="sunset" />
+                                {/* Нейтральне студійне середовище — коректний білий
+                                    (без оранжевого відтінку, як у preset "sunset"). */}
+                                <Environment preset="studio" />
+                                {/* М'яка контактна тінь «приземлює» модель. y підібрано
+                                    під чашку/футболку — за потреби підкрутити. */}
+                                <ContactShadows
+                                  position={[0, selectedType === "mug" ? -1.35 : -1.6, 0]}
+                                  opacity={0.35}
+                                  scale={12}
+                                  blur={2.6}
+                                  far={4.5}
+                                  resolution={512}
+                                  color="#2e2440"
+                                />
                               </Suspense>
+                              <OrbitControls
+                                makeDefault
+                                enablePan={false}
+                                enableDamping
+                                dampingFactor={0.08}
+                                minDistance={3.2}
+                                maxDistance={7.5}
+                                maxPolarAngle={Math.PI / 2}
+                                minPolarAngle={Math.PI / 3}
+                              />
                             </Canvas>
                             <Loader
                               containerStyles={{

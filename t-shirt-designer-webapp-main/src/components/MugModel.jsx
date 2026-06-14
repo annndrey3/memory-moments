@@ -28,22 +28,24 @@ export function MugModel({
     <Center position={[0, -0.2, 0]}>
       <group dispose={null}>
         
-        {/* Outer Shell (White background) */}
+        {/* Outer Shell (White background) — глазурована кераміка з глянцем */}
         <mesh geometry={outerGeometry} castShadow receiveShadow>
-          <meshStandardMaterial 
+          <meshPhysicalMaterial
             color="#FFFFFF"
-            roughness={0.2}
-            metalness={0.1}
+            roughness={0.12}
+            metalness={0}
+            clearcoat={0.7}
+            clearcoatRoughness={0.18}
             side={THREE.FrontSide}
           />
         </mesh>
 
-        {/* Decal Shell (The Print) */}
+        {/* Decal Shell (The Print) — під глазур'ю, тож трохи глянцевий */}
         <mesh geometry={printGeometry}>
-          <meshStandardMaterial 
+          <meshStandardMaterial
             map={texture}
-            roughness={0.2}
-            metalness={0.1}
+            roughness={0.16}
+            metalness={0}
             side={THREE.FrontSide}
             transparent={true}
             polygonOffset={true}
@@ -53,35 +55,39 @@ export function MugModel({
 
         {/* Inner Shell (Colored) */}
         <mesh geometry={innerGeometry} receiveShadow>
-          <meshStandardMaterial 
-            color={innerColor} 
+          <meshPhysicalMaterial
+            color={innerColor}
             roughness={0.1}
-            metalness={0.1}
+            metalness={0}
+            clearcoat={0.6}
+            clearcoatRoughness={0.2}
             side={THREE.BackSide}
           />
         </mesh>
 
         {/* Bottom */}
         <mesh geometry={bottomGeometry} position={[0, -1.1, 0]} receiveShadow>
-          <meshStandardMaterial 
-            color={innerColor} 
-            roughness={0.1}
-            metalness={0.1}
+          <meshStandardMaterial
+            color={innerColor}
+            roughness={0.25}
+            metalness={0}
           />
         </mesh>
 
-        {/* Handle */}
-        <mesh 
-          geometry={handleGeometry} 
-          position={[1, 0, 0]} 
+        {/* Handle — кераміка з глянцем */}
+        <mesh
+          geometry={handleGeometry}
+          position={[1, 0, 0]}
           rotation={[0, 0, -Math.PI / 2]}
-          castShadow 
+          castShadow
           receiveShadow
         >
-          <meshStandardMaterial 
-            color={innerColor} 
-            roughness={0.1}
-            metalness={0.1}
+          <meshPhysicalMaterial
+            color={innerColor}
+            roughness={0.12}
+            metalness={0}
+            clearcoat={0.6}
+            clearcoatRoughness={0.2}
           />
         </mesh>
 
