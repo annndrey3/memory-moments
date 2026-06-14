@@ -4,6 +4,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Badge } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useSeo } from "@/lib/seo";
 
 const TERMS = [
   "Термін виготовлення книг — 5 робочих днів після затвердження макета.",
@@ -32,6 +33,12 @@ function groupByName(services) {
 export default function PricesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useSeo({
+    title: "Ціни на послуги",
+    description:
+      "Прайс Memory Moments: фотодрук, поліграфія, широкоформатний друк, сувенірна продукція та фотокниги.",
+  });
 
   useEffect(() => {
     api

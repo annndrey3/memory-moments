@@ -7,6 +7,7 @@ import { ProductGrid } from "@/components/ProductCard";
 import { Input, Button } from "@/components/ui";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useSeo } from "@/lib/seo";
 
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +19,8 @@ export default function MarketplacePage() {
 
   const category = searchParams.get("category") || "";
   const page = Number(searchParams.get("page") || 1);
+
+  useSeo();
 
   useEffect(() => {
     api.getCategories().then(setCategories).catch(console.error);

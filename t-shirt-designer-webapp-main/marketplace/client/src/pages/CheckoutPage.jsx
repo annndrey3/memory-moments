@@ -6,6 +6,7 @@ import { Button, Input, Label, Textarea } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 import { api } from "@/lib/api";
+import { useSeo } from "@/lib/seo";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState(null);
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  useSeo({ title: "Оформлення замовлення" });
 
   if (items.length === 0) {
     return <Navigate to="/cart" replace />;

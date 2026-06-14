@@ -5,11 +5,13 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useSeo } from "@/lib/seo";
 
 export default function OrderSuccessPage() {
   const { number } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  useSeo({ title: "Замовлення прийнято" });
 
   useEffect(() => {
     api

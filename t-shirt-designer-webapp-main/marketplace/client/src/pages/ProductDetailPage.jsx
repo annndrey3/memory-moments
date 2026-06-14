@@ -6,6 +6,7 @@ import { Button, Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
+import { useSeo } from "@/lib/seo";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5173";
 
@@ -19,6 +20,12 @@ export default function ProductDetailPage() {
   const [variantId, setVariantId] = useState(null);
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+
+  useSeo({
+    title: product?.name,
+    description: product?.short_description || product?.description,
+    image: product?.images?.[0]?.image_url,
+  });
 
   useEffect(() => {
     setLoading(true);

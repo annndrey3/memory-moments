@@ -4,10 +4,12 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
+import { useSeo } from "@/lib/seo";
 
 export default function CartPage() {
   const navigate = useNavigate();
   const { items, updateQty, removeItem, subtotal } = useCart();
+  useSeo({ title: "Кошик" });
 
   return (
     <div className="min-h-screen bg-mesh-animated">
