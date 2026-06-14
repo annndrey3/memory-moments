@@ -1,0 +1,56 @@
+# ─── Dependencies ───────────────────────────────────────────────
+node_modules/
+
+# ─── Build output ───────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+.vite/
+
+# ─── Secrets / env (КРІТИЧНО: містять JWT_SECRET і Telegram-токен) ─
+# .env.example лишається у репозиторії як шаблон.
+.env
+.env.local
+.env.*.local
+*.local
+
+# ─── База даних SQLite (створюється автоматично) ────────────────
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# ─── Завантаження користувачів ──────────────────────────────────
+uploads/
+
+# ─── Логи ───────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Невикористовуваний клон Medusa.js (~977 МБ) ────────────────
+medusa-develop/
+
+# ─── Вихідні дизайн-матеріали (PSD, шрифти, ~65 МБ) ─────────────
+Новая папка/
+
+# ─── Локальні налаштування Claude Code (машинно-залежні) ────────
+.claude/settings.local.json
+
+# ─── Редактори / ОС ─────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
