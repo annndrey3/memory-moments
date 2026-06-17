@@ -205,8 +205,11 @@ mkdir -p "$PROJECT_DIR/marketplace/server/uploads"
 # ─── PM2 запуск ───────────────────────────────────────────────────────────────
 step "Запуск API через PM2"
 pm2 delete mm-api 2>/dev/null || true
+pm2 delete mm-ecosystem 2>/dev/null || true   # прибрати помилково названий процес із попередніх версій
 
-cat > /tmp/mm-ecosystem.cjs <<ECOSYSTEM
+# Файл МАЄ закінчуватися на .config.cjs — інакше PM2 трактує його як звичайний
+# скрипт (запускає сам конфіг, а не src/index.js) і процес одразу падає.
+cat > /tmp/ecosystem.config.cjs <<ECOSYSTEM
 module.exports = {
   apps: [{
     name: "mm-api",
@@ -222,7 +225,7 @@ module.exports = {
 };
 ECOSYSTEM
 
-pm2 start /tmp/mm-ecosystem.cjs
+pm2 start /tmp/ecosystem.config.cjs
 pm2 save
 
 # Автозапуск PM2 при перезавантаженні сервера
