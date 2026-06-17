@@ -79,8 +79,11 @@ read -rp "  Все правильно? Починаємо? (y/N): " CONFIRM
 step "Оновлення системи та базові пакети"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq curl git nginx certbot python3-certbot-nginx openssl sudo postgresql postgresql-contrib
+apt-get install -y -qq curl git nginx certbot python3-certbot-nginx openssl sudo postgresql postgresql-contrib build-essential python3
 ok "Базові пакети встановлені"
+# build-essential + python3 — потрібні node-gyp для компіляції нативного
+# better-sqlite3 (готового бінарника під деякі версії Node немає). У проді
+# використовується PostgreSQL, але npm усе одно збирає всі залежності.
 
 # ─── Node.js ──────────────────────────────────────────────────────────────────
 step "Node.js $NODE_MAJOR"
