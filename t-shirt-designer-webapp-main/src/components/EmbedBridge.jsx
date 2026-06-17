@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { useCanvas } from "@/hooks/useCanvas";
 import { setSelectedType } from "@/features/tshirtSlice";
 import { PRODUCT_TYPES } from "@/constants/designConstants";
+import { canvasSyncManager } from "@/utils/canvasSyncManager";
 
 /**
  * EmbedBridge — мост між конструктором та маркетплейсом/адмінкою.
@@ -42,13 +43,16 @@ function readParams() {
 export default function EmbedBridge() {
   const dispatch = useDispatch();
   const { frontCanvas } = useCanvas();
+  // Ref завжди містить актуальний canvas — уникаємо stale closure в onMessage.
+  const frontCanvasRef = useRef(null);
+  frontCanvasRef.current = frontCanvas;
   // fabric-дані, що чекають на готовність полотна
   const pendingFabricRef = useRef(null);
   const paramsRef = useRef(readParams());
 
-  // Завантажити fabric JSON на переднє полотно, зберігши clipPath (зону друку).
+  // Завантажити fabric JSON на переднє полотно, зберігши clipPath.
   const loadFabricData = (data) => {
-    const canvas = frontCanvas;
+    const canvas = frontCanvasRef.current;
     if (!canvas) {
       pendingFabricRef.current = data; // застосуємо, коли полотно з'явиться
       return;
@@ -65,12 +69,18 @@ export default function EmbedBridge() {
   };
 
   const exportDesign = () => {
-    const canvas = frontCanvas;
+    const canvas = frontCanvasRef.current;
     if (!canvas) return null;
+
+    const productType = canvas.productId || paramsRef.current.type || null;
+
+    // Delegate to canvasSyncManager — frame composite lives in one place.
+    const previewImage = canvasSyncManager.getPrintTexture(canvas);
+
     return {
       fabricData: canvas.toJSON(),
-      previewImage: canvas.toDataURL({ format: "png", multiplier: 0.5 }),
-      productType: canvas.productId || paramsRef.current.type || null,
+      previewImage: previewImage ?? canvas.toDataURL({ format: "png", multiplier: 0.5 }),
+      productType,
     };
   };
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { HeroBanner } from "@/components/HeroBanner";
 import { ProductGrid } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
@@ -76,7 +77,7 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-screen bg-mesh-animated">
       <SiteHeader />
-      <HeroBanner />
+      <HeroBanner categories={categories} onCategorySelect={setCategory} />
 
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         {/* Якір для кнопки «Каталог товарів» з банера. scroll-mt-24 — відступ,
@@ -161,6 +162,7 @@ export default function MarketplacePage() {
           </div>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

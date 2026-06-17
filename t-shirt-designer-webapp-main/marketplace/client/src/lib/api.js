@@ -56,6 +56,13 @@ export const api = {
   me: () => request("/auth/me"),
 
   getCategories: () => request("/categories"),
+  getCategoriesAdmin: () => request("/categories/admin/all"),
+  createCategory: (data) =>
+    request("/categories", { method: "POST", body: JSON.stringify(data) }),
+  updateCategory: (id, data) =>
+    request(`/categories/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteCategory: (id) =>
+    request(`/categories/${id}`, { method: "DELETE" }),
 
   getProducts: (params = {}) => {
     const qs = buildQuery(params);
@@ -103,6 +110,12 @@ export const api = {
     return request("/upload", { method: "POST", body: form });
   },
 
+  uploadPhoto: (file) => {
+    const form = new FormData();
+    form.append("photo", file);
+    return request("/photos", { method: "POST", body: form });
+  },
+
   // Orders
   createOrder: (data) =>
     request("/orders", { method: "POST", body: JSON.stringify(data) }),
@@ -118,6 +131,7 @@ export const api = {
 
   updateOrderStatus: (id, status) =>
     request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
 
   // Services / price list
   getServices: () => request("/services"),
@@ -136,4 +150,39 @@ export const api = {
     request(`/services/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteService: (id) =>
     request(`/services/${id}`, { method: "DELETE" }),
+
+  // Admin settings
+  getAdminProfile: () => request("/admin/settings/profile"),
+  updateAdminProfile: (data) =>
+    request("/admin/settings/profile", { method: "PUT", body: JSON.stringify(data) }),
+  changeAdminPassword: (data) =>
+    request("/admin/settings/password", { method: "PUT", body: JSON.stringify(data) }),
+  getGeminiSettings: () => request("/admin/settings/gemini"),
+  setGeminiKey: (apiKey) =>
+    request("/admin/settings/gemini", { method: "PUT", body: JSON.stringify({ apiKey }) }),
+  deleteGeminiKey: () =>
+    request("/admin/settings/gemini", { method: "DELETE" }),
+
+  // Admin user management
+  getAdminUsers: () => request("/admin/settings/users"),
+  createAdminUser: (data) =>
+    request("/admin/settings/users", { method: "POST", body: JSON.stringify(data) }),
+  updateUserPermissions: (id, permissions) =>
+    request(`/admin/settings/users/${id}/permissions`, { method: "PUT", body: JSON.stringify({ permissions }) }),
+  deleteAdminUser: (id) =>
+    request(`/admin/settings/users/${id}`, { method: "DELETE" }),
+
+  // Gemini price import
+  importPricesPreview: (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request("/prices/import/preview", { method: "POST", body: form });
+  },
+  importPricesApply: (rows) =>
+    request("/prices/import/apply", { method: "POST", body: JSON.stringify({ rows }) }),
+
+  // Storage cleanup
+  cleanupPreview: (days = 30) => request(`/admin/cleanup?days=${days}`),
+  cleanupRun: (days = 30) =>
+    request("/admin/cleanup", { method: "POST", body: JSON.stringify({ days }) }),
 };

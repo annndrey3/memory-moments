@@ -25,7 +25,7 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    @apply text-slate-900 font-sans antialiased;
   }
   ::selection {
     background-color: hsl(262 83% 75% / 0.35);
@@ -40,19 +40,12 @@
       radial-gradient(at 100% 0%, hsl(330 80% 60% / 0.05) 0px, transparent 50%);
   }
 
-  /* Світлий пастельний фон, що повільно «дихає» (фіолетовий · рожевий · небесний). */
+  /* Паперова текстура — головний фон сайту. */
   .bg-mesh-animated {
-    background-color: #fbfaff;
-    background-image:
-      radial-gradient(at 0% 0%, hsl(262 83% 72% / 0.12) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsl(330 80% 74% / 0.11) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, hsl(200 90% 76% / 0.10) 0px, transparent 50%);
-    background-size: 180% 180%;
-    animation: mesh-drift 26s ease-in-out infinite;
-  }
-  @keyframes mesh-drift {
-    0%, 100% { background-position: 0% 0%, 100% 0%, 50% 100%; }
-    50% { background-position: 25% 18%, 78% 12%, 42% 86%; }
+    background-image: url("/bg.jpg");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
   }
 
   .text-gradient {
@@ -93,6 +86,7 @@
     transform: translateY(-2px);
   }
 }
+
 
 /* Доступність: повністю прибираємо рух для тих, хто його не бажає. */
 @media (prefers-reduced-motion: reduce) {

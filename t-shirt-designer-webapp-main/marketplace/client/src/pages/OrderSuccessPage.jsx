@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -67,6 +68,7 @@ export default function OrderSuccessPage() {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

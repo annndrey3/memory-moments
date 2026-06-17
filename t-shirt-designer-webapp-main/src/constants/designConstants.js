@@ -32,6 +32,7 @@ export const PRODUCT_TYPES = {
     name: "Футболка",
     description: "Передня та задня сторона",
     previewMode: "3d",
+    previewShape: "tshirt", // плаский превʼю (коли 3D вимкнено для футболки)
     // printZone — реальна прямокутна зона друку (DTG) на грудях, у координатах
     // viewBox. ВАЖЛИВО: пропорція зони має дорівнювати пропорції 3D-декалі
     // (TShirtModel: scale=[0.52, 0.7] → 0.52/0.7 ≈ 0.743), інакше макет у превʼю
@@ -72,22 +73,95 @@ export const PRODUCT_TYPES = {
       },
     },
   },
+  // ── Шаблонні формати (canvasSize = розміри друку 300dpi, templateOverlay = PNG рамка) ──
   polaroid: {
-    name: "Полароїд",
-    description: "Квадратне фото з підписом",
+    name: "Полароїд 10×12 верт.",
+    description: "Формат 10×12 см, вертикальний",
     previewMode: "flat",
     previewShape: "polaroid",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810" },
+      front: {
+        label: "Фото",
+        viewBox: "0 0 1181 1417",
+        canvasSize: { width: 1181, height: 1417 },
+        templateOverlay: "/templates/polaroid-10x12-vert.png",
+        printZone: { x: 71, y: 62, width: 1039, height: 1037 },
+      },
+    },
+  },
+  "polaroid-10x12-h": {
+    name: "Полароїд 10×12 гор.",
+    description: "Формат 10×12 см, горизонтальний",
+    previewMode: "flat",
+    previewShape: "polaroid",
+    views: {
+      front: {
+        label: "Фото",
+        viewBox: "0 0 1417 1181",
+        canvasSize: { width: 1417, height: 1181 },
+        templateOverlay: "/templates/polaroid-10x12-hor.png",
+        printZone: { x: 85, y: 52, width: 1247, height: 864 },
+      },
+    },
+  },
+  "polaroid-8x10-v": {
+    name: "Полароїд 8×10 верт.",
+    description: "Формат 8×10 см, вертикальний",
+    previewMode: "flat",
+    previewShape: "polaroid",
+    views: {
+      front: {
+        label: "Фото",
+        viewBox: "0 0 945 1181",
+        canvasSize: { width: 945, height: 1181 },
+        templateOverlay: "/templates/polaroid-8x10-vert.png",
+        printZone: { x: 56, y: 52, width: 833, height: 864 },
+      },
+    },
+  },
+  "polaroid-8x10-h": {
+    name: "Полароїд 8×10 гор.",
+    description: "Формат 8×10 см, горизонтальний",
+    previewMode: "flat",
+    previewShape: "polaroid",
+    views: {
+      front: {
+        label: "Фото",
+        viewBox: "0 0 1181 945",
+        canvasSize: { width: 1181, height: 945 },
+        templateOverlay: "/templates/polaroid-8x10-hor.png",
+        printZone: { x: 71, y: 41, width: 1040, height: 692 },
+      },
     },
   },
   "instax-mini": {
-    name: "Instax Mini",
-    description: "Формат миттєвого фото",
+    name: "Instax Mini 5.4×8.6",
+    description: "Формат миттєвого фото Instax Mini",
     previewMode: "flat",
     previewShape: "instax",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.instax_inner, viewBox: "0 0 810 810" },
+      front: {
+        label: "Фото",
+        viewBox: "0 0 638 1016",
+        canvasSize: { width: 638, height: 1016 },
+        templateOverlay: "/templates/instax-mini.png",
+        printZone: { x: 46, y: 72, width: 545, height: 729 },
+      },
+    },
+  },
+  "phone-case": {
+    name: "Під чохол 5.4×8.5",
+    description: "Макет для друку під чохол",
+    previewMode: "flat",
+    previewShape: "phone",
+    views: {
+      front: {
+        label: "Фото",
+        viewBox: "0 0 638 1004",
+        canvasSize: { width: 638, height: 1004 },
+        templateOverlay: "/templates/phone-case.png",
+        printZone: { x: 5, y: 5, width: 628, height: 994 },
+      },
     },
   },
   "photo-10x15": {
@@ -96,7 +170,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "portrait_2x3",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.portrait_2x3, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.portrait_2x3, viewBox: "0 0 810 810", printZone: { x: 165, y: 45, width: 480, height: 720 } },
     },
   },
   "photo-15x10": {
@@ -105,7 +179,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "landscape_3x2",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.landscape_3x2, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.landscape_3x2, viewBox: "0 0 810 810", printZone: { x: 45, y: 165, width: 720, height: 480 } },
     },
   },
   "photo-13x18": {
@@ -114,7 +188,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "portrait_5x7",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.portrait_5x7, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.portrait_5x7, viewBox: "0 0 810 810", printZone: { x: 155, y: 55, width: 500, height: 700 } },
     },
   },
   "photo-18x13": {
@@ -123,7 +197,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "landscape_7x5",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.landscape_7x5, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.landscape_7x5, viewBox: "0 0 810 810", printZone: { x: 55, y: 155, width: 700, height: 500 } },
     },
   },
   "photo-15x21": {
@@ -132,7 +206,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "portrait_3x4",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.portrait_3x4, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.portrait_3x4, viewBox: "0 0 810 810", printZone: { x: 135, y: 45, width: 540, height: 720 } },
     },
   },
   "photo-21x15": {
@@ -141,7 +215,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "landscape_4x3",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.landscape_4x3, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.landscape_4x3, viewBox: "0 0 810 810", printZone: { x: 45, y: 135, width: 720, height: 540 } },
     },
   },
   "photo-a4-p": {
@@ -150,7 +224,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "a4_portrait",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.a4_portrait, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.a4_portrait, viewBox: "0 0 810 810", printZone: { x: 150, y: 45, width: 510, height: 720 } },
     },
   },
   "photo-a4-l": {
@@ -159,7 +233,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "a4_landscape",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.a4_landscape, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.a4_landscape, viewBox: "0 0 810 810", printZone: { x: 45, y: 150, width: 720, height: 510 } },
     },
   },
   "photo-square": {
@@ -168,7 +242,7 @@ export const PRODUCT_TYPES = {
     previewMode: "flat",
     previewShape: "square",
     views: {
-      front: { label: "Фото", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810" },
+      front: { label: "Фото", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
     },
   },
 };

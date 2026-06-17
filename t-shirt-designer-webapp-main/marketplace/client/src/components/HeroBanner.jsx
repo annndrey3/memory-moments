@@ -1,63 +1,174 @@
-import { ShoppingBag, Palette } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  ShoppingBag, Palette, ChevronLeft, ChevronRight,
+  Shirt, Coffee, Package, Gift, Image, BookOpen,
+} from "lucide-react";
 import { Button } from "./ui";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5174";
 
-export function HeroBanner() {
+// Wood backgrounds (same pool as PricesPage, skip bg-wood-02 — plain grey)
+const BG_POOL = [
+  "/bg/bg-wood-04.jpg",
+  "/bg/bg-wood-01.jpg",
+  "/bg/bg-wood-10.jpg",
+  "/bg/bg-wood-09.jpg",
+  "/bg/bg-wood-07.jpg",
+  "/bg/bg-wood-08.jpg",
+  "/bg/bg-wood-06.jpg",
+  "/bg/bg-wood-03.jpg",
+];
+
+function getCatIcon(name) {
+  const n = name.toLowerCase();
+  if (n.includes("футболк") || n.includes("одяг")) return Shirt;
+  if (n.includes("кружк") || n.includes("чашк") || n.includes("муг")) return Coffee;
+  if (n.includes("фото") || n.includes("print") || n.includes("друк")) return Image;
+  if (n.includes("книг") || n.includes("book")) return BookOpen;
+  if (n.includes("подушк") || n.includes("сувенір")) return Gift;
+  return Package;
+}
+
+export function HeroBanner({ categories = [], onCategorySelect }) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const totalSlides = 1 + categories.length;
+
+  useEffect(() => {
+    if (totalSlides <= 1 || paused) return;
+    const t = setInterval(() => setActiveSlide((p) => (p + 1) % totalSlides), 3500);
+    return () => clearInterval(t);
+  }, [totalSlides, paused]);
+
+  const goTo = (i) => { setPaused(true); setActiveSlide(i); };
+  const prev = () => goTo((activeSlide - 1 + totalSlides) % totalSlides);
+  const next = () => goTo((activeSlide + 1) % totalSlides);
+
+  const isHero = activeSlide === 0;
+
   return (
-    <section className="relative overflow-hidden">
-      {/* Фон — рожева мармурова текстура */}
+    <section className="overflow-hidden flex flex-col items-center">
+
+      {/* ── Slideshow image area ── */}
       <div
-        className="absolute inset-0"
-        style={{
-          backgroundColor: "#f0cbbc",
-          backgroundImage: `
-            radial-gradient(ellipse at 15% 20%, rgba(255,255,255,0.55) 0%, transparent 45%),
-            radial-gradient(ellipse at 85% 75%, rgba(255,255,255,0.45) 0%, transparent 40%),
-            radial-gradient(ellipse at 50% 50%, rgba(240,203,188,0.8) 0%, rgba(233,185,168,0.9) 100%)
-          `,
-        }}
-      />
-
-      {/* SVG шум для імітації штукатурки/мармуру */}
-      <svg className="absolute inset-0 w-full h-full opacity-[0.18] pointer-events-none" aria-hidden>
-        <filter id="hero-noise">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.72"
-            numOctaves="4"
-            stitchTiles="stitch"
+        className="relative w-full h-[340px] md:h-[460px] overflow-hidden select-none"
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        {/* Slide 0 — hero logo on paper texture */}
+        <div
+          className={`absolute inset-0 transition-opacity duration-700
+            ${isHero ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+          style={{ backgroundImage: "url(/bg.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
+        >
+          <img
+            src="/hero-logo.png"
+            alt="Memory Moments"
+            className="w-full h-full object-contain"
           />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#hero-noise)" />
-      </svg>
-
-      {/* Світлі пастельні «орби», що м'яко плавають */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-        <div className="absolute -top-10 left-[8%] h-40 w-40 rounded-full bg-white/40 blur-2xl animate-blob" />
-        <div className="absolute top-1/3 right-[10%] h-56 w-56 rounded-full bg-rose-200/40 blur-3xl animate-float-slow" />
-        <div className="absolute bottom-0 left-1/3 h-48 w-48 rounded-full bg-violet-200/30 blur-3xl animate-blob" style={{ animationDelay: "-6s" }} />
-        <div className="absolute top-12 right-1/3 h-24 w-24 rounded-full bg-amber-100/50 blur-2xl animate-float" />
-      </div>
-
-      {/* Контент */}
-      <div className="relative z-10 mx-auto max-w-4xl px-6 py-16 md:py-24 flex flex-col items-center text-center gap-6">
-
-        {/* Логотип */}
-        <div className="drop-shadow-xl animate-float">
-          <picture>
-            <source srcSet="/logo-mm.webp" type="image/webp" />
-            <img
-              src="/logo-mm.png"
-              alt="Memory Moments"
-              className="h-28 md:h-36 w-auto object-contain animate-fade-in"
-            />
-          </picture>
         </div>
 
-        {/* Слоган */}
-        <div className="space-y-1 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+        {/* Category slides */}
+        {categories.map((cat, i) => {
+          const Icon = getCatIcon(cat.name);
+          const bg   = BG_POOL[i % BG_POOL.length];
+          return (
+            <div
+              key={cat.id}
+              className={`absolute inset-0 transition-opacity duration-700
+                ${activeSlide === i + 1 ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              style={{ backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            >
+              {/* text-readable gradient from left */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-black/5" />
+
+              <div className="relative z-10 h-full flex items-center px-8 md:px-16 gap-6">
+                <div className="flex-shrink-0 h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                  <Icon className="h-8 w-8 md:h-10 md:w-10 text-white drop-shadow" />
+                </div>
+                <div>
+                  {cat.product_count > 0 && (
+                    <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">
+                      {cat.product_count} товарів
+                    </p>
+                  )}
+                  <h2 className="text-white font-bold text-3xl md:text-5xl drop-shadow leading-tight">
+                    {cat.name}
+                  </h2>
+                  <button
+                    onClick={() => { goTo(0); onCategorySelect?.(cat.slug); }}
+                    className="mt-4 inline-flex items-center gap-2 text-white/80 text-sm hover:text-white transition-colors"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    Переглянути товари
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Arrows */}
+        {totalSlides > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className={`absolute left-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full
+                flex items-center justify-center transition-colors
+                ${isHero
+                  ? "bg-black/10 hover:bg-black/25 text-[#5a3020]"
+                  : "bg-white/20 hover:bg-white/35 text-white"}`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={next}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full
+                flex items-center justify-center transition-colors
+                ${isHero
+                  ? "bg-black/10 hover:bg-black/25 text-[#5a3020]"
+                  : "bg-white/20 hover:bg-white/35 text-white"}`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        )}
+
+        {/* Dots */}
+        {totalSlides > 1 && (
+          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+            {Array.from({ length: totalSlides }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                className={`h-1.5 rounded-full transition-all duration-300
+                  ${i === activeSlide
+                    ? `w-6 ${i === 0 ? "bg-[#7c3d2b]" : "bg-white"}`
+                    : `w-1.5 ${i === 0 ? "bg-[#7c3d2b]/35 hover:bg-[#7c3d2b]/55" : "bg-white/40 hover:bg-white/65"}`}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Static content below slideshow ── */}
+      <div className="w-full max-w-4xl px-6 pb-10 md:pb-14 flex flex-col items-center text-center gap-4">
+        <div className="flex flex-wrap gap-3 justify-center mt-4 animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+          <a href="#catalog">
+            <Button size="lg" className="rounded-2xl px-7 shadow-lg" style={{ background: "#7c3d2b", color: "#fff" }}>
+              <ShoppingBag className="h-4 w-4" />
+              Каталог товарів
+            </Button>
+          </a>
+          <a href={DESIGNER_URL}>
+            <Button size="lg" variant="outline" className="rounded-2xl px-7 border-[#7c3d2b]/40 text-[#7c3d2b] hover:bg-[#7c3d2b]/10">
+              <Palette className="h-4 w-4" />
+              Конструктор
+            </Button>
+          </a>
+        </div>
+
+        <div className="space-y-1 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
           <p className="font-hero text-3xl md:text-4xl text-[#6b3a2a] tracking-wide">
             Зберігаємо ваші моменти
           </p>
@@ -66,33 +177,6 @@ export function HeroBanner() {
           </p>
         </div>
 
-        {/* CTA-кнопки */}
-        <div className="flex flex-wrap gap-3 justify-center mt-2 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-          {/* Каталог — на цій самій сторінці нижче банера: плавно скролимо до нього
-              (#catalog). html { scroll-behavior: smooth } робить прокрутку анімованою. */}
-          <a href="#catalog">
-            <Button
-              size="lg"
-              className="rounded-2xl px-7 shadow-lg"
-              style={{ background: "#7c3d2b", color: "#fff" }}
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Каталог товарів
-            </Button>
-          </a>
-          <a href={DESIGNER_URL}>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-2xl px-7 border-[#7c3d2b]/40 text-[#7c3d2b] hover:bg-[#7c3d2b]/10"
-            >
-              <Palette className="h-4 w-4" />
-              Конструктор
-            </Button>
-          </a>
-        </div>
-
-        {/* Хештег */}
         <img
           src="/hashtag-white.png"
           alt="#MemoryMoments"

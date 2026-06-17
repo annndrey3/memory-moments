@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Palette, Store, ShoppingCart, Tag } from "lucide-react";
+import { Palette, Store, ShoppingCart, Tag, Phone, Camera } from "lucide-react";
 import { Button } from "./ui";
 import { useCart } from "@/lib/cart";
-import { scrollToCatalog } from "@/lib/scroll";
+import { scrollToCatalog, scrollToId } from "@/lib/scroll";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5173";
 
@@ -24,14 +24,11 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl animate-fade-in">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
         <Link to="/" className="flex items-center min-w-0">
-          <picture>
-            <source srcSet="/logo-mm.webp" type="image/webp" />
-            <img
-              src="/logo-mm.png"
-              alt="Memory Moments"
-              className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105"
-            />
-          </picture>
+          <img
+            src="/hashtag-black.png"
+            alt="Memory Moments"
+            className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105"
+          />
         </Link>
 
         <nav className="flex items-center gap-2 font-brand tracking-wide">
@@ -47,12 +44,27 @@ export function SiteHeader() {
               <span className="hidden sm:inline">Каталог</span>
             </Button>
           </Link>
+          <Link to="/print">
+            <Button variant="ghost" size="sm" className="rounded-xl">
+              <Camera className="h-4 w-4" />
+              <span className="hidden sm:inline">Фото</span>
+            </Button>
+          </Link>
           <Link to="/prices">
             <Button variant="ghost" size="sm" className="rounded-xl">
               <Tag className="h-4 w-4" />
               <span className="hidden sm:inline">Ціни</span>
             </Button>
           </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-xl"
+            onClick={() => scrollToId("contacts", "end")}
+          >
+            <Phone className="h-4 w-4" />
+            <span className="hidden sm:inline">Контакти</span>
+          </Button>
           <Link to="/cart" className="relative">
             <Button variant="ghost" size="sm" className="rounded-xl">
               <ShoppingCart className="h-4 w-4" />

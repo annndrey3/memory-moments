@@ -1,5 +1,4 @@
 import { useDispatch, useSelector } from "react-redux";
-import * as fabric from "fabric";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, Palette, Slash, Trash, Trash2, Type } from "lucide-react";
 import {
@@ -31,9 +30,7 @@ import { useRef } from "react";
 import SaveDesign from "./SaveDesign";
 import { useCanvas } from "@/hooks/useCanvas";
 import canvasStorageManager from "@/utils/canvasStorageManager";
-
-import { useToast } from "@/hooks/use-toast";
-import { DESIGNER_CONFIG } from "../config/designer.config";
+import { useAddImage } from "@/hooks/useAddImage";
 import { cn } from "@/lib/utils";
 
 const toolBtnClass =
@@ -47,7 +44,7 @@ const ToolBar = ({ manualSync }) => {
   const size = useSelector((state) => state.tshirt.size);
   const paperType = useSelector((state) => state.tshirt.paperType);
   const { activeCanvas, selectedObject } = useCanvas();
-  const { toast } = useToast();
+  const { addImageFile } = useAddImage();
 
   const handleTypeChange = (value) => {
     dispatch(setSelectedType(value));
@@ -63,62 +60,9 @@ const ToolBar = ({ manualSync }) => {
     }
   };
 
-  const getPrintableArea = () =>
-    activeCanvas?.printArea || {
-      left: 0,
-      top: 0,
-      width: CANVAS_CONFIG.width,
-      height: CANVAS_CONFIG.height,
-    };
-
   const handleAddImage = (e) => {
-    if (!activeCanvas || !e.target.files || !e.target.files[0]) return;
-
-    const file = e.target.files[0];
-    const reader = new FileReader();
-
-    reader.onload = (event) => {
-      const imgObj = new Image();
-      imgObj.src = event.target.result;
-
-      imgObj.onload = () => {
-        if (
-          imgObj.width < DESIGNER_CONFIG.minWidthPx ||
-          imgObj.height < DESIGNER_CONFIG.minHeightPx
-        ) {
-          toast({
-            variant: "destructive",
-            title: "Низкое качество (DPI)",
-            description: `Разрешение загруженного файла ${imgObj.width}x${imgObj.height} px. Рекомендуется минимум ${DESIGNER_CONFIG.minWidthPx}x${DESIGNER_CONFIG.minHeightPx} px для качественной печати.`,
-          });
-        }
-
-        const image = new fabric.Image(imgObj);
-
-        const printArea = getPrintableArea();
-        const maxWidth = printArea.width;
-        const maxHeight = printArea.height;
-
-        if (image.width > maxWidth || image.height > maxHeight) {
-          const scale = Math.min(
-            maxWidth / image.width,
-            maxHeight / image.height
-          );
-          image.scale(scale);
-        }
-
-        image.set({
-          left: printArea.left + (printArea.width - image.getScaledWidth()) / 2,
-          top: printArea.top + (printArea.height - image.getScaledHeight()) / 2,
-        });
-
-        activeCanvas.add(image);
-        activeCanvas.setActiveObject(image);
-        activeCanvas.renderAll();
-      };
-    };
-
-    reader.readAsDataURL(file);
+    if (!e.target.files || !e.target.files[0]) return;
+    addImageFile(e.target.files[0]);
     e.target.value = "";
   };
 

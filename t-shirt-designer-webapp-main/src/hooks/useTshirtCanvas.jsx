@@ -11,6 +11,8 @@ export const useTshirtCanvas = ({
   viewBox = "0 0 810 810",
   printZone,
   view,
+  canvasSize,
+  templateOverlay,
   onDesignUpdate,
 }) => {
   const canvasRef = useRef(null);
@@ -54,10 +56,27 @@ export const useTshirtCanvas = ({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    const effectiveSize = canvasSize ?? CANVAS_CONFIG;
+
     const canvas = new fabric.Canvas(canvasRef.current, {
-      ...CANVAS_CONFIG,
+      width: effectiveSize.width,
+      height: effectiveSize.height,
+      backgroundColor: "transparent",
       preserveObjectStacking: true,
     });
+
+    if (templateOverlay) {
+      // Preload template as plain HTML Image and store on canvas for export compositing.
+      // NOT set as Fabric backgroundImage — destination-in clip would erase it.
+      canvas.isTemplate = true; // set synchronously so getCanvasTexture knows immediately
+      const htmlImg = new window.Image();
+      htmlImg.onload = () => {
+        const c = fabricCanvasRef.current;
+        if (!c) return;
+        c.templateImg = htmlImg;
+      };
+      htmlImg.src = templateOverlay;
+    }
 
     fabricCanvasRef.current = canvas;
     canvas.productId = selectedType;
@@ -133,15 +152,16 @@ export const useTshirtCanvas = ({
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
 
+    const effectiveSize = canvasSize ?? CANVAS_CONFIG;
     const [, , viewBoxWidth, viewBoxHeight] = viewBox.split(/\s+/).map(Number);
     const scale = Math.min(
-      CANVAS_CONFIG.width / viewBoxWidth,
-      CANVAS_CONFIG.height / viewBoxHeight
+      effectiveSize.width / viewBoxWidth,
+      effectiveSize.height / viewBoxHeight
     );
 
     // Centering offsets (matching svg preserveAspectRatio="xMidYMid meet").
-    const offsetX = (CANVAS_CONFIG.width - viewBoxWidth * scale) / 2;
-    const offsetY = (CANVAS_CONFIG.height - viewBoxHeight * scale) / 2;
+    const offsetX = (effectiveSize.width - viewBoxWidth * scale) / 2;
+    const offsetY = (effectiveSize.height - viewBoxHeight * scale) / 2;
 
     let clipPath;
     let printArea;
@@ -188,7 +208,7 @@ export const useTshirtCanvas = ({
     canvas.clipPath = clipPath;
     canvas.printArea = printArea;
     canvas.renderAll();
-  }, [svgPath, viewBox, printZone]);
+  }, [svgPath, viewBox, printZone, canvasSize?.width, canvasSize?.height]);
 
   return { canvasRef, fabricCanvasRef, tshirtColor };
 };

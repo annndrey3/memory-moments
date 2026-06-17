@@ -125,14 +125,26 @@ export default function AdminProductsPage() {
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleDelete(p.id, p.name)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {p.designer_type ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-lg text-slate-300 cursor-not-allowed"
+                          title={`Прив'язано до конструктора (${p.designer_type}) — видалення заблоковано`}
+                          disabled
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => handleDelete(p.id, p.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

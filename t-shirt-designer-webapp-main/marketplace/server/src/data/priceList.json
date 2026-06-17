@@ -3,812 +3,241 @@
     {
       "name": "Фото друк",
       "items": [
-        {
-          "code": "110",
-          "name": "Друк файлу з корекцією",
-          "format": "поларoid",
-          "price": 9,
-          "price_insta": 8
-        },
-        {
-          "code": null,
-          "name": "Друк файлу з корекцією",
-          "format": "9х13",
-          "price": 7,
-          "price_insta": 5
-        },
-        {
-          "code": null,
-          "name": "Друк файлу з корекцією",
-          "format": "10х15",
-          "price": 7,
-          "price_insta": 5
-        },
-        {
-          "code": null,
-          "name": "Друк файлу з корекцією",
-          "format": "13х18",
-          "price": 12,
-          "price_insta": 7.8
-        },
-        {
-          "code": null,
-          "name": "Друк файлу з корекцією",
-          "format": "15х20",
-          "price": 14,
-          "price_insta": 9.5
-        },
-        {
-          "code": null,
-          "name": "Друк файлу з корекцією",
-          "format": "20х30",
-          "price": 25,
-          "price_insta": 19
-        },
-        {
-          "code": null,
-          "name": "Друк файлу з корекцією",
-          "format": "30х40",
-          "price": 75,
-          "price_insta": 45
-        },
-        {
-          "code": null,
-          "name": "Терміновий друк файлів",
-          "format": "10х15",
-          "price": 11,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Терміновий друк файлів",
-          "format": "13х18",
-          "price": 18,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Терміновий друк файлів",
-          "format": "15х20",
-          "price": 21,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Терміновий друк файлів",
-          "format": "20х30",
-          "price": 37,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Фото на документи на повний зріст",
-          "format": "10х15",
-          "price": 120,
-          "price_insta": null
-        },
-        {
-          "code": "121",
-          "name": "Фото на документи",
-          "format": "10х15",
-          "price": 80,
-          "price_insta": null
-        },
-        {
-          "code": "510",
-          "name": "Фото на документи (принтер)",
-          "format": "10х15",
-          "price": 80,
-          "price_insta": null
-        },
-        {
-          "code": "121 33",
-          "name": "Фото на документи з додаванням сорочки та краватки",
-          "format": "10х15",
-          "price": 100,
-          "price_insta": null
-        },
-        {
-          "code": "530200",
-          "name": "Фото на документи на електронний носій без друку",
-          "format": null,
-          "price": 80,
-          "price_insta": null
-        },
-        {
-          "code": "200",
-          "name": "Запис на цифровий носій",
-          "format": null,
-          "price": 15,
-          "price_insta": null
-        }
-      ]
-    },
-    {
-      "name": "Поліграфічні послуги",
-      "items": [
-        {
-          "code": null,
-          "name": "Роздруківка, ксерокопія папір 80г ч/б",
-          "format": "А4",
-          "price": 2,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Роздруківка, ксерокопія папір 80г кольор",
-          "format": "А4",
-          "price": 4,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Роздруківка, ксерокопія папір 80г ч/б",
-          "format": "А3",
-          "price": 10,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Роздруківка, ксерокопія папір 80г ч/б",
-          "format": "А3",
-          "price": 20,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Квартальний календар (на один місяць) з урахуванням дизайнерської роботи (нескладної)",
-          "format": null,
-          "price": 150,
-          "price_insta": 150
-        },
-        {
-          "code": null,
-          "name": "Календар А4 на 13 аркушів (з дизайнерською роботою сітка+фото)",
-          "format": "А4",
-          "price": 280,
-          "price_insta": 280
-        },
-        {
-          "code": null,
-          "name": "Календар А3 на 13 аркушів (з дизайнерською роботою сітка+фото)",
-          "format": "А3",
-          "price": 350,
-          "price_insta": 350
-        },
-        {
-          "code": null,
-          "name": "Листівка А5 (з дизайнерською роботою)",
-          "format": null,
-          "price": 100,
-          "price_insta": 100
-        },
-        {
-          "code": null,
-          "name": "Листівка А4 (з дизайнерською роботою)",
-          "format": null,
-          "price": 120,
-          "price_insta": 120
-        },
-        {
-          "code": null,
-          "name": "Крейдований папір 300г (один бік)",
-          "format": "А4",
-          "price": 20,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Крейдований папір 300г (один бік)",
-          "format": "А3",
-          "price": 35,
-          "price_insta": null
-        }
-      ]
-    },
-    {
-      "name": "Широкоформатний друк (фотопапір)",
-      "items": [
-        {
-          "code": null,
-          "name": "40х50",
-          "format": "40х50",
-          "price": 190,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "40х60",
-          "format": "40х60",
-          "price": 226,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "50х60",
-          "format": "50х60",
-          "price": 280,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "50х70",
-          "format": "50х70",
-          "price": 326,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х70",
-          "format": "60х70",
-          "price": 388,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х80",
-          "format": "60х80",
-          "price": 442,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х90",
-          "format": "60х90",
-          "price": 496,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х100",
-          "format": "60х100",
-          "price": 550,
-          "price_insta": null
-        }
-      ]
-    },
-    {
-      "name": "Широкоформатний друк (полотно+натяжка)",
-      "items": [
-        {
-          "code": null,
-          "name": "30х40",
-          "format": "30х40",
-          "price": 386,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "40х50",
-          "format": "40х50",
-          "price": 508,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "40х60",
-          "format": "40х60",
-          "price": 594,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "50х60",
-          "format": "50х60",
-          "price": 714,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "50х70",
-          "format": "50х70",
-          "price": 820,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х70",
-          "format": "60х70",
-          "price": 958,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х80",
-          "format": "60х80",
-          "price": 1078,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х90",
-          "format": "60х90",
-          "price": 1200,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "60х100",
-          "format": "60х100",
-          "price": 1320,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "70х100",
-          "format": "70х100",
-          "price": 1500,
-          "price_insta": null
-        }
+        { "code": "110", "name": "Друк фотографій", "format": "9х13",          "price": 16,  "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "10х15",         "price": 18,  "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "13х18",         "price": 26,  "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "15х20",         "price": 33,  "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "21х30",         "price": 67,  "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "30х40",         "price": 138, "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "30х45",         "price": 144, "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "30х60",         "price": 204, "price_insta": null },
+        { "code": "110", "name": "Друк фотографій", "format": "полароїд 10х12","price": 25,  "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "9х13",    "price": 24,  "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "10х15",   "price": 27,  "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "13х18",   "price": 39,  "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "15х20",   "price": 50,  "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "21х30",   "price": 100, "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "30х40",   "price": 207, "price_insta": null },
+        { "code": "111", "name": "Терміновий друк фотографій", "format": "полароїд","price": 38,  "price_insta": null },
+        { "code": "121", "name": "Фото на документи",                                "format": null, "price": 220, "price_insta": null },
+        { "code": "120", "name": "Фото на документи в повний зріст",                 "format": null, "price": 270, "price_insta": null },
+        { "code": "530", "name": "Фото на документи на електронний носій (без друку)","format": null, "price": 220, "price_insta": null },
+        { "code": "123", "name": "Дитячий закордонний паспорт",                      "format": null, "price": 250, "price_insta": null },
+        { "code": "122", "name": "Фото на документи на електронний носій (дитина)",  "format": null, "price": 250, "price_insta": null }
       ]
     },
     {
       "name": "Дизайнерські послуги",
       "items": [
-        {
-          "code": null,
-          "name": "незначний",
-          "format": null,
-          "price": 60,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "простий",
-          "format": null,
-          "price": 80,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "середній",
-          "format": null,
-          "price": 100,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "складний",
-          "format": null,
-          "price": 150,
-          "price_insta": null
-        },
-        {
-          "code": "160",
-          "name": "Сканування окремих зображень з корекцією",
-          "format": "10х15",
-          "price": 9,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Сканування окремих зображень з корекцією",
-          "format": "13х18",
-          "price": 10,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Сканування окремих зображень з корекцією",
-          "format": "15х20",
-          "price": 12,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Сканування окремих зображень з корекцією",
-          "format": "20х30",
-          "price": 15,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Сканування окремих зображень з корекцією",
-          "format": "30х40",
-          "price": 35,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Сканування документів + запис на цифровий носій",
-          "format": null,
-          "price": 15,
-          "price_insta": null
-        },
-        {
-          "code": "280",
-          "name": "Видалення ефекту червоних очей",
-          "format": null,
-          "price": 0,
-          "price_insta": null
-        },
-        {
-          "code": "250",
-          "name": "Кадрування",
-          "format": null,
-          "price": 5,
-          "price_insta": null
-        },
-        {
-          "code": "260",
-          "name": "Ретуш",
-          "format": null,
-          "price": 30,
-          "price_insta": null
-        },
-        {
-          "code": "270",
-          "name": "Незначна ретуш",
-          "format": null,
-          "price": 10,
-          "price_insta": null
-        },
-        {
-          "code": "300",
-          "name": "Корекція кольору та щільності",
-          "format": null,
-          "price": 10,
-          "price_insta": null
-        },
-        {
-          "code": "310",
-          "name": "Додавання тексту",
-          "format": null,
-          "price": 15,
-          "price_insta": null
-        },
-        {
-          "code": "320",
-          "name": "Заміна фону 1 особа",
-          "format": null,
-          "price": 30,
-          "price_insta": null
-        },
-        {
-          "code": "330",
-          "name": "Заміна деталей одягу на портреті 1 особа",
-          "format": null,
-          "price": 20,
-          "price_insta": null
-        },
-        {
-          "code": "340",
-          "name": "Заміна фону у повний зріст 1 особа",
-          "format": null,
-          "price": 40,
-          "price_insta": null
-        },
-        {
-          "code": "350",
-          "name": "Фотомонтаж 2-х зображень",
-          "format": null,
-          "price": 20,
-          "price_insta": null
-        },
-        {
-          "code": "360",
-          "name": "Фотомонтаж 3-х зображень",
-          "format": null,
-          "price": 30,
-          "price_insta": null
-        },
-        {
-          "code": "370",
-          "name": "Фотомонтаж 4-х і більше зображень",
-          "format": null,
-          "price": 40,
-          "price_insta": null
-        },
-        {
-          "code": "380",
-          "name": "Індивідуальна робота з дизайнером до 30 хвилин",
-          "format": null,
-          "price": 75,
-          "price_insta": null
-        },
-        {
-          "code": "390",
-          "name": "Індивідуальна робота з дизайнером до 60 хвилин",
-          "format": null,
-          "price": 150,
-          "price_insta": null
-        },
-        {
-          "code": "391",
-          "name": "Макет візиток/флаєрів 1 сторона",
-          "format": null,
-          "price": 80,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Макет візиток/флаєрів 2 сторони",
-          "format": null,
-          "price": 160,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Фото в рамку",
-          "format": null,
-          "price": 10,
-          "price_insta": null
-        },
-        {
-          "code": "230",
-          "name": "Макет календаря А4 та А3 (на один аркуш)",
-          "format": null,
-          "price": 100,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "простий (1 розворот або 1 стор)",
-          "format": null,
-          "price": 30,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "складний (індивідуальний)",
-          "format": null,
-          "price": 50,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Оцифровка 1 год (якщо в касеті до 1 години, беремо як за годину)",
-          "format": null,
-          "price": 100,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Оцифровка 30 хвилин",
-          "format": null,
-          "price": 50,
-          "price_insta": null
-        }
+        { "code": "310", "name": "Додавання тексту",                            "format": null,                  "price": 25,  "price_insta": null },
+        { "code": "310", "name": "Додавання тексту",                            "format": "терміново",           "price": 38,  "price_insta": null },
+        { "code": "330", "name": "Заміна деталей одягу на портреті 1 чол.",    "format": null,                  "price": 60,  "price_insta": null },
+        { "code": "330", "name": "Заміна деталей одягу на портреті 1 чол.",    "format": "терміново",           "price": 90,  "price_insta": null },
+        { "code": "340", "name": "Заміна фону в повний зріст",                 "format": null,                  "price": 85,  "price_insta": null },
+        { "code": "340", "name": "Заміна фону в повний зріст",                 "format": "терміново",           "price": 128, "price_insta": null },
+        { "code": "320", "name": "Заміна фону 1 людина",                       "format": null,                  "price": 120, "price_insta": null },
+        { "code": "320", "name": "Заміна фону 1 людина",                       "format": "терміново",           "price": 180, "price_insta": null },
+        { "code": "250", "name": "Кадрування",                                 "format": null,                  "price": 15,  "price_insta": null },
+        { "code": "250", "name": "Кадрування",                                 "format": "терміново",           "price": 23,  "price_insta": null },
+        { "code": "350", "name": "Колаж, додаткове фото +1 шт",               "format": null,                  "price": 24,  "price_insta": null },
+        { "code": "350", "name": "Колаж, додаткове фото +1 шт",               "format": "терміново",           "price": 36,  "price_insta": null },
+        { "code": "390", "name": "Колаж з фото 10 шт",                        "format": null,                  "price": 240, "price_insta": null },
+        { "code": "390", "name": "Колаж з фото 10 шт",                        "format": "терміново",           "price": 360, "price_insta": null },
+        { "code": "300", "name": "Корекція кольору та щільності",              "format": null,                  "price": 30,  "price_insta": null },
+        { "code": "300", "name": "Корекція кольору та щільності",              "format": "терміново",           "price": 45,  "price_insta": null },
+        { "code": "380", "name": "Макет візиток 1 сторона",                    "format": null,                  "price": 220, "price_insta": null },
+        { "code": "771", "name": "Макет сувенірної продукції",                 "format": "простий",             "price": 120, "price_insta": null },
+        { "code": "771", "name": "Макет сувенірної продукції",                 "format": "простий терміново",   "price": 180, "price_insta": null },
+        { "code": "771", "name": "Макет сувенірної продукції",                 "format": "складний",            "price": 160, "price_insta": null },
+        { "code": "771", "name": "Макет сувенірної продукції",                 "format": "складний терміново",  "price": 240, "price_insta": null },
+        { "code": "270", "name": "Незначна ретуш",                             "format": null,                  "price": 60,  "price_insta": null },
+        { "code": "270", "name": "Незначна ретуш",                             "format": "терміново",           "price": 90,  "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "незначна",            "price": 210, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "незначна (терміново)","price": 315, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "проста",              "price": 240, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "проста (терміново)",  "price": 360, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "середня",             "price": 340, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "середня (терміново)", "price": 510, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "складна",             "price": 420, "price_insta": null },
+        { "code": "150", "name": "Реставрація",                                "format": "складна (терміново)", "price": 630, "price_insta": null },
+        { "code": "260", "name": "Ретуш",                                      "format": null,                  "price": 85,  "price_insta": null },
+        { "code": "260", "name": "Ретуш",                                      "format": "терміново",           "price": 128, "price_insta": null },
+        { "code": "160", "name": "Сканування окремих зображень із корекцією",  "format": "10х15",               "price": 14,  "price_insta": null },
+        { "code": "160", "name": "Сканування окремих зображень із корекцією",  "format": "13х18",               "price": 16,  "price_insta": null },
+        { "code": "160", "name": "Сканування окремих зображень із корекцією",  "format": "15х20",               "price": 19,  "price_insta": null },
+        { "code": "160", "name": "Сканування окремих зображень із корекцією",  "format": "20х30",               "price": 24,  "price_insta": null }
+      ]
+    },
+    {
+      "name": "Додаткові послуги",
+      "items": [
+        { "code": "1450", "name": "Ламінування документів 125мік гл.", "format": "А6 (10х15)", "price": 30,  "price_insta": null },
+        { "code": "1450", "name": "Ламінування документів 125мік гл.", "format": "А5 (15х20)", "price": 45,  "price_insta": null },
+        { "code": "1450", "name": "Ламінування документів 125мік гл.", "format": "А4 (21х30)", "price": 75,  "price_insta": null },
+        { "code": "40",   "name": "Запис на цифровий носій",           "format": null,          "price": 45,  "price_insta": null },
+        { "code": "64",   "name": "Оцифрування 1 година",              "format": null,          "price": 200, "price_insta": null },
+        { "code": "65",   "name": "Оцифрування 30 хвилин",             "format": null,          "price": 100, "price_insta": null },
+        { "code": "170",  "name": "Сканування документів",             "format": null,          "price": 16,  "price_insta": null },
+        { "code": "170",  "name": "Сканування документів",             "format": "терміново",   "price": 24,  "price_insta": null }
+      ]
+    },
+    {
+      "name": "Поліграфічні послуги",
+      "items": [
+        { "code": "100", "name": "Ксерокопія, роздрук Ч/Б", "format": "А4", "price": 6,  "price_insta": null },
+        { "code": "100", "name": "Ксерокопія, роздрук Ч/Б", "format": "А3", "price": 12, "price_insta": null },
+        { "code": "101", "name": "Ксерокопія, роздрук Колір","format": "А4", "price": 20, "price_insta": null },
+        { "code": "101", "name": "Ксерокопія, роздрук Колір","format": "А3", "price": 40, "price_insta": null },
+        { "code": "102", "name": "Крейдяний папір",           "format": "А4", "price": 45, "price_insta": null },
+        { "code": "102", "name": "Крейдяний папір",           "format": "А3", "price": 90, "price_insta": null },
+        { "code": null,  "name": "Самоклейка",                "format": null, "price": 60, "price_insta": null }
+      ]
+    },
+    {
+      "name": "Широкоформатний друк (фотопапір)",
+      "items": [
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "40х50",  "price": 240, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "40х60",  "price": 300, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "50х60",  "price": 360, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "50х70",  "price": 420, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "60х70",  "price": 500, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "60х80",  "price": 580, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "60х90",  "price": 660, "price_insta": null },
+        { "code": "43", "name": "Широкоформатний друк (фото папір)", "format": "60х100", "price": 720, "price_insta": null }
+      ]
+    },
+    {
+      "name": "Широкоформатний друк (полотно+натяжка)",
+      "items": [
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "30х40",  "price": 660,  "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "40х50",  "price": 960,  "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "40х60",  "price": 1100, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "50х60",  "price": 1320, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "50х70",  "price": 1500, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "60х70",  "price": 1680, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "60х80",  "price": 1800, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "60х90",  "price": 1980, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "60х100", "price": 2040, "price_insta": null },
+        { "code": "44", "name": "Широкоформатний друк (полотно+натяжка)", "format": "70х100", "price": 2120, "price_insta": null }
       ]
     },
     {
       "name": "Сувенірна продукція",
       "items": [
-        {
-          "code": null,
-          "name": "Обкладинки на документи + брелок",
-          "format": null,
-          "price": 550,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Обкладинка без брелока",
-          "format": null,
-          "price": 500,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Брелок",
-          "format": null,
-          "price": 150,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Фотокубик (12х12)",
-          "format": null,
-          "price": 500,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Фотокубик (14х14)",
-          "format": null,
-          "price": 600,
-          "price_insta": null
-        },
-        {
-          "code": "978",
-          "name": "Чашка біла звичайна",
-          "format": null,
-          "price": 150,
-          "price_insta": 150
-        },
-        {
-          "code": "546",
-          "name": "Чашка кольорова всередині та ручка",
-          "format": null,
-          "price": 170,
-          "price_insta": 170
-        },
-        {
-          "code": null,
-          "name": "Чашка з написами всередині",
-          "format": null,
-          "price": 250,
-          "price_insta": 250
-        },
-        {
-          "code": null,
-          "name": "Чашка магічна",
-          "format": null,
-          "price": 220,
-          "price_insta": 220
-        },
-        {
-          "code": "549",
-          "name": "Чашка велетень",
-          "format": null,
-          "price": 190,
-          "price_insta": 190
-        },
-        {
-          "code": "846",
-          "name": "Футболка",
-          "format": "до А4",
-          "price": 300,
-          "price_insta": 300
-        },
-        {
-          "code": "907",
-          "name": "Футболка друга сторона",
-          "format": "до А4",
-          "price": 100,
-          "price_insta": 100
-        },
-        {
-          "code": null,
-          "name": "Футболка з паєтками",
-          "format": "А4",
-          "price": 350,
-          "price_insta": null
-        },
-        {
-          "code": "837",
-          "name": "Пазли",
-          "format": "А4",
-          "price": 140,
-          "price_insta": null
-        },
-        {
-          "code": "884",
-          "name": "Подушка з паєтками",
-          "format": "А4",
-          "price": 450,
-          "price_insta": null
-        },
-        {
-          "code": "811",
-          "name": "Подушка-обіймашка",
-          "format": "А4",
-          "price": 280,
-          "price_insta": null
-        },
-        {
-          "code": "876",
-          "name": "Подушка велюр",
-          "format": "А4",
-          "price": 250,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Магніт акрил",
-          "format": null,
-          "price": 35,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Магніт дерев'яна рамка",
-          "format": null,
-          "price": 40,
-          "price_insta": null
-        },
-        {
-          "code": null,
-          "name": "Магніт вініл (a*b*ціна)",
-          "format": null,
-          "price": 0.5,
-          "price_insta": 200
-        }
-      ]
-    },
-    {
-      "name": "Фотокниги",
-      "items": [
-        {
-          "code": "20х20",
-          "name": "від 10 розворотів 345грн +30 грн кожен наступний розворот",
-          "format": "180",
-          "price": 40,
-          "price_insta": 745
-        },
-        {
-          "code": "25х20",
-          "name": "від 10 розворотів 410грн +36 грн кожен наступний розворот",
-          "format": "200",
-          "price": 40,
-          "price_insta": 810
-        },
-        {
-          "code": "25х25",
-          "name": "від 10 розворотів 465грн +40 грн кожен наступний розворот",
-          "format": "230",
-          "price": 40,
-          "price_insta": 865
-        },
-        {
-          "code": "28х28",
-          "name": "від 10 розворотів 600грн +51 грн кожен наступний розворот",
-          "format": "260",
-          "price": 40,
-          "price_insta": 1000
-        }
-      ]
-    },
-    {
-      "name": "Slim book",
-      "items": [
-        {
-          "code": "20х20",
-          "name": "від 10 розворотів 245грн +20 грн кожен наступний розворот",
-          "format": "180",
-          "price": 40,
-          "price_insta": null
-        },
-        {
-          "code": "25х20",
-          "name": "від 10 розворотів 310грн +26 грн кожен наступний розворот",
-          "format": "200",
-          "price": 40,
-          "price_insta": null
-        },
-        {
-          "code": "25х25",
-          "name": "від 10 розворотів 365грн +30 грн кожен наступний розворот",
-          "format": "230",
-          "price": 40,
-          "price_insta": null
-        }
+        { "code": "217",  "name": "Чашка біла",                    "format": null,       "price": 220, "price_insta": null },
+        { "code": "268",  "name": "Чашка велетень",                "format": null,       "price": 270, "price_insta": null },
+        { "code": "256",  "name": "Чашка з написами всередині",    "format": null,       "price": 270, "price_insta": null },
+        { "code": "220",  "name": "Чашка кольорова всередині та ручка","format": null,   "price": 250, "price_insta": null },
+        { "code": "265",  "name": "Чашка Магічна",                 "format": "глянець",  "price": 300, "price_insta": null },
+        { "code": "265",  "name": "Чашка Магічна",                 "format": "мат",      "price": 300, "price_insta": null },
+        { "code": "985",  "name": "Футболка Soft Style (біла)",    "format": "А4",       "price": 570, "price_insta": null },
+        { "code": "985",  "name": "Футболка Soft Style (біла)",    "format": "А3",       "price": 670, "price_insta": null },
+        { "code": "986",  "name": "Футболка Soft Style (чорна)",   "format": "А4",       "price": 650, "price_insta": null },
+        { "code": "986",  "name": "Футболка Soft Style (чорна)",   "format": "А3",       "price": 770, "price_insta": null },
+        { "code": "1353", "name": "Футболка друга сторона друку",  "format": "А4",       "price": 250, "price_insta": null },
+        { "code": "1353", "name": "Футболка друга сторона друку",  "format": "А3",       "price": 420, "price_insta": null },
+        { "code": "272",  "name": "Футболка сублімаційна",         "format": null,       "price": 420, "price_insta": null },
+        { "code": "273",  "name": "Футболка сублімаційна, друга сторона", "format": null,"price": 250, "price_insta": null },
+        { "code": "704",  "name": "Подушка велюрова",              "format": null,       "price": 500, "price_insta": null },
+        { "code": "702",  "name": "Подушка обіймашка (з ручками)","format": null,       "price": 500, "price_insta": null },
+        { "code": "706",  "name": "Магніт акрил",                  "format": "6х9",      "price": 55,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "6х6",      "price": 35,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "6х9",      "price": 45,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "7х7",      "price": 45,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "7х10",     "price": 55,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "9х9",      "price": 65,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "9х12",     "price": 80,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "10х10",    "price": 75,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "10х12",    "price": 85,  "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "10х15",    "price": 105, "price_insta": null },
+        { "code": "708",  "name": "Магніт вініл",                  "format": "13х18",    "price": 135, "price_insta": null },
+        { "code": "707",  "name": "Магніт вініл полароїд",         "format": null,       "price": 120, "price_insta": null },
+        { "code": "987",  "name": "Екосумка",                      "format": null,       "price": 480, "price_insta": null },
+        { "code": "713",  "name": "Календар А3 на 13 аркушів",    "format": null,       "price": 500, "price_insta": null },
+        { "code": "712",  "name": "Календар А4 на 13 аркушів",    "format": null,       "price": 350, "price_insta": null },
+        { "code": "711",  "name": "Календар відривний",            "format": null,       "price": 280, "price_insta": null }
       ]
     },
     {
       "name": "Print book",
       "items": [
-        {
-          "code": "20х20",
-          "name": "від 5 аркушів 95 грн + 10 грн кожен наступний аркуш (15 аркушів)",
-          "format": null,
-          "price": null,
-          "price_insta": 710
-        },
-        {
-          "code": "25х20",
-          "name": "від 5 аркушів 110 грн + 12 грн кожен наступний аркуш",
-          "format": null,
-          "price": null,
-          "price_insta": 830
-        },
-        {
-          "code": "25х25",
-          "name": "від 5 аркушів 140 грн + 15 грн кожен наступний аркуш",
-          "format": null,
-          "price": null,
-          "price_insta": 900
-        }
+        { "code": "1135", "name": "Print book — 10 листів (20 сторінок)",    "format": "20х20", "price": 1261, "price_insta": null },
+        { "code": "1135", "name": "Print book — 10 листів (20 сторінок)",    "format": "21х30", "price": 1340, "price_insta": null },
+        { "code": "1135", "name": "Print book — 10 листів (20 сторінок)",    "format": "25х25", "price": 1526, "price_insta": null },
+        { "code": "1132", "name": "Print book — 15 листів (30 сторінок)",    "format": "20х20", "price": 1820, "price_insta": null },
+        { "code": "1132", "name": "Print book — 15 листів (30 сторінок)",    "format": "21х30", "price": 1921, "price_insta": null },
+        { "code": "1132", "name": "Print book — 15 листів (30 сторінок)",    "format": "25х25", "price": 2180, "price_insta": null },
+        { "code": "1133", "name": "Print book +1 лист (2 сторінки) додатково","format": "20х20","price": 111,  "price_insta": null },
+        { "code": "1133", "name": "Print book +1 лист (2 сторінки) додатково","format": "21х30","price": 116,  "price_insta": null },
+        { "code": "1133", "name": "Print book +1 лист (2 сторінки) додатково","format": "25х25","price": 130,  "price_insta": null }
+      ]
+    },
+    {
+      "name": "Slim book",
+      "items": [
+        { "code": "1136", "name": "Slim book — 10 розворотів",       "format": "20х20", "price": 1695, "price_insta": null },
+        { "code": "1136", "name": "Slim book — 10 розворотів",       "format": "21х30", "price": 2011, "price_insta": null },
+        { "code": "1136", "name": "Slim book — 10 розворотів",       "format": "25х25", "price": 2115, "price_insta": null },
+        { "code": "1137", "name": "Slim book — 15 розворотів",       "format": "20х20", "price": 2467, "price_insta": null },
+        { "code": "1137", "name": "Slim book — 15 розворотів",       "format": "21х30", "price": 2930, "price_insta": null },
+        { "code": "1137", "name": "Slim book — 15 розворотів",       "format": "25х25", "price": 3062, "price_insta": null },
+        { "code": "1138", "name": "Slim book +1 розворот (додатково)","format": "20х20","price": 155,  "price_insta": null },
+        { "code": "1138", "name": "Slim book +1 розворот (додатково)","format": "21х30","price": 184,  "price_insta": null },
+        { "code": "1138", "name": "Slim book +1 розворот (додатково)","format": "25х25","price": 190,  "price_insta": null }
+      ]
+    },
+    {
+      "name": "Візитки",
+      "items": [
+        { "code": "736", "name": "Візитка Мел МАТ 350 г/м² 4+0",             "format": "100 шт",  "price": 440,  "price_insta": null },
+        { "code": "736", "name": "Візитка Мел МАТ 350 г/м² 4+0",             "format": "500 шт",  "price": 1260, "price_insta": null },
+        { "code": "736", "name": "Візитка Мел МАТ 350 г/м² 4+0",             "format": "1000 шт", "price": 1500, "price_insta": null },
+        { "code": "738", "name": "Візитка Мел МАТ 350 г/м² 4+0 + ГЛ лам 1+0","format": "100 шт", "price": 500,  "price_insta": null },
+        { "code": "738", "name": "Візитка Мел МАТ 350 г/м² 4+0 + ГЛ лам 1+0","format": "500 шт", "price": 1400, "price_insta": null },
+        { "code": "738", "name": "Візитка Мел МАТ 350 г/м² 4+0 + ГЛ лам 1+0","format": "1000 шт","price": 1820, "price_insta": null },
+        { "code": "740", "name": "Візитка Мел МАТ 350 г/м² 4+0 + ГЛ лам 1+1","format": "100 шт", "price": 560,  "price_insta": null },
+        { "code": "740", "name": "Візитка Мел МАТ 350 г/м² 4+0 + ГЛ лам 1+1","format": "500 шт", "price": 1540, "price_insta": null },
+        { "code": "740", "name": "Візитка Мел МАТ 350 г/м² 4+0 + ГЛ лам 1+1","format": "1000 шт","price": 2080, "price_insta": null },
+        { "code": "742", "name": "Візитка Мел МАТ 350 г/м² 4+0 + МАТ лам 1+0","format": "100 шт","price": 500,  "price_insta": null },
+        { "code": "742", "name": "Візитка Мел МАТ 350 г/м² 4+0 + МАТ лам 1+0","format": "500 шт","price": 1400, "price_insta": null },
+        { "code": "742", "name": "Візитка Мел МАТ 350 г/м² 4+0 + МАТ лам 1+0","format": "1000 шт","price": 1780,"price_insta": null },
+        { "code": "744", "name": "Візитка Мел МАТ 350 г/м² 4+0 + МАТ лам 1+1","format": "100 шт","price": 580,  "price_insta": null },
+        { "code": "744", "name": "Візитка Мел МАТ 350 г/м² 4+0 + МАТ лам 1+1","format": "500 шт","price": 1580, "price_insta": null },
+        { "code": "744", "name": "Візитка Мел МАТ 350 г/м² 4+0 + МАТ лам 1+1","format": "1000 шт","price": 2170,"price_insta": null },
+        { "code": "737", "name": "Візитка Мел МАТ 350 г/м² 4+4",             "format": "100 шт",  "price": 490,  "price_insta": null },
+        { "code": "737", "name": "Візитка Мел МАТ 350 г/м² 4+4",             "format": "500 шт",  "price": 1390, "price_insta": null },
+        { "code": "737", "name": "Візитка Мел МАТ 350 г/м² 4+4",             "format": "1000 шт", "price": 1680, "price_insta": null },
+        { "code": "739", "name": "Візитка Мел МАТ 350 г/м² 4+4 + ГЛ лам 1+0","format": "100 шт", "price": 550,  "price_insta": null },
+        { "code": "739", "name": "Візитка Мел МАТ 350 г/м² 4+4 + ГЛ лам 1+0","format": "500 шт", "price": 1550, "price_insta": null },
+        { "code": "739", "name": "Візитка Мел МАТ 350 г/м² 4+4 + ГЛ лам 1+0","format": "1000 шт","price": 2010, "price_insta": null },
+        { "code": "741", "name": "Візитка Мел МАТ 350 г/м² 4+4 + ГЛ лам 1+1","format": "100 шт", "price": 610,  "price_insta": null },
+        { "code": "741", "name": "Візитка Мел МАТ 350 г/м² 4+4 + ГЛ лам 1+1","format": "500 шт", "price": 1690, "price_insta": null },
+        { "code": "741", "name": "Візитка Мел МАТ 350 г/м² 4+4 + ГЛ лам 1+1","format": "1000 шт","price": 2280, "price_insta": null },
+        { "code": "743", "name": "Візитка Мел МАТ 350 г/м² 4+4 + МАТ лам 1+0","format": "100 шт","price": 610,  "price_insta": null },
+        { "code": "743", "name": "Візитка Мел МАТ 350 г/м² 4+4 + МАТ лам 1+0","format": "500 шт","price": 1690, "price_insta": null },
+        { "code": "743", "name": "Візитка Мел МАТ 350 г/м² 4+4 + МАТ лам 1+0","format": "1000 шт","price": 2280,"price_insta": null },
+        { "code": "745", "name": "Візитка Мел МАТ 350 г/м² 4+4 + МАТ лам 1+1","format": "100 шт","price": 630,  "price_insta": null },
+        { "code": "745", "name": "Візитка Мел МАТ 350 г/м² 4+4 + МАТ лам 1+1","format": "500 шт","price": 1740, "price_insta": null },
+        { "code": "745", "name": "Візитка Мел МАТ 350 г/м² 4+4 + МАТ лам 1+1","format": "1000 шт","price": 2390,"price_insta": null }
+      ]
+    },
+    {
+      "name": "ПВХ та акрил",
+      "items": [
+        { "code": "770", "name": "Макет для ПВХ",                   "format": null,   "price": 180, "price_insta": null },
+        { "code": "70",  "name": "Друк на ПВХ",                     "format": "20х30","price": 240, "price_insta": null },
+        { "code": "70",  "name": "Друк на ПВХ",                     "format": "30х40","price": 490, "price_insta": null },
+        { "code": "775", "name": "Друк на акрилі (з підставкою)",   "format": "20х30","price": 540, "price_insta": null }
       ]
     }
   ],
   "terms": [
-    "Строк виготовлення книг 5 робочих днів після затвердження макету!!!",
-    "Строк виготовлення візиток від 4-5 робочих днів після затвердження макету!!!",
-    "Строк виготовлення замовлень від 1 до 2 робочих днів після затвердження макету!!!",
-    "Замовлення, прийняті до 16:00, будуть готові наступного дня. Після 16:00 будуть готові через день!!!",
-    "Сувенірна продукція та широкоформатний друк від 30х40, прийняті в п'ятницю після 15:00, будуть готові у вівторок!!!",
-    "Мінімальне замовлення від 100 грн. Акційна ціна діє при замовленні від 40 фото.",
-    "від 200 фотографій 10%, від 300 фото безкоштовна доставка"
+    "Строк виготовлення книг — 5 робочих днів після затвердження макету.",
+    "Строк виготовлення візиток — від 4–5 робочих днів після затвердження макету.",
+    "Строк виготовлення замовлень — від 1 до 2 робочих днів після затвердження макету.",
+    "Замовлення, прийняті до 16:00, будуть готові наступного дня. Після 16:00 — готові через день.",
+    "Сувенірна продукція та широкоформатний друк від 30х40, прийняті в п'ятницю після 15:00, будуть готові у вівторок.",
+    "Мінімальне замовлення — від 100 грн.",
+    "Акційна ціна діє при замовленні від 40 фото."
   ]
 }

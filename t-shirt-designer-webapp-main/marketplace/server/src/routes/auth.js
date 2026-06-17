@@ -44,9 +44,10 @@ router.post("/login", loginLimiter, async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
+    const permissions = admin.permissions ? JSON.parse(admin.permissions) : null;
     res.json({
       token,
-      admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role },
+      admin: { id: admin.id, email: admin.email, role: admin.role, permissions },
     });
   } catch (err) {
     console.error(err);
@@ -62,11 +63,19 @@ router.get("/me", async (req, res) => {
   try {
     const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET);
     const admins = await query(
-      "SELECT id, email, name, role FROM admins WHERE id = :id",
+      "SELECT id, email, role, permissions FROM admins WHERE id = :id",
       { id: payload.id }
     );
     if (!admins.length) return res.status(401).json({ error: "Unauthorized" });
-    res.json({ admin: admins[0] });
+    const a = admins[0];
+    res.json({
+      admin: {
+        id: a.id,
+        email: a.email,
+        role: a.role,
+        permissions: a.permissions ? JSON.parse(a.permissions) : null,
+      },
+    });
   } catch {
     res.status(401).json({ error: "Unauthorized" });
   }

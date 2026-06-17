@@ -1,17 +1,19 @@
 import { Router } from "express";
 import { query, transaction } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
+import { requirePermission } from "../middleware/requirePermission.js";
 import { getProductById, logAuditSync, slugify, uniqueSlug } from "../utils/helpers.js";
 
 const router = Router();
 
 async function listProducts(filters = {}) {
-  const { category, featured, search, activeOnly = true, page = 1, limit = 12 } = filters;
+  const { category, featured, search, activeOnly = true, hideDesignerTypes = false, page = 1, limit = 12 } = filters;
   const offset = (page - 1) * limit;
   const conditions = [];
   const params = { limit: Number(limit), offset: Number(offset) };
 
   if (activeOnly) conditions.push("p.is_active = 1");
+  if (hideDesignerTypes) conditions.push("p.designer_type IS NULL");
   if (featured) conditions.push("p.is_featured = 1");
   if (category) {
     conditions.push("c.slug = :category");
@@ -61,6 +63,7 @@ router.get("/", async (req, res) => {
       page: req.query.page || 1,
       limit: req.query.limit || 12,
       activeOnly: true,
+      hideDesignerTypes: true,
     });
     res.json(result);
   } catch (err) {
@@ -70,7 +73,7 @@ router.get("/", async (req, res) => {
 });
 
 // Admin: list all products (including inactive)
-router.get("/admin/all", authMiddleware, async (req, res) => {
+router.get("/admin/all", authMiddleware, requirePermission("products.view"), async (req, res) => {
   try {
     const result = await listProducts({
       category: req.query.category,
@@ -78,6 +81,7 @@ router.get("/admin/all", authMiddleware, async (req, res) => {
       page: req.query.page || 1,
       limit: req.query.limit || 20,
       activeOnly: false,
+      hideDesignerTypes: true,
     });
     res.json(result);
   } catch (err) {
@@ -104,7 +108,7 @@ router.get("/slug/:slug", async (req, res) => {
 });
 
 // Admin: single product by id
-router.get("/:id", authMiddleware, async (req, res) => {
+router.get("/:id", authMiddleware, requirePermission("products.view"), async (req, res) => {
   try {
     const product = await getProductById({ query }, req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
@@ -115,7 +119,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, requirePermission("products.manage"), async (req, res) => {
   try {
     const {
       category_id, name, short_description, description,
@@ -130,8 +134,8 @@ router.post("/", authMiddleware, async (req, res) => {
 
     const slug = await uniqueSlug({ query }, slugify(req.body.slug || name));
 
-    const productId = transaction((tx) => {
-      const { insertId } = tx.run(
+    const productId = await transaction(async (tx) => {
+      const { insertId } = await tx.run(
         `INSERT INTO products
          (category_id, name, slug, short_description, description, price, compare_at_price,
           sku, stock_quantity, designer_type, design_id, is_active, is_featured)
@@ -151,7 +155,7 @@ router.post("/", authMiddleware, async (req, res) => {
       );
 
       for (const [i, img] of images.entries()) {
-        tx.run(
+        await tx.run(
           `INSERT INTO product_images (product_id, image_url, alt_text, sort_order, is_primary)
            VALUES (:product_id, :image_url, :alt_text, :sort_order, :is_primary)`,
           {
@@ -165,7 +169,7 @@ router.post("/", authMiddleware, async (req, res) => {
       }
 
       for (const v of variants) {
-        tx.run(
+        await tx.run(
           `INSERT INTO product_variants
            (product_id, attribute_name, attribute_value, price_modifier, stock_quantity, sku)
            VALUES (:product_id, :attribute_name, :attribute_value, :price_modifier, :stock_quantity, :sku)`,
@@ -180,7 +184,7 @@ router.post("/", authMiddleware, async (req, res) => {
         );
       }
 
-      logAuditSync(tx, {
+      await logAuditSync(tx, {
         productId: insertId, adminId: req.admin.id, action: "create", changes: { name, slug },
       });
 
@@ -198,7 +202,7 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", authMiddleware, requirePermission("products.manage"), async (req, res) => {
   try {
     const productId = req.params.id;
     const existing = await getProductById({ query }, productId);
@@ -215,8 +219,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
       ? await uniqueSlug({ query }, slugify(slug), { excludeId: productId })
       : existing.slug;
 
-    transaction((tx) => {
-      tx.run(
+    await transaction(async (tx) => {
+      await tx.run(
         `UPDATE products SET
            category_id = COALESCE(:category_id, category_id),
            name = COALESCE(:name, name),
@@ -251,9 +255,9 @@ router.put("/:id", authMiddleware, async (req, res) => {
       );
 
       if (Array.isArray(images)) {
-        tx.run("DELETE FROM product_images WHERE product_id = :id", { id: productId });
+        await tx.run("DELETE FROM product_images WHERE product_id = :id", { id: productId });
         for (const [i, img] of images.entries()) {
-          tx.run(
+          await tx.run(
             `INSERT INTO product_images (product_id, image_url, alt_text, sort_order, is_primary)
              VALUES (:product_id, :image_url, :alt_text, :sort_order, :is_primary)`,
             {
@@ -268,9 +272,9 @@ router.put("/:id", authMiddleware, async (req, res) => {
       }
 
       if (Array.isArray(variants)) {
-        tx.run("DELETE FROM product_variants WHERE product_id = :id", { id: productId });
+        await tx.run("DELETE FROM product_variants WHERE product_id = :id", { id: productId });
         for (const v of variants) {
-          tx.run(
+          await tx.run(
             `INSERT INTO product_variants
              (product_id, attribute_name, attribute_value, price_modifier, stock_quantity, sku)
              VALUES (:product_id, :attribute_name, :attribute_value, :price_modifier, :stock_quantity, :sku)`,
@@ -286,7 +290,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
         }
       }
 
-      logAuditSync(tx, {
+      await logAuditSync(tx, {
         productId, adminId: req.admin.id, action: "update", changes: req.body,
       });
     });
@@ -299,17 +303,23 @@ router.put("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", authMiddleware, requirePermission("products.manage"), async (req, res) => {
   try {
     const productId = req.params.id;
     const existing = await getProductById({ query }, productId);
     if (!existing) return res.status(404).json({ error: "Product not found" });
 
+    if (existing.designer_type) {
+      return res.status(409).json({
+        error: `Цей товар прив'язаний до конструктора (тип «${existing.designer_type}») і не може бути видалений. Деактивуйте його замість цього.`,
+      });
+    }
+
     // Видалення + запис у журнал — атомарно. Товар уже не існуватиме, тож аудит
     // лишаємо з product_id = null (FK увімкнено), ім'я зберігаємо в changes.
-    transaction((tx) => {
-      tx.run("DELETE FROM products WHERE id = :id", { id: productId });
-      logAuditSync(tx, {
+    await transaction(async (tx) => {
+      await tx.run("DELETE FROM products WHERE id = :id", { id: productId });
+      await logAuditSync(tx, {
         productId: null,
         adminId: req.admin.id,
         action: "delete",

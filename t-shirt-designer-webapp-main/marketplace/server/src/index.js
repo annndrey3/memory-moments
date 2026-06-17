@@ -11,6 +11,10 @@ import uploadRoutes from "./routes/upload.js";
 import designRoutes from "./routes/designs.js";
 import orderRoutes from "./routes/orders.js";
 import serviceRoutes from "./routes/services.js";
+import priceImportRoutes from "./routes/priceImport.js";
+import adminSettingsRoutes from "./routes/adminSettings.js";
+import photoUploadRoutes from "./routes/photoUpload.js";
+import cleanupRouter from "./routes/cleanup.js";
 import prerenderRoutes from "./prerender.js";
 
 dotenv.config();
@@ -84,7 +88,11 @@ app.use("/api/products", productRoutes);
 app.use("/api/designs", designRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/services", serviceRoutes);
+app.use("/api/prices/import", priceImportRoutes);
+app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/photos", photoUploadRoutes);
+app.use("/api/admin/cleanup", cleanupRouter);
 
 // SSR-пререндер OG для сторінок товару (/product/:slug). nginx направляє сюди
 // лише ботів соцмереж/месенджерів; живі відвідувачі отримують SPA зі статики.

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronRight, Package } from "lucide-react";
+import { Loader2, ChevronDown, ChevronRight, Package, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 const STATUSES = [
   { value: "pending", label: "Новий", variant: "default" },
@@ -15,6 +16,8 @@ const STATUSES = [
 const statusMeta = (value) => STATUSES.find((s) => s.value === value) || STATUSES[0];
 
 export default function AdminOrdersPage() {
+  const { role } = usePermissions();
+  const isSuperadmin = role === "superadmin";
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -70,6 +73,17 @@ export default function AdminOrdersPage() {
     const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
     triggerDownload(url, filename);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const handleDelete = async (order) => {
+    if (!confirm(`Видалити замовлення ${order.order_number}? Це незворотньо.`)) return;
+    try {
+      await api.deleteOrder(order.id);
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      if (expanded === order.id) setExpanded(null);
+    } catch (err) {
+      alert(err.message || "Не вдалося видалити замовлення");
+    }
   };
 
   const changeStatus = async (orderId, status) => {
@@ -159,6 +173,15 @@ export default function AdminOrdersPage() {
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
+                  {isSuperadmin && (
+                    <button
+                      onClick={() => handleDelete(order)}
+                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      title="Видалити замовлення"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
 
                 {isOpen && (
@@ -181,46 +204,113 @@ export default function AdminOrdersPage() {
                                   </span>
                                   <span className="text-slate-700 shrink-0">{formatPrice(item.line_total)}</span>
                                 </div>
-                                {(item.design_preview || item.design_data) && (
-                                  <div className="mt-2 flex items-center gap-3">
-                                    {item.design_preview && (
-                                      <a
-                                        href={item.design_preview}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        title="Відкрити прев'ю макета"
-                                      >
-                                        <img
-                                          src={item.design_preview}
-                                          alt="макет"
-                                          className="h-16 w-16 rounded-lg border border-slate-200 bg-white object-contain"
-                                        />
-                                      </a>
-                                    )}
-                                    <div className="flex flex-col gap-1">
+                                {(item.design_preview || item.design_data) && (() => {
+                                  let meta = null;
+                                  try { meta = JSON.parse(item.design_data); } catch { /* */ }
+                                  const isPhoto = meta?.type === "photo_print";
+                                  const printFrontUrl = meta?.printFrontUrl || null;
+                                  const printBackUrl = meta?.printBackUrl || null;
+                                  const rawFrontUrl = meta?.rawFrontUrl || null;
+                                  const rawBackUrl = meta?.rawBackUrl || null;
+                                  return (
+                                    <div className="mt-2 flex items-start gap-3 flex-wrap">
                                       {item.design_preview && (
-                                        <button
-                                          onClick={() =>
-                                            triggerDownload(item.design_preview, `${full.order_number}-${item.id}.png`)
-                                          }
-                                          className="text-xs text-violet-600 hover:underline text-left"
+                                        <a
+                                          href={item.design_preview}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          title={isPhoto ? "Відкрити фото" : "Відкрити мокап"}
                                         >
-                                          ⬇ Прев'ю (PNG)
-                                        </button>
+                                          <img
+                                            src={item.design_preview}
+                                            alt={isPhoto ? "фото" : "мокап"}
+                                            className="h-24 w-20 border border-slate-200 bg-white object-cover shrink-0"
+                                          />
+                                        </a>
                                       )}
-                                      {item.design_data && (
-                                        <button
-                                          onClick={() =>
-                                            downloadDesignJson(item.design_data, `${full.order_number}-${item.id}.json`)
-                                          }
-                                          className="text-xs text-violet-600 hover:underline text-left"
+                                      {rawFrontUrl && (
+                                        <a
+                                          href={rawFrontUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          title="Фото клієнта (без рамки)"
                                         >
-                                          ⬇ Макет (JSON)
-                                        </button>
+                                          <img
+                                            src={rawFrontUrl}
+                                            alt="фото клієнта"
+                                            className="h-24 w-20 border border-slate-200 bg-white object-cover shrink-0"
+                                          />
+                                        </a>
                                       )}
+                                      {rawBackUrl && (
+                                        <a
+                                          href={rawBackUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          title="Фото клієнта — ззаду (без рамки)"
+                                        >
+                                          <img
+                                            src={rawBackUrl}
+                                            alt="фото клієнта ззаду"
+                                            className="h-24 w-20 border border-slate-200 bg-white object-cover shrink-0"
+                                          />
+                                        </a>
+                                      )}
+                                      <div className="flex flex-col gap-1">
+                                        {item.design_preview && (
+                                          <button
+                                            onClick={() =>
+                                              triggerDownload(item.design_preview, `${full.order_number}-${item.id}-preview.png`)
+                                            }
+                                            className="text-xs text-violet-600 hover:underline text-left"
+                                          >
+                                            ⬇ {isPhoto ? "Фото клієнта" : "Мокап (PNG)"}
+                                          </button>
+                                        )}
+                                        {rawFrontUrl && (
+                                          <button
+                                            onClick={() =>
+                                              triggerDownload(rawFrontUrl, `${full.order_number}-${item.id}-raw-front.png`)
+                                            }
+                                            className="text-xs text-slate-500 hover:underline text-left"
+                                          >
+                                            ⬇ Фото клієнта (PNG)
+                                          </button>
+                                        )}
+                                        {printFrontUrl && (
+                                          <button
+                                            onClick={() =>
+                                              triggerDownload(printFrontUrl, `${full.order_number}-${item.id}-print-front.png`)
+                                            }
+                                            className="text-xs text-emerald-700 hover:underline text-left font-medium"
+                                          >
+                                            ⬇ Друк — Спереду (PNG)
+                                          </button>
+                                        )}
+                                        {printBackUrl && (
+                                          <button
+                                            onClick={() =>
+                                              triggerDownload(printBackUrl, `${full.order_number}-${item.id}-print-back.png`)
+                                            }
+                                            className="text-xs text-emerald-700 hover:underline text-left font-medium"
+                                          >
+                                            ⬇ Друк — Ззаду (PNG)
+                                          </button>
+                                        )}
+                                        {rawBackUrl && (
+                                          <button
+                                            onClick={() =>
+                                              triggerDownload(rawBackUrl, `${full.order_number}-${item.id}-raw-back.png`)
+                                            }
+                                            className="text-xs text-slate-500 hover:underline text-left"
+                                          >
+                                            ⬇ Фото клієнта — ззаду (PNG)
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             ))}
                             <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">

@@ -1,4 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 import MarketplacePage from "./pages/MarketplacePage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import PricesPage from "./pages/PricesPage";
@@ -12,14 +19,21 @@ import AdminProductFormPage from "./pages/admin/AdminProductFormPage";
 import AdminDesignsPage from "./pages/admin/AdminDesignsPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminServicesPage from "./pages/admin/AdminServicesPage";
+import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import PhotoPrintPage from "./pages/PhotoPrintPage";
+import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
+import { ContactFloatingButton } from "./components/ContactFloatingButton";
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
+      <ContactFloatingButton />
       <Routes>
         <Route path="/" element={<MarketplacePage />} />
         <Route path="/product/:slug" element={<ProductDetailPage />} />
         <Route path="/prices" element={<PricesPage />} />
+        <Route path="/print" element={<PhotoPrintPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order/:number" element={<OrderSuccessPage />} />
@@ -33,6 +47,8 @@ export default function App() {
           <Route path="designs" element={<AdminDesignsPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="services" element={<AdminServicesPage />} />
+          <Route path="categories" element={<AdminCategoriesPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

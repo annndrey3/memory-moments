@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Loader2, Save, X, Check } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, Pencil, Loader2, Save, X, Check, FileSpreadsheet, Upload, AlertCircle } from "lucide-react";
 import { Button, Input, Label, Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -107,12 +107,168 @@ function ServiceModal({ open, categoryId, initial, onClose, onSaved }) {
   );
 }
 
+function PriceImportModal({ open, onClose, onApplied }) {
+  const fileRef = useRef(null);
+  const [file, setFile] = useState(null);
+  const [rows, setRows] = useState(null);
+  const [sheet, setSheet] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+
+  const reset = () => { setFile(null); setRows(null); setSheet(""); setError(null); setResult(null); };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const analyze = async () => {
+    if (!file) return;
+    setLoading(true); setError(null); setRows(null); setResult(null);
+    try {
+      const data = await api.importPricesPreview(file);
+      setRows(data.rows);
+      setSheet(data.sheet || "");
+    } catch (e) {
+      setError(e.message || "Помилка аналізу");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const apply = async () => {
+    if (!rows?.length) return;
+    setApplying(true); setError(null);
+    try {
+      const data = await api.importPricesApply(rows);
+      setResult(data);
+      onApplied();
+    } catch (e) {
+      setError(e.message || "Помилка застосування");
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 p-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5 text-violet-600" />
+            <h3 className="font-bold text-slate-900">Імпорт цін з Excel</h3>
+          </div>
+          <button onClick={handleClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* File picker */}
+          <div
+            className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50/30 transition-colors"
+            onClick={() => fileRef.current?.click()}
+          >
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls,.ods,.csv"
+              className="hidden"
+              onChange={(e) => { setFile(e.target.files[0] || null); setRows(null); setResult(null); setError(null); }}
+            />
+            <Upload className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+            {file ? (
+              <p className="text-sm font-medium text-slate-700">{file.name}</p>
+            ) : (
+              <p className="text-sm text-slate-500">Оберіть файл Excel / CSV</p>
+            )}
+            <p className="text-xs text-slate-400 mt-1">.xlsx · .xls · .ods · .csv</p>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {result && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800 font-medium">
+              Готово! Створено: {result.created} · Оновлено: {result.updated}
+            </div>
+          )}
+
+          {/* Preview table */}
+          {rows && rows.length > 0 && !result && (
+            <div>
+              <p className="text-xs text-slate-500 mb-2">
+                Аркуш: <span className="font-medium">{sheet}</span> · Знайдено: <span className="font-medium">{rows.length} рядків</span>. Перевір і натисни «Застосувати».
+              </p>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase">
+                    <tr>
+                      <th className="text-left px-3 py-2">Категорія</th>
+                      <th className="text-left px-3 py-2">Назва</th>
+                      <th className="text-left px-3 py-2">Формат</th>
+                      <th className="text-right px-3 py-2">Ціна</th>
+                      <th className="text-right px-3 py-2">Інста</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={i} className="border-t border-slate-100 hover:bg-slate-50">
+                        <td className="px-3 py-1.5 text-slate-500">{r.category}</td>
+                        <td className="px-3 py-1.5 font-medium text-slate-800">{r.name}</td>
+                        <td className="px-3 py-1.5 text-slate-500">{r.format || "—"}</td>
+                        <td className="px-3 py-1.5 text-right">{r.price != null ? `${r.price}₴` : "—"}</td>
+                        <td className="px-3 py-1.5 text-right text-violet-600">{r.price_insta != null ? `${r.price_insta}₴` : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {rows && rows.length === 0 && (
+            <p className="text-sm text-slate-500 text-center py-4">Gemini не знайшов рядків з цінами у файлі.</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-200 bg-slate-50 p-4 flex justify-end gap-2 shrink-0">
+          <Button variant="outline" onClick={handleClose} className="rounded-lg">Закрити</Button>
+          {!result && (
+            <>
+              <Button onClick={analyze} disabled={!file || loading} className="rounded-lg">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                Аналізувати
+              </Button>
+              {rows && rows.length > 0 && (
+                <Button onClick={apply} disabled={applying} className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+                  {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Застосувати ({rows.length})
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminServicesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newCat, setNewCat] = useState("");
-  const [editingCat, setEditingCat] = useState(null); // {id, name}
+  const [editingCat, setEditingCat] = useState(null);
   const [modal, setModal] = useState({ open: false, categoryId: null, initial: null });
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -206,6 +362,10 @@ export default function AdminServicesPage() {
             {categories.length} категорій · {categories.reduce((n, c) => n + c.services.length, 0)} послуг
           </p>
         </div>
+        <Button onClick={() => setImportOpen(true)} className="rounded-lg gap-2">
+          <FileSpreadsheet className="h-4 w-4" />
+          Імпорт Excel
+        </Button>
       </div>
 
       {/* Add category */}
@@ -305,6 +465,12 @@ export default function AdminServicesPage() {
         initial={modal.initial}
         onClose={() => setModal({ open: false, categoryId: null, initial: null })}
         onSaved={onSaved}
+      />
+
+      <PriceImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onApplied={load}
       />
     </div>
   );

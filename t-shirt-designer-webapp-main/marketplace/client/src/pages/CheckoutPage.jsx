@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Button, Input, Label, Textarea } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
@@ -39,12 +40,23 @@ export default function CheckoutPage() {
           address: form.address.trim() || null,
           notes: form.notes.trim() || null,
         },
-        items: items.map((i) => ({
-          product_id: i.product_id,
-          variant_id: i.variant_id || null,
-          design_id: i.design_id || null,
-          quantity: i.quantity,
-        })),
+        items: items.map((i) => {
+          if (i.type === "photo_print") {
+            return {
+              type: "photo_print",
+              photo_size: i.photo_size,
+              photo_coating: i.photo_coating,
+              photo_url: i.photo_url,
+              quantity: i.quantity,
+            };
+          }
+          return {
+            product_id: i.product_id,
+            variant_id: i.variant_id || null,
+            design_id: i.design_id || null,
+            quantity: i.quantity,
+          };
+        }),
       });
       clear();
       navigate(`/order/${order.order_number}`);
@@ -159,6 +171,7 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

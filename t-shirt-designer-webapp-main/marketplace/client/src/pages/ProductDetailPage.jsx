@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Palette, Sparkles, ShoppingCart, Minus, Plus, Check } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Button, Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -287,6 +288,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

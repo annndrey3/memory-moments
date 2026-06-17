@@ -10,7 +10,6 @@ export function MugModel({
     designTexture || `${import.meta.env.BASE_URL}3Dmodels/textures/design-fallback.png`
   );
   
-  texture.flipY = false;
   texture.colorSpace = THREE.SRGBColorSpace;
 
   const outerGeometry = useMemo(() => new THREE.CylinderGeometry(1, 1, 2.2, 64, 1, true), []);

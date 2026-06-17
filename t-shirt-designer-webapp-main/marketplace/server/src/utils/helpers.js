@@ -76,9 +76,9 @@ export async function logAudit(db, { productId, adminId, action, changes }) {
   );
 }
 
-// Синхронний варіант для виклику всередині transaction() (tx.run — синхронний).
-export function logAuditSync(tx, { productId, adminId, action, changes }) {
-  tx.run(
+// Варіант для виклику всередині transaction() — tx.run тепер повертає Promise.
+export async function logAuditSync(tx, { productId, adminId, action, changes }) {
+  await tx.run(
     `INSERT INTO product_audit_logs (product_id, admin_id, action, changes)
      VALUES (:productId, :adminId, :action, :changes)`,
     { productId, adminId, action, changes: JSON.stringify(changes) }

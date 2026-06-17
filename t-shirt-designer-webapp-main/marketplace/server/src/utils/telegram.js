@@ -102,12 +102,16 @@ export async function sendOrderNotification(order, images = [], documents = []) 
 
   console.log(`Telegram: ${photos.length} прев'ю (фото), ${docs.length} макет(ів) (документ)`);
 
+  // Префікс імені файлу = номер замовлення (санітизований під ім'я файлу),
+  // щоб друкар одразу бачив, до якого замовлення належить макет.
+  const orderNum = String(order.order_number || "order").replace(/[^\w-]+/g, "_");
+
   // Кожен документ — окремо й стійко: збій одного не має блокувати решту.
   for (const [i, d] of docs.entries()) {
     try {
       const form = new FormData();
       form.append("chat_id", chatId());
-      form.append("document", d.blob, `print-${i + 1}.${d.ext}`);
+      form.append("document", d.blob, `${orderNum}-print-${i + 1}.${d.ext}`);
       if (d.caption) form.append("caption", d.caption);
       await tgCall("sendDocument", form, true);
     } catch (e) {

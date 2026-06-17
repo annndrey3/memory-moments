@@ -55,6 +55,20 @@ export default {
           "60%": { transform: "scale(1.25)" },
           "100%": { transform: "scale(1)" },
         },
+        shimmer: {
+          "0%": { transform: "translateX(-180%) skewX(-20deg)" },
+          "100%": { transform: "translateX(380%) skewX(-20deg)" },
+        },
+        "logo-glow": {
+          "0%,100%": {
+            filter:
+              "drop-shadow(0 0 18px rgba(168,85,247,0.25)) drop-shadow(0 0 40px rgba(251,113,133,0.1))",
+          },
+          "50%": {
+            filter:
+              "drop-shadow(0 0 48px rgba(168,85,247,0.65)) drop-shadow(0 0 90px rgba(251,113,133,0.3))",
+          },
+        },
       },
       animation: {
         "fade-in-up": "fade-in-up 0.6s cubic-bezier(0.22,1,0.36,1) both",
@@ -65,6 +79,8 @@ export default {
         "gradient-x": "gradient-x 6s ease infinite",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
         "badge-pop": "badge-pop 0.45s cubic-bezier(0.22,1,0.36,1) both",
+        shimmer: "shimmer 4s ease-in-out infinite",
+        "logo-glow": "logo-glow 4s ease-in-out infinite",
       },
     },
   },

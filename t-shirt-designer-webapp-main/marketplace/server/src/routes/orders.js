@@ -1,8 +1,25 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
+import fs from "fs";
+import path from "path";
 import { query, transaction } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
+import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { sendOrderNotification } from "../utils/telegram.js";
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
+
+function savePrintImage(dataUrl, filename) {
+  if (!dataUrl || !dataUrl.startsWith("data:image")) return null;
+  try {
+    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+    fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(base64, "base64"));
+    return `/uploads/${filename}`;
+  } catch (e) {
+    console.error("savePrintImage failed:", e.message);
+    return null;
+  }
+}
 
 const router = Router();
 
@@ -27,10 +44,10 @@ function generateOrderNumber() {
 // потім товар у цілому. Умова stock_quantity >= :q прямо у WHERE захищає від
 // гонки (два одночасні замовлення не уведуть залишок у мінус).
 // Кидає помилку зі .status = 409, якщо залишку не вистачає.
-function holdStock(tx, { product_id, variant_id, quantity, product_name, variant_label }) {
+async function holdStock(tx, { product_id, variant_id, quantity, product_name, variant_label }) {
   if (!product_id) return; // кастомні позиції з конструктора — без складу
   if (variant_id) {
-    const vr = tx.run(
+    const vr = await tx.run(
       "UPDATE product_variants SET stock_quantity = stock_quantity - :q WHERE id = :id AND stock_quantity >= :q",
       { q: quantity, id: variant_id }
     );
@@ -40,7 +57,7 @@ function holdStock(tx, { product_id, variant_id, quantity, product_name, variant
       throw e;
     }
   }
-  const pr = tx.run(
+  const pr = await tx.run(
     "UPDATE products SET stock_quantity = stock_quantity - :q WHERE id = :id AND stock_quantity >= :q",
     { q: quantity, id: product_id }
   );
@@ -52,15 +69,15 @@ function holdStock(tx, { product_id, variant_id, quantity, product_name, variant
 }
 
 // Повернення складу позиції (наприклад, при скасуванні замовлення).
-function releaseStock(tx, { product_id, variant_id, quantity }) {
+async function releaseStock(tx, { product_id, variant_id, quantity }) {
   if (!product_id) return;
   if (variant_id) {
-    tx.run(
+    await tx.run(
       "UPDATE product_variants SET stock_quantity = stock_quantity + :q WHERE id = :id",
       { q: quantity, id: variant_id }
     );
   }
-  tx.run(
+  await tx.run(
     "UPDATE products SET stock_quantity = stock_quantity + :q WHERE id = :id",
     { q: quantity, id: product_id }
   );
@@ -91,6 +108,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Кошик порожній" });
     }
+
+    const orderNumber = generateOrderNumber();
 
     // Resolve each line. Items with product_id come from the catalog (prices from
     // the DB); items without — custom designs from the constructor.
@@ -135,6 +154,35 @@ router.post("/", createOrderLimiter, async (req, res) => {
           quantity,
           line_total: unitPrice * quantity,
         });
+      } else if (item.type === "photo_print") {
+        // Замовлення друку клієнтських фото — ціна береться зі серверного списку,
+        // НЕ з клієнта, щоб унеможливити підміну ціни.
+        const PHOTO_PRICES = {
+          "10x15": 15, "13x18": 25, "15x21": 35, "20x30": 65, "30x40": 120,
+        };
+        const unitPrice = PHOTO_PRICES[item.photo_size];
+        if (!unitPrice) {
+          return res.status(400).json({ error: `Непідтримуваний розмір фото: ${item.photo_size}` });
+        }
+        if (!item.photo_url) {
+          return res.status(400).json({ error: "Відсутнє посилання на фото" });
+        }
+        const COATING_LABELS = { matte: "Матове", gloss: "Глянцеве" };
+        const sizeLabel = item.photo_size.replace("x", "×") + " см";
+        const coatingLabel = COATING_LABELS[item.photo_coating] || item.photo_coating || "";
+
+        resolved.push({
+          product_id: null,
+          variant_id: null,
+          design_id: null,
+          design_data: JSON.stringify({ type: "photo_print", size: item.photo_size, coating: item.photo_coating }),
+          design_preview: item.photo_url,
+          product_name: `Друк фото ${sizeLabel}`,
+          variant_label: coatingLabel ? `${coatingLabel} покриття` : null,
+          unit_price: unitPrice,
+          quantity,
+          line_total: unitPrice * quantity,
+        });
       } else {
         // Custom design from the constructor: no catalog product_id.
         // ЦІНА ЗАВЖДИ рахується на сервері за designer_type з каталогу —
@@ -154,13 +202,44 @@ router.post("/", createOrderLimiter, async (req, res) => {
         const variantLabel =
           item.variant_label || (item.color ? `Колір: ${item.color}` : null);
 
+        // Зберігаємо друкарські макети на диск (base64 → PNG-файл),
+        // щоб уникнути зберігання великих blob у SQLite.
+        const ts = Date.now();
+        const printFrontUrl = item.print_front
+          ? savePrintImage(item.print_front, `print_${orderNumber}_${ts}_front.png`)
+          : null;
+        const printBackUrl = item.print_back
+          ? savePrintImage(item.print_back, `print_${orderNumber}_${ts}_back.png`)
+          : null;
+        // Сирий кроп зони друку (фото клієнта без рамки шаблону) — для прев'ю в адмінці.
+        const rawFrontUrl = item.raw_front
+          ? savePrintImage(item.raw_front, `raw_${orderNumber}_${ts}_front.png`)
+          : null;
+        const rawBackUrl = item.raw_back
+          ? savePrintImage(item.raw_back, `raw_${orderNumber}_${ts}_back.png`)
+          : null;
+        // Зберігаємо мокап-прев'ю на диск (JPEG) замість blob у SQLite.
+        const previewUrl = item.design_preview?.startsWith("data:image")
+          ? savePrintImage(item.design_preview, `preview_${orderNumber}_${ts}.jpg`)
+          : (item.design_preview || null);
+
+        // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
+        let fabricData = {};
+        try { fabricData = JSON.parse(item.design_data || "{}"); } catch { /* */ }
+        const designDataFull = JSON.stringify({
+          ...fabricData,
+          ...(printFrontUrl ? { printFrontUrl } : {}),
+          ...(printBackUrl ? { printBackUrl } : {}),
+          ...(rawFrontUrl ? { rawFrontUrl } : {}),
+          ...(rawBackUrl ? { rawBackUrl } : {}),
+        });
+
         resolved.push({
           product_id: null,
           variant_id: null,
           design_id: item.design_id || null,
-          // Макет покупця: fabric JSON + прев'ю — зберігаємо, щоб заказ був самодостатнім.
-          design_data: item.design_data || null,
-          design_preview: item.design_preview || null,
+          design_data: designDataFull,
+          design_preview: previewUrl,
           product_name: productName,
           variant_label: variantLabel,
           unit_price: unitPrice,
@@ -173,11 +252,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
     const subtotal = resolved.reduce((sum, r) => sum + r.line_total, 0);
     const total = subtotal; // доставка/податки можна додати тут пізніше
 
-    const orderNumber = generateOrderNumber();
-
-    // Уся вставка замовлення + списання складу — в одній синхронній транзакції.
-    const orderId = transaction((tx) => {
-      const { insertId } = tx.run(
+    // Уся вставка замовлення + списання складу — в одній транзакції.
+    const orderId = await transaction(async (tx) => {
+      const { insertId } = await tx.run(
         `INSERT INTO orders
          (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, total)
          VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :total)`,
@@ -196,8 +273,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
 
       for (const r of resolved) {
         // Списуємо склад ДО вставки позиції — нестача відкотить усю транзакцію.
-        holdStock(tx, r);
-        tx.run(
+        await holdStock(tx, r);
+        await tx.run(
           `INSERT INTO order_items
            (order_id, product_id, variant_id, design_id, design_data, design_preview, product_name, variant_label, unit_price, quantity, line_total)
            VALUES (:order_id, :product_id, :variant_id, :design_id, :design_data, :design_preview, :product_name, :variant_label, :unit_price, :quantity, :line_total)`,
@@ -245,7 +322,7 @@ router.get("/track/:number", async (req, res) => {
 });
 
 // GET /api/orders — admin list with optional status filter.
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", authMiddleware, requirePermission("orders.view"), async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
@@ -279,7 +356,7 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 // GET /api/orders/:id — admin order detail.
-router.get("/:id", authMiddleware, async (req, res) => {
+router.get("/:id", authMiddleware, requirePermission("orders.view"), async (req, res) => {
   try {
     const order = await getOrderWithItems(req.params.id);
     if (!order) return res.status(404).json({ error: "Order not found" });
@@ -293,7 +370,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
 // PATCH /api/orders/:id/status — admin status update.
 // Склад вважаємо «зайнятим», поки замовлення не cancelled. Тому на переході
 // у cancelled повертаємо залишок, а при знятті скасування — знову списуємо.
-router.patch("/:id/status", authMiddleware, async (req, res) => {
+router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), async (req, res) => {
   try {
     const { status } = req.body;
     if (!ORDER_STATUSES.includes(status)) {
@@ -309,16 +386,16 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       { id: req.params.id }
     );
 
-    // Корекція складу + зміна статусу — атомарно в одній синхронній транзакції.
-    transaction((tx) => {
+    // Корекція складу + зміна статусу — атомарно в одній транзакції.
+    await transaction(async (tx) => {
       if (!wasCancelled && willCancel) {
         // Скасування: повертаємо склад.
-        for (const it of items) releaseStock(tx, it);
+        for (const it of items) await releaseStock(tx, it);
       } else if (wasCancelled && !willCancel) {
         // Зняття скасування: знову списуємо склад (з перевіркою наявності).
-        for (const it of items) holdStock(tx, it);
+        for (const it of items) await holdStock(tx, it);
       }
-      tx.run(
+      await tx.run(
         "UPDATE orders SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
         { status, id: req.params.id }
       );
@@ -332,6 +409,45 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
     }
     console.error(err);
     res.status(500).json({ error: "Failed to update order" });
+  }
+});
+
+// Видалення замовлення — тільки суперадмін.
+// Разом із замовленням видаляються print-файли з uploads/.
+router.delete("/:id", authMiddleware, requireSuperadmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [order] = await query("SELECT id FROM orders WHERE id = :id", { id });
+    if (!order) return res.status(404).json({ error: "Замовлення не знайдено" });
+
+    // Збираємо print-файли та preview перед видаленням з БД
+    const items = await query(
+      "SELECT design_data, design_preview FROM order_items WHERE order_id = :id", { id }
+    );
+    const filesToDelete = [];
+    for (const { design_data, design_preview } of items) {
+      try {
+        const d = JSON.parse(design_data || "{}");
+        [d.printFrontUrl, d.printBackUrl, d.rawFrontUrl, d.rawBackUrl].forEach((u) => {
+          if (u) filesToDelete.push(path.join(UPLOAD_DIR, path.basename(u)));
+        });
+      } catch { /* */ }
+      if (design_preview?.startsWith("/uploads/")) {
+        filesToDelete.push(path.join(UPLOAD_DIR, path.basename(design_preview)));
+      }
+    }
+
+    await query("DELETE FROM orders WHERE id = :id", { id });
+
+    // Видаляємо файли після успішного DELETE з БД
+    for (const f of filesToDelete) {
+      try { fs.unlinkSync(f); } catch { /* файл міг бути вже прибраний */ }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete order" });
   }
 });
 

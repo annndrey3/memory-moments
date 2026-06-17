@@ -1,6 +1,7 @@
 import { Router } from "express";
 import pool, { query } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
+import { requirePermission } from "../middleware/requirePermission.js";
 
 const router = Router();
 
@@ -80,7 +81,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST /api/designs - Create new design (admin only)
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, requirePermission("designs.manage"), async (req, res) => {
   try {
     const { name, description, productType, fabricData, previewImage, width, height } = req.body;
 
@@ -125,7 +126,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // PUT /api/designs/:id - Update design (admin only)
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", authMiddleware, requirePermission("designs.manage"), async (req, res) => {
   try {
     const { name, description, fabricData, previewImage, width, height } = req.body;
 
@@ -172,7 +173,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/designs/:id - Delete design (admin only)
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", authMiddleware, requirePermission("designs.manage"), async (req, res) => {
   try {
     // Check if design is used by products
     const [usage] = await query(

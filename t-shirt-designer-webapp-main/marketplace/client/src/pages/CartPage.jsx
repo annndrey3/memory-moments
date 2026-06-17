@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Minus, Plus, Trash2, ArrowLeft } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
@@ -127,6 +128,7 @@ export default function CartPage() {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

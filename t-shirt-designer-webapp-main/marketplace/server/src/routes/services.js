@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { query } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
+import { requirePermission } from "../middleware/requirePermission.js";
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.get("/", async (_req, res) => {
 });
 
 // GET /api/services/admin/all — full list incl. inactive (admin).
-router.get("/admin/all", authMiddleware, async (_req, res) => {
+router.get("/admin/all", authMiddleware, requirePermission("services.view"), async (_req, res) => {
   try {
     const categories = await query("SELECT * FROM service_categories ORDER BY sort_order, id");
     const services = await query("SELECT * FROM services ORDER BY sort_order, id");
@@ -42,7 +43,7 @@ router.get("/admin/all", authMiddleware, async (_req, res) => {
 
 /* ---------- Categories (admin) ---------- */
 
-router.post("/categories", authMiddleware, async (req, res) => {
+router.post("/categories", authMiddleware, requirePermission("services.manage"), async (req, res) => {
   try {
     const { name, sort_order = 0 } = req.body;
     if (!name) return res.status(400).json({ error: "Назва обов'язкова" });
@@ -60,7 +61,7 @@ router.post("/categories", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/categories/:id", authMiddleware, async (req, res) => {
+router.put("/categories/:id", authMiddleware, requirePermission("services.manage"), async (req, res) => {
   try {
     const { name, sort_order, is_active } = req.body;
     const [existing] = await query("SELECT * FROM service_categories WHERE id = :id", {
@@ -89,7 +90,7 @@ router.put("/categories/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.delete("/categories/:id", authMiddleware, async (req, res) => {
+router.delete("/categories/:id", authMiddleware, requirePermission("services.manage"), async (req, res) => {
   try {
     // FK cascade is not enforced in SQLite by default — remove children explicitly.
     await query("DELETE FROM services WHERE category_id = :id", { id: req.params.id });
@@ -103,7 +104,7 @@ router.delete("/categories/:id", authMiddleware, async (req, res) => {
 
 /* ---------- Services (admin) ---------- */
 
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, requirePermission("services.manage"), async (req, res) => {
   try {
     const { category_id, code, name, format, price, price_insta, sort_order = 0 } = req.body;
     if (!category_id || !name) {
@@ -130,7 +131,7 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", authMiddleware, requirePermission("services.manage"), async (req, res) => {
   try {
     const [existing] = await query("SELECT * FROM services WHERE id = :id", { id: req.params.id });
     if (!existing) return res.status(404).json({ error: "Service not found" });
@@ -162,7 +163,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", authMiddleware, requirePermission("services.manage"), async (req, res) => {
   try {
     await query("DELETE FROM services WHERE id = :id", { id: req.params.id });
     res.json({ success: true });

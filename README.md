@@ -2,7 +2,7 @@
 
 Full-stack платформа для создания и продажи кастомизированных товаров (футболки, чашки, фотопечать) с интерактивным 2D/3D конструктором, маркетплейсом и админ-панелью.
 
-**[Детальный анализ](./PROJECT_ANALYSIS.md)** · **[Гайд по интеграции](./INTEGRATION_GUIDE.md)** · **[Деплой](./DEPLOYMENT.md)**
+**[Деплой](./DEPLOYMENT.md)** · **[Маркетплейс docs](./t-shirt-designer-webapp-main/marketplace/README.md)**
 
 > **Корень проекта:** весь код находится в `t-shirt-designer-webapp-main/`.
 > Папка `medusa-develop/` — отдельный клон Medusa.js, в текущей сборке **не используется**.
@@ -15,13 +15,13 @@ Full-stack платформа для создания и продажи каст
 
 | Компонент | Путь | Стек | Порт |
 |-----------|------|------|------|
-| 🎨 **Конструктор** (designer) | `t-shirt-designer-webapp-main/` (корень) | React 18, Redux Toolkit, **Fabric.js**, **Three.js** | **5173** |
-| 🛍️ **Маркетплейс + Админка** | `t-shirt-designer-webapp-main/marketplace/client/` | React 18, Vite, React Router 7, Fabric.js | **5174** |
+| 🎨 **Конструктор** (designer) | `t-shirt-designer-webapp-main/` (корень) | React 18, Redux Toolkit, **Fabric.js**, **Three.js** | **5174** |
+| 🛍️ **Маркетплейс + Админка** | `t-shirt-designer-webapp-main/marketplace/client/` | React 18, Vite, React Router 7, Fabric.js | **5173** |
 | ⚙️ **API** | `t-shirt-designer-webapp-main/marketplace/server/` | Express 5, **SQLite** (better-sqlite3), JWT | **3001** |
 
 ```
 ┌──────────────────┐   iframe + postMessage   ┌──────────────────┐
-│   Админка (5174) │◄────────────────────────►│ Конструктор (5173)│
+│   Админка (5173) │◄────────────────────────►│ Конструктор (5174)│
 │  DesignerModal   │   load / export / design  │   EmbedBridge    │
 └────────┬─────────┘                           └─────────┬────────┘
          │ REST (designs, products)                      │ GET /designs/:id (по ?designId)
@@ -32,7 +32,7 @@ Full-stack платформа для создания и продажи каст
          ▲
          │ REST (каталог, товар)
 ┌────────┴─────────┐
-│ Маркетплейс(5174)│  кнопка «Створити дизайн» → 5173?type=…&designId=…
+│ Маркетплейс(5173)│  кнопка «Створити дизайн» → 5174?type=…&designId=…
 └──────────────────┘
 ```
 
@@ -60,17 +60,17 @@ npm run marketplace:install
 # Терминал 1 — API (порт 3001, БД создаётся автоматически)
 npm run marketplace:api
 
-# Терминал 2 — Маркетплейс + Админка (порт 5174)
+# Терминал 2 — Маркетплейс + Админка (порт 5173)
 npm run marketplace:web
 
-# Терминал 3 — Конструктор (порт 5173)
+# Терминал 3 — Конструктор (порт 5174)
 npm run dev
 ```
 
 **Адреса:**
-- Маркетплейс: <http://localhost:5174>
-- Админка: <http://localhost:5174/admin/login>
-- Конструктор: <http://localhost:5173>
+- Маркетплейс: <http://localhost:5173>
+- Админка: <http://localhost:5173/admin/login>
+- Конструктор: <http://localhost:5174>
 - API health: <http://localhost:3001/api/health>
 
 **Вход в админку (по умолчанию):**
@@ -88,19 +88,19 @@ password: admin123
 
 ### 1. Админ создаёт дизайн
 1. В админке: **Товари → форма товару → тип конструктора** или раздел **Дизайни → Новий дизайн**.
-2. Открывается `DesignerModal` с `<iframe src="…:5173?embed=1&type=<тип>">` — это **реальный конструктор** в embed-режиме (`marketplace/client/src/components/DesignerModal.jsx`).
+2. Открывается `DesignerModal` с `<iframe src="…:5174?embed=1&type=<тип>">` — это **реальный конструктор** в embed-режиме (`marketplace/client/src/components/DesignerModal.jsx`).
 3. Админ рисует макет → жмёт **«Зберегти дизайн»**.
 4. Админка шлёт конструктору `{ type: "export" }`; `EmbedBridge` (`src/components/EmbedBridge.jsx`) сериализует переднее полотно Fabric.js (`canvas.toJSON()`) + превью (`canvas.toDataURL()`) и возвращает `{ type: "design", payload }`.
 5. Админка сохраняет дизайн через `POST/PUT /api/designs` (имя берётся из поля модалки).
 
-> 🛟 Если конструктор не запущен (порт 5173 недоступен), в модалке есть резервный
+> 🛟 Если конструктор не запущен (порт 5174 недоступен), в модалке есть резервный
 > режим **ручного JSON** — дизайн всё равно можно сохранить.
 
 ### 2. Дизайн привязывается к товару
 В форме товара поле `design_id` (компонент `DesignSelector`) хранит выбранный дизайн. Сохраняется в `products.design_id`.
 
 ### 3. Покупатель кастомизирует товар
-На странице товара кнопка **«Створити дизайн»** ведёт на `…:5173?type=<тип>&designId=<id>`. Конструктор (тот же `EmbedBridge`) подтягивает дизайн из `GET /api/designs/:id` и загружает его на полотно как стартовый макет.
+На странице товара кнопка **«Створити дизайн»** ведёт на `…:5174?type=<тип>&designId=<id>`. Конструктор (тот же `EmbedBridge`) подтягивает дизайн из `GET /api/designs/:id` и загружает его на полотно как стартовый макет.
 
 ### Протокол postMessage
 
@@ -129,12 +129,12 @@ ADMIN_PASSWORD=admin123
 
 **Маркетплейс/клиент** — `marketplace/client/.env`:
 ```ini
-VITE_DESIGNER_URL=http://localhost:5173
+VITE_DESIGNER_URL=http://localhost:5174
 ```
 
 **Конструктор** — `.env` в корне `t-shirt-designer-webapp-main`:
 ```ini
-VITE_MARKETPLACE_URL=http://localhost:5174
+VITE_MARKETPLACE_URL=http://localhost:5173
 VITE_MARKETPLACE_API=http://localhost:3001/api
 ```
 
@@ -226,13 +226,10 @@ export const DESIGNER_CONFIG = {
 | Гайд | Описание |
 |------|----------|
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | 🚀 Деплой на хостинг (VPS + nginx + PM2, и PaaS) |
-| [INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md) | План интеграции компонентов |
-| [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md) | Детальный анализ архитектуры |
-| [ADMIN_USER_GUIDE.md](./ADMIN_USER_GUIDE.md) | Руководство по админ-панели |
-| [QUICK_CHECKLIST.md](./QUICK_CHECKLIST.md) | Чек-лист разработки |
+| [marketplace/README.md](./t-shirt-designer-webapp-main/marketplace/README.md) | Маркетплейс: API, база данных, адмін-панель |
+| [t-shirt-designer-webapp-main/README.md](./t-shirt-designer-webapp-main/README.md) | Конструктор + маркетплейс: повная документация |
 
 > 📝 Локальный запуск описан в разделе [«Быстрый старт»](#-быстрый-старт) выше.
-> Историческая документация по Docker/PostgreSQL удалена — актуальная сборка на SQLite без Docker.
 
 ---
 
