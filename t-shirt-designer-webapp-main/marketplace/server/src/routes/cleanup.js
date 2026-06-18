@@ -38,14 +38,18 @@ router.post("/", authMiddleware, requirePermission("products.manage"), async (re
 
 async function runCleanup(days, dryRun) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  // Поріг датою для SQL рахуємо в JS і передаємо параметром — щоб не залежати від
+  // синтаксису БД: datetime('now', ...) існує лише в SQLite, на Postgres це помилка.
+  const cutoffSql = new Date(cutoff).toISOString().slice(0, 19).replace("T", " ");
 
   // Файли свіжих замовлень — не чіпаємо
-  const recentItems = await query(`
-    SELECT oi.design_data
-    FROM order_items oi
-    JOIN orders o ON o.id = oi.order_id
-    WHERE o.created_at >= datetime('now', '-${days} days')
-  `);
+  const recentItems = await query(
+    `SELECT oi.design_data
+     FROM order_items oi
+     JOIN orders o ON o.id = oi.order_id
+     WHERE o.created_at >= :cutoff`,
+    { cutoff: cutoffSql }
+  );
 
   const activeFiles = new Set();
   for (const { design_data } of recentItems) {
