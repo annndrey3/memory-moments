@@ -15,6 +15,8 @@ import priceImportRoutes from "./routes/priceImport.js";
 import adminSettingsRoutes from "./routes/adminSettings.js";
 import photoUploadRoutes from "./routes/photoUpload.js";
 import cleanupRouter from "./routes/cleanup.js";
+import dataIORoutes from "./routes/dataIO.js";
+import slideRoutes from "./routes/slides.js";
 import prerenderRoutes from "./prerender.js";
 
 dotenv.config();
@@ -65,6 +67,8 @@ app.use(
 // у повній роздільності (документи для Telegram) — тому окремий більший ліміт.
 // Реєструємо ДО глобального парсера: express.json пропускає вже розпарсене тіло.
 app.use("/api/orders", express.json({ limit: "40mb" }));
+// Імпорт даних (товари/прайс/категорії) може бути великим JSON.
+app.use("/api/admin/data", express.json({ limit: "25mb" }));
 // Глобально — невеликий ліміт як захист від memory-DoS на публічних end-point'ах.
 app.use(express.json({ limit: "1mb" }));
 
@@ -84,6 +88,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/slides", slideRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/designs", designRoutes);
 app.use("/api/orders", orderRoutes);
@@ -93,6 +98,7 @@ app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/photos", photoUploadRoutes);
 app.use("/api/admin/cleanup", cleanupRouter);
+app.use("/api/admin/data", dataIORoutes);
 
 // SSR-пререндер OG для сторінок товару (/product/:slug). nginx направляє сюди
 // лише ботів соцмереж/месенджерів; живі відвідувачі отримують SPA зі статики.

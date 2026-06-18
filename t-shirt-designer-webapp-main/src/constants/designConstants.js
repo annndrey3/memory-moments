@@ -54,7 +54,7 @@ export const PRODUCT_TYPES = {
     },
   },
   mug: {
-    name: "Чашка",
+    name: "Чашка біла",
     description: "Друк навколо чашки — макет це розгортка (обгортає чашку)",
     previewMode: "3d",
     previewShape: "mug",
@@ -62,6 +62,71 @@ export const PRODUCT_TYPES = {
     // ≈2.45:1 (обвід мінус зазор під ручкою — як у 3D-моделі). Дизайн обгортає
     // чашку, краї прямокутника сходяться біля ручки. surfaceColor білий, бо
     // друкують по білому боку (колір чашки — це внутрішня частина/ручка у 3D).
+    views: {
+      front: {
+        label: "Розгортка",
+        path: RECTANGLE_PATHS.mug_wrap,
+        viewBox: "0 0 810 810",
+        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        surfaceColor: "#ffffff",
+        seamHint: true,
+      },
+    },
+  },
+  // Варіанти чашок із прайсу — той самий редактор-розгортка та 3D-превʼю.
+  "mug-giant": {
+    name: "Чашка велетень",
+    description: "Збільшена чашка — друк навколо (розгортка)",
+    previewMode: "3d",
+    previewShape: "mug",
+    views: {
+      front: {
+        label: "Розгортка",
+        path: RECTANGLE_PATHS.mug_wrap,
+        viewBox: "0 0 810 810",
+        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        surfaceColor: "#ffffff",
+        seamHint: true,
+      },
+    },
+  },
+  "mug-magic": {
+    name: "Чашка Магічна (хамелеон)",
+    description: "Чорна чашка, що проявляє малюнок від гарячого",
+    previewMode: "3d",
+    previewShape: "mug",
+    views: {
+      front: {
+        label: "Розгортка",
+        path: RECTANGLE_PATHS.mug_wrap,
+        viewBox: "0 0 810 810",
+        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        surfaceColor: "#ffffff",
+        seamHint: true,
+      },
+    },
+  },
+  "mug-color": {
+    name: "Чашка кольорова (всередині+ручка)",
+    description: "Кольорова всередині та ручка — друк навколо (розгортка)",
+    previewMode: "3d",
+    previewShape: "mug",
+    views: {
+      front: {
+        label: "Розгортка",
+        path: RECTANGLE_PATHS.mug_wrap,
+        viewBox: "0 0 810 810",
+        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        surfaceColor: "#ffffff",
+        seamHint: true,
+      },
+    },
+  },
+  "mug-text-inside": {
+    name: "Чашка з написами всередині",
+    description: "З написами всередині — друк навколо (розгортка)",
+    previewMode: "3d",
+    previewShape: "mug",
     views: {
       front: {
         label: "Розгортка",
@@ -245,7 +310,42 @@ export const PRODUCT_TYPES = {
       front: { label: "Фото", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
     },
   },
+  // Полотно на підрамнику (широкоформатний друк). Розмір обирається в редакторі —
+  // він задає і ціну (з прайсу), і пропорції зони друку (див. buildCanvasView).
+  canvas: {
+    name: "Полотно (натяжка)",
+    description: "Широкоформатний друк на полотні з натяжкою на підрамник",
+    previewMode: "flat",
+    previewShape: "portrait_3x4",
+    sized: true, // має селектор розміру (canvasSize)
+    views: {
+      front: { label: "Полотно", path: RECTANGLE_PATHS.portrait_3x4, viewBox: "0 0 810 810", printZone: { x: 135, y: 45, width: 540, height: 720 } },
+    },
+  },
 };
+
+// Розміри полотна — беруться з прайсу (код 44 «Широкоформатний друк полотно+натяжка»).
+export const CANVAS_SIZES = [
+  "30x40", "40x50", "40x60", "50x60", "50x70", "60x70", "60x80", "60x90", "60x100", "70x100",
+];
+export const canvasSizeLabel = (s) => `${String(s).replace("x", "×")} см`;
+
+// Динамічна зона друку полотна за обраним розміром — портрет із пропорцією W:H,
+// щоб у редакторі було видно реальні пропорції обраного формату.
+export function buildCanvasView(sizeStr) {
+  const [w, h] = String(sizeStr || "30x40").split("x").map(Number);
+  const ratio = w && h ? w / h : 0.75;
+  const H = 760;
+  const W = Math.round(H * ratio);
+  const x = Math.round((810 - W) / 2);
+  const y = Math.round((810 - H) / 2);
+  return {
+    label: "Полотно",
+    path: `M ${x} ${y} H ${x + W} V ${y + H} H ${x} Z`,
+    viewBox: "0 0 810 810",
+    printZone: { x, y, width: W, height: H },
+  };
+}
 
 export const TSHIRT_TYPES = PRODUCT_TYPES;
 
@@ -268,6 +368,31 @@ export const TSHIRT_COLOR_CODES = [
   "#FFFFDD",
   "#00FFDD",
 ];
+
+// Футболка Soft Style буває лише білою та чорною (інші кольори не друкуємо).
+// Жіночий рід підпису — узгоджено з товаром «футболка» (як у прайсі: біла/чорна).
+export const TSHIRT_COLORS = [
+  { hex: "#FFFFFF", label: "Біла" },
+  { hex: "#000000", label: "Чорна" },
+];
+
+// Колір ВСЕРЕДИНІ звичайної білої чашки — лише ці варіанти є в наявності.
+export const MUG_INNER_COLORS = [
+  { hex: "#FFD400", label: "Жовтий" },
+  { hex: "#8BC34A", label: "Салатовий" },
+  { hex: "#1A1A1A", label: "Чорна" },
+  { hex: "#8E24AA", label: "Фіолетова" },
+  { hex: "#1B5E20", label: "Темнозелена" },
+  { hex: "#1976D2", label: "Синя" },
+  { hex: "#EC407A", label: "Рожева" },
+  { hex: "#FB8C00", label: "Помаранчева" },
+  { hex: "#E53935", label: "Червона" },
+  { hex: "#0047AB", label: "Кобальт" },
+  { hex: "#4FC3F7", label: "Блакитна" },
+  { hex: "#800020", label: "Бордова" },
+];
+export const mugColorName = (hex) =>
+  MUG_INNER_COLORS.find((c) => c.hex.toUpperCase() === String(hex).toUpperCase())?.label || hex;
 
 export const FONT_OPTIONS = [
   // Системні
@@ -321,21 +446,32 @@ export const COLOR_NAMES = {
   "#00FFDD": "Бірюзовий",
 };
 
+// Будь-який тип-чашка (звичайна, велетень, магічна) — за формою превʼю.
+export const isMugType = (type) => PRODUCT_TYPES[type]?.previewShape === "mug";
+
 // Розмір — лише для футболки; тип паперу — для всіх пласких фотоформатів.
 export const productHasSize = (type) => type === "crew-neck";
-export const productHasPaper = (type) => PRODUCT_TYPES[type]?.previewMode === "flat";
+// Тип паперу — для пласких фотоформатів, але НЕ для полотна (друк по полотну).
+export const productHasPaper = (type) =>
+  PRODUCT_TYPES[type]?.previewMode === "flat" && type !== "canvas";
 export const paperLabel = (value) =>
   PAPER_TYPES.find((p) => p.value === value)?.label || value;
 const colorName = (hex) => (hex ? COLOR_NAMES[hex.toUpperCase?.()] || hex : null);
 
 // Людиночитний підпис обраних опцій — для кошика та позиції замовлення
 // (саме він іде на сервер як variant_label → в адмінку й Telegram).
-export function buildOptionsLabel({ productType, size, paperType, color }) {
+export function buildOptionsLabel({ productType, size, paperType, color, printSize, bothSides, canvasSize }) {
   const parts = [];
   if (productHasSize(productType) && size) parts.push(`Розмір: ${size}`);
+  if (productType === "canvas" && canvasSize) parts.push(`Розмір: ${canvasSizeLabel(canvasSize)}`);
+  if (productType === "crew-neck" && printSize) {
+    parts.push(`Друк: ${printSize === "A3" ? "А3" : "А4"}${bothSides ? " · 2 сторони" : ""}`);
+  }
   if (productHasPaper(productType) && paperType) parts.push(`Папір: ${paperLabel(paperType)}`);
-  if ((productType === "crew-neck" || productType === "mug") && color) {
+  if (productType === "crew-neck" && color) {
     parts.push(`Колір: ${colorName(color)}`);
+  } else if (productType === "mug-color" && color && color.toUpperCase?.() !== "#FFFFFF") {
+    parts.push(`Колір всередині: ${mugColorName(color)}`);
   }
   return parts.length ? parts.join(" · ") : null;
 }

@@ -64,6 +64,14 @@ export const api = {
   deleteCategory: (id) =>
     request(`/categories/${id}`, { method: "DELETE" }),
 
+  // Слайди банера
+  getSlides: () => request("/slides"),
+  getSlidesAdmin: () => request("/slides/admin/all"),
+  createSlide: (data) => request("/slides", { method: "POST", body: JSON.stringify(data) }),
+  updateSlide: (id, data) => request(`/slides/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteSlide: (id) => request(`/slides/${id}`, { method: "DELETE" }),
+  seedSlidesFromCategories: () => request("/slides/seed-from-categories", { method: "POST" }),
+
   getProducts: (params = {}) => {
     const qs = buildQuery(params);
     return request(`/products?${qs}`);
@@ -180,6 +188,24 @@ export const api = {
   },
   importPricesApply: (rows) =>
     request("/prices/import/apply", { method: "POST", body: JSON.stringify({ rows }) }),
+
+  // Дані: імпорт / експорт через Excel (.xlsx). kind = categories | services | products
+  exportDataFile: async (kind) => {
+    const res = await fetch(`/api/admin/data/export/${kind}`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.error || `Export failed: ${res.status}`);
+    }
+    return res.blob();
+  },
+  importDataFile: (kind, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request(`/admin/data/import/${kind}`, { method: "POST", body: form });
+  },
 
   // Storage cleanup
   cleanupPreview: (days = 30) => request(`/admin/cleanup?days=${days}`),

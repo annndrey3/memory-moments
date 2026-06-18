@@ -42,8 +42,10 @@ const ProductCanvas = ({ view, viewConfig }) => {
   return (
     <div
       ref={containerRef}
-      className="relative w-[450px] max-w-[78vw] overflow-hidden"
-      style={{ aspectRatio: `${canvasW} / ${canvasH}` }}
+      className="relative mx-auto overflow-hidden"
+      // Розмір залежить і від ширини, і від ВИСОТИ екрана (vh) — щоб редактор
+      // вміщався без прокрутки. Width = min(макс, 84vw, висотний бюджет × пропорція).
+      style={{ width: `min(450px, 84vw, ${(56 * (canvasW / canvasH)).toFixed(1)}vh)`, aspectRatio: `${canvasW} / ${canvasH}` }}
     >
       {/* ── Non-template formats: SVG shape outline below canvas ── */}
       {!isTemplate && (

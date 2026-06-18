@@ -3,6 +3,21 @@ import * as fabric from "fabric";
 
 const MARKETPLACE_API = import.meta.env.VITE_MARKETPLACE_API || "http://localhost:3001/api";
 
+// Ціни конструктора з маркетплейс-API: { types, tshirt }.
+//  types  — designer_type → { price, compare_at_price, name } (чашка, фото…)
+//  tshirt — футболка з прайсу: { white:{A4,A3}, black:{A4,A3}, secondSide:{A4,A3} }
+// Той самий запит, що й при оформленні (orders.js), тож ціна в конструкторі
+// дорівнює ціні, яку нарахують при замовленні. Помилка не валить UI — повертаємо {}.
+export const fetchDesignerPrices = async () => {
+  try {
+    const res = await fetch(`${MARKETPLACE_API}/products/designer-prices`);
+    if (!res.ok) return {};
+    return await res.json();
+  } catch {
+    return {};
+  }
+};
+
 // Надсилає замовлення з конструктора у маркетплейс-API.
 // Сервер зберігає його в адмінці ТА надсилає сповіщення в Telegram
 // (токен бота — лише на сервері). Прев'ю макетів передаємо в полі images.
@@ -37,6 +52,10 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
       product_name: item.productName,
       product_type: item.productType,
       color: item.color || null,
+      // Формат друку футболки (А4/А3) — сервер рахує ціну з прайсу за ним.
+      print_size: item.printSize || null,
+      // Розмір полотна (30x40…) — сервер рахує ціну полотна з прайсу за ним.
+      canvas_size: item.canvasSize || null,
       // Розмір/папір/колір одним підписом → сервер збереже як variant_label.
       variant_label: item.variantLabel || null,
       quantity: item.quantity,

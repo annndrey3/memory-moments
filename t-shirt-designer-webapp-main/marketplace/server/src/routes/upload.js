@@ -19,19 +19,32 @@ const storage = multer.diskStorage({
   },
 });
 
+const MAX_MB = 10;
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: MAX_MB * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
-    else cb(new Error("Only image files allowed"));
+    else cb(new Error("UNSUPPORTED_TYPE"));
   },
 });
 
-router.post("/", authMiddleware, upload.single("image"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ url, filename: req.file.filename });
+// Обгортаємо multer, щоб віддавати зрозумілу JSON-помилку (а не HTML-500),
+// інакше клієнт показує «Request failed: 500» і незрозуміло, що сталося.
+router.post("/", authMiddleware, (req, res) => {
+  upload.single("image")(req, res, (err) => {
+    if (err) {
+      const msg =
+        err.code === "LIMIT_FILE_SIZE"
+          ? `Файл завеликий — максимум ${MAX_MB} МБ. Стисніть зображення і спробуйте ще раз.`
+          : err.message === "UNSUPPORTED_TYPE"
+          ? "Непідтримуваний формат. Дозволені: JPEG, PNG, WEBP, GIF (не HEIC)."
+          : "Не вдалося завантажити файл.";
+      return res.status(400).json({ error: msg });
+    }
+    if (!req.file) return res.status(400).json({ error: "Файл не надіслано" });
+    res.json({ url: `/uploads/${req.file.filename}`, filename: req.file.filename });
+  });
 });
 
 export default router;

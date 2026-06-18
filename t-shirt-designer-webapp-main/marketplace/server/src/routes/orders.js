@@ -6,6 +6,7 @@ import { query, transaction } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { sendOrderNotification } from "../utils/telegram.js";
+import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor } from "../utils/designerPricing.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -95,6 +96,8 @@ async function getOrderWithItems(id) {
 
 // POST /api/orders — create an order (public checkout).
 // Prices are recomputed server-side from the DB, never trusted from the client.
+// Ціни конструктора рахуються з ПРАЙСУ (services) через спільний модуль
+// designerPricing — і футболка, і решта позицій (чашка/фото/полароїд тощо).
 router.post("/", createOrderLimiter, async (req, res) => {
   try {
     const { customer = {}, items = [], source = "marketplace" } = req.body;
@@ -110,6 +113,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
     }
 
     const orderNumber = generateOrderNumber();
+
+    // Прайс-лист один раз на замовлення — джерело цін для всіх позицій конструктора.
+    const servicesRows = await query("SELECT code, format, price FROM services WHERE is_active = 1");
 
     // Resolve each line. Items with product_id come from the catalog (prices from
     // the DB); items without — custom designs from the constructor.
@@ -185,20 +191,39 @@ router.post("/", createOrderLimiter, async (req, res) => {
         });
       } else {
         // Custom design from the constructor: no catalog product_id.
-        // ЦІНА ЗАВЖДИ рахується на сервері за designer_type з каталогу —
+        // ЦІНА ЗАВЖДИ рахується на сервері з ПРАЙСУ (services) за типом товару —
         // клієнтський item.unit_price НІКОЛИ не приймаємо (захист від підміни ціни).
         const productName = item.product_name || item.productName || "Власний дизайн";
         if (!item.product_type) {
           return res.status(400).json({ error: "Не вказано тип товару для кастомного дизайну" });
         }
-        const match = await query(
-          "SELECT price FROM products WHERE designer_type = :pt AND is_active = 1 ORDER BY is_featured DESC, id LIMIT 1",
-          { pt: item.product_type }
-        );
-        if (!match[0]) {
-          return res.status(400).json({ error: `Немає доступного товару для типу «${item.product_type}»` });
+        let unitPrice;
+        if (item.product_type === "crew-neck") {
+          // Футболка: ціна з прайсу (колір + формат + друга сторона).
+          // Друга сторона друку = коли є обидва макети (перед і спина).
+          unitPrice = tshirtPriceFromServices(servicesRows, {
+            color: item.color,
+            printSize: item.print_size,
+            bothSides: Boolean(item.print_front) && Boolean(item.print_back),
+          });
+        } else if (item.product_type === "canvas") {
+          // Полотно: ціна з прайсу за обраним розміром.
+          unitPrice = canvasPriceFromServices(servicesRows, item.canvas_size);
+        } else {
+          // Решта позицій (чашка/фото/полароїд тощо) — з прайсу за мапою.
+          unitPrice = servicePriceFor(item.product_type, servicesRows);
         }
-        const unitPrice = Number(match[0].price);
+        // Фолбек: якщо в прайсі немає рядка — беремо ціну з каталогу за designer_type.
+        if (unitPrice == null) {
+          const match = await query(
+            "SELECT price FROM products WHERE designer_type = :pt AND is_active = 1 ORDER BY is_featured DESC, id LIMIT 1",
+            { pt: item.product_type }
+          );
+          if (!match[0]) {
+            return res.status(400).json({ error: `Немає ціни для типу «${item.product_type}» (прайс і каталог порожні)` });
+          }
+          unitPrice = Number(match[0].price);
+        }
         const variantLabel =
           item.variant_label || (item.color ? `Колір: ${item.color}` : null);
 

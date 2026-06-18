@@ -59,8 +59,6 @@ export default function PricesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [paused, setPaused] = useState(false);
   const fabRef = useRef(null);
 
   useSeo({
@@ -90,14 +88,6 @@ export default function PricesPage() {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [menuOpen]);
-
-  // Slideshow auto-advance
-  const totalSlides = 1 + visibleCategories.length;
-  useEffect(() => {
-    if (loading || totalSlides <= 1 || paused) return;
-    const t = setInterval(() => setActiveSlide((p) => (p + 1) % totalSlides), 3500);
-    return () => clearInterval(t);
-  }, [loading, totalSlides, paused]);
 
   return (
     <div className="min-h-screen bg-mesh-animated">
@@ -141,121 +131,21 @@ export default function PricesPage() {
       )}
 
       <main className="mx-auto max-w-6xl px-4 py-8 md:px-8">
-        {/* ── Slideshow banner ── */}
-        <section
-          className="mb-8 relative overflow-hidden rounded-2xl h-52 sm:h-48 animate-fade-in-up"
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-        >
-          {/* Slide 0 – hero */}
-          <div
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out
-              ${activeSlide === 0 ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-            style={{
-              backgroundImage: "url(/bg/bg-wood-05.jpg)",
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }}
-          >
-            {/* light violet overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/80 to-violet-50/90" />
-            <div className="relative z-10 h-full flex flex-col justify-center px-7 md:px-10">
-              <div className="flex items-center gap-2 text-violet-600 mb-2">
-                <Tag className="h-4 w-4" />
-                <span className="text-xs font-semibold uppercase tracking-wider">Прайс</span>
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
-                Ціни на <span className="text-gradient-animated">послуги</span>
-              </h1>
-              <p className="mt-1.5 text-slate-600 text-sm max-w-lg">
-                Фотодрук, поліграфія, широкоформатний друк,&nbsp;
-                сувенірна продукція та фотокниги.
-              </p>
+        {/* ── Заголовок прайсу (без слайдера) ── */}
+        <section className="mb-8 overflow-hidden rounded-2xl animate-fade-in-up bg-gradient-to-br from-white/80 to-violet-50/90 border border-slate-200">
+          <div className="px-7 md:px-10 py-7">
+            <div className="flex items-center gap-2 text-violet-600 mb-2">
+              <Tag className="h-4 w-4" />
+              <span className="text-xs font-semibold uppercase tracking-wider">Прайс</span>
             </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+              Ціни на <span className="text-gradient-animated">послуги</span>
+            </h1>
+            <p className="mt-1.5 text-slate-600 text-sm max-w-lg">
+              Фотодрук, поліграфія, широкоформатний друк,&nbsp;
+              сувенірна продукція та фотокниги.
+            </p>
           </div>
-
-          {/* Category slides */}
-          {visibleCategories.map((cat, i) => {
-            const meta = getCategoryMeta(cat.name);
-            const Icon = meta.icon;
-            return (
-              <div
-                key={cat.id}
-                className={`absolute inset-0 transition-opacity duration-700 ease-in-out
-                  ${activeSlide === i + 1 ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-                style={{
-                  backgroundImage: `url(${meta.img})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                }}
-              >
-                {/* dark gradient from left — ensures text is readable on any texture */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/5" />
-
-                <div className="relative z-10 h-full flex items-center px-7 md:px-10 gap-5">
-                  <div className="flex-shrink-0 h-14 w-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
-                    <Icon className="h-7 w-7 text-white drop-shadow" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-white/65 text-xs font-semibold uppercase tracking-wider mb-1">
-                      {cat.services.length} послуг
-                    </p>
-                    <h2 className="text-white font-bold text-lg md:text-xl leading-snug line-clamp-2 drop-shadow">
-                      {cat.name}
-                    </h2>
-                    <a
-                      href={`#cat-${i}`}
-                      onClick={() => setMenuOpen(false)}
-                      className="mt-1.5 inline-flex items-center gap-1 text-white/75 text-xs hover:text-white transition-colors"
-                    >
-                      Переглянути ціни
-                      <ChevronRight className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Prev / Next arrows */}
-          {totalSlides > 1 && (
-            <>
-              <button
-                onClick={() => { setPaused(true); setActiveSlide((p) => (p - 1 + totalSlides) % totalSlides); }}
-                className={`absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full flex items-center justify-center transition-colors
-                  ${activeSlide === 0
-                    ? "bg-violet-100/80 hover:bg-violet-200/80 text-violet-700"
-                    : "bg-white/20 hover:bg-white/35 text-white"}`}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => { setPaused(true); setActiveSlide((p) => (p + 1) % totalSlides); }}
-                className={`absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full flex items-center justify-center transition-colors
-                  ${activeSlide === 0
-                    ? "bg-violet-100/80 hover:bg-violet-200/80 text-violet-700"
-                    : "bg-white/20 hover:bg-white/35 text-white"}`}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </>
-          )}
-
-          {/* Dot indicators */}
-          {totalSlides > 1 && (
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-              {Array.from({ length: totalSlides }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setPaused(true); setActiveSlide(i); }}
-                  className={`h-1.5 rounded-full transition-all duration-300
-                    ${i === activeSlide
-                      ? "w-5 " + (activeSlide === 0 ? "bg-violet-500" : "bg-white")
-                      : "w-1.5 " + (activeSlide === 0 ? "bg-slate-300 hover:bg-slate-400" : "bg-white/40 hover:bg-white/70")}`}
-                />
-              ))}
-            </div>
-          )}
         </section>
 
         {loading ? (

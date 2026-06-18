@@ -264,12 +264,16 @@ export default function ProductDetailPage() {
               </Link>
             )}
 
-            <a href={designerUrl} className="mt-3">
-              <Button variant="outline" className="w-full rounded-xl h-11">
-                <Palette className="h-4 w-4" />
-                Створити власний дизайн
-              </Button>
-            </a>
+            {/* Лише якщо товар прив'язаний до типу конструктора — тоді перехід
+                відкриває саме цей тип (а не дефолтну футболку). */}
+            {product.designer_type && (
+              <a href={designerUrl} className="mt-3">
+                <Button variant="outline" className="w-full rounded-xl h-11">
+                  <Palette className="h-4 w-4" />
+                  Створити власний дизайн
+                </Button>
+              </a>
+            )}
 
             {product.description && (
               <div className="mt-10 pt-8 border-t border-slate-200">

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Loader2, Save, KeyRound, Lock, CheckCircle, AlertCircle,
   Eye, EyeOff, Trash2, UserPlus, Users, Mail, ShieldCheck, ChevronDown, ChevronUp,
-  HardDrive,
+  HardDrive, Database, Download, Upload,
 } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -47,6 +47,70 @@ const PERM_SECTIONS = [
 ];
 
 // ─── Shared components ────────────────────────────────────────────────────────
+// ─── Імпорт / експорт даних (JSON) ─────────────────────────────────────────────
+const DATA_KINDS = [
+  ["categories", "Категорії"],
+  ["services", "Прайс"],
+  ["products", "Товари"],
+];
+
+function DataSection() {
+  const [busy, setBusy] = useState(null);
+  const [msg, setMsg] = useState("");
+
+  const exportKind = async (kind, label) => {
+    setBusy(`${kind}-exp`); setMsg("");
+    try {
+      const blob = await api.exportDataFile(kind);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `mm-${kind}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+      setMsg(`✅ ${label}: експортовано (Excel)`);
+    } catch (e) { setMsg("❌ " + e.message); }
+    finally { setBusy(null); }
+  };
+
+  const importKind = async (kind, label, file) => {
+    if (!file) return;
+    setBusy(`${kind}-imp`); setMsg("");
+    try {
+      const r = await api.importDataFile(kind, file);
+      setMsg(`✅ ${label}: оновлено ${r.updated || 0}, додано ${r.created || 0}${r.skipped ? `, пропущено ${r.skipped}` : ""}`);
+    } catch (e) { setMsg("❌ " + (e.message || "помилка імпорту")); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        Excel-таблиця (.xlsx). Експорт — викачати, відредагувати в Excel і завантажити назад.
+        Імпорт лише <b>оновлює та додає</b> (нічого не видаляє), тож ціни, до яких прив'язаний
+        конструктор, не зламаються.
+      </p>
+      {DATA_KINDS.map(([kind, label]) => (
+        <div key={kind} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+          <span className="text-sm font-medium text-slate-700">{label}</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={!!busy} onClick={() => exportKind(kind, label)}>
+              {busy === `${kind}-exp` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Експорт
+            </Button>
+            <label className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-slate-200 text-sm font-medium cursor-pointer hover:bg-slate-50 ${busy ? "opacity-50 pointer-events-none" : ""}`}>
+              {busy === `${kind}-imp` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Імпорт
+              <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden"
+                onChange={(e) => { importKind(kind, label, e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+          </div>
+        </div>
+      ))}
+      {msg && <p className="text-sm text-slate-700">{msg}</p>}
+    </div>
+  );
+}
+
 function SectionCard({ icon: Icon, title, children }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -651,6 +715,10 @@ export default function AdminSettingsPage() {
           <GeminiSection />
         </SectionCard>
       )}
+
+      <SectionCard icon={Database} title="Дані: імпорт / експорт">
+        <DataSection />
+      </SectionCard>
 
       <SectionCard icon={HardDrive} title="Очистка сховища">
         <CleanupSection />

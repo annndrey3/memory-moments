@@ -4,6 +4,7 @@ import {
   Shirt, Coffee, Package, Gift, Image, BookOpen,
 } from "lucide-react";
 import { Button } from "./ui";
+import { api } from "@/lib/api";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5174";
 
@@ -32,7 +33,12 @@ function getCatIcon(name) {
 export function HeroBanner({ categories = [], onCategorySelect }) {
   const [activeSlide, setActiveSlide] = useState(0);
   const [paused, setPaused] = useState(false);
-  const totalSlides = 1 + categories.length;
+  // Керовані слайди з адмінки. Якщо їх нема — фолбек на авто-слайди категорій.
+  const [managed, setManaged] = useState([]);
+  useEffect(() => { api.getSlides().then(setManaged).catch(() => {}); }, []);
+  const useManaged = managed.length > 0;
+  const extra = useManaged ? managed : categories;
+  const totalSlides = 1 + extra.length;
 
   useEffect(() => {
     if (totalSlides <= 1 || paused) return;
@@ -68,35 +74,65 @@ export function HeroBanner({ categories = [], onCategorySelect }) {
           />
         </div>
 
-        {/* Category slides */}
-        {categories.map((cat, i) => {
-          const Icon = getCatIcon(cat.name);
-          const bg   = BG_POOL[i % BG_POOL.length];
+        {/* Керовані слайди (з адмінки) АБО фолбек на слайди категорій */}
+        {extra.map((item, i) => {
+          const active = activeSlide === i + 1;
+          const cls = `absolute inset-0 transition-opacity duration-700 ${active ? "opacity-100" : "opacity-0 pointer-events-none"}`;
+
+          if (useManaged) {
+            return (
+              <div
+                key={item.id}
+                className={cls}
+                style={{ backgroundImage: `url(${item.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/0" />
+                <div className="relative z-10 h-full flex items-center px-8 md:px-16">
+                  <div className="max-w-lg">
+                    {item.subtitle && (
+                      <p className="text-white/70 text-sm font-semibold uppercase tracking-wider mb-2">{item.subtitle}</p>
+                    )}
+                    {item.title && (
+                      <h2 className="text-white font-bold text-3xl md:text-5xl drop-shadow leading-tight">{item.title}</h2>
+                    )}
+                    {item.link && (
+                      <a
+                        href={item.link}
+                        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white/90 hover:bg-white text-[#5a3020] font-semibold text-sm px-5 py-2.5 transition-colors"
+                      >
+                        <ShoppingBag className="h-4 w-4" />
+                        {item.cta_label || "Детальніше"}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // Фолбек: авто-слайд категорії
+          const Icon = getCatIcon(item.name);
+          const bg = BG_POOL[i % BG_POOL.length];
           return (
             <div
-              key={cat.id}
-              className={`absolute inset-0 transition-opacity duration-700
-                ${activeSlide === i + 1 ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+              key={item.id}
+              className={cls}
               style={{ backgroundImage: `url(${bg})`, backgroundSize: "cover", backgroundPosition: "center" }}
             >
-              {/* text-readable gradient from left */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/35 to-black/5" />
-
               <div className="relative z-10 h-full flex items-center px-8 md:px-16 gap-6">
                 <div className="flex-shrink-0 h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20">
                   <Icon className="h-8 w-8 md:h-10 md:w-10 text-white drop-shadow" />
                 </div>
                 <div>
-                  {cat.product_count > 0 && (
+                  {item.product_count > 0 && (
                     <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">
-                      {cat.product_count} товарів
+                      {item.product_count} товарів
                     </p>
                   )}
-                  <h2 className="text-white font-bold text-3xl md:text-5xl drop-shadow leading-tight">
-                    {cat.name}
-                  </h2>
+                  <h2 className="text-white font-bold text-3xl md:text-5xl drop-shadow leading-tight">{item.name}</h2>
                   <button
-                    onClick={() => { goTo(0); onCategorySelect?.(cat.slug); }}
+                    onClick={() => { goTo(0); onCategorySelect?.(item.slug); }}
                     className="mt-4 inline-flex items-center gap-2 text-white/80 text-sm hover:text-white transition-colors"
                   >
                     <ShoppingBag className="h-4 w-4" />

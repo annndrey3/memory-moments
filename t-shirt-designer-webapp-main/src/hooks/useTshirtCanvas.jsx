@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useCanvas } from "@/hooks/useCanvas";
 import canvasStorageManager from "@/utils/canvasStorageManager";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
+import { markDesignDirty } from "@/features/tshirtSlice";
 
 export const useTshirtCanvas = ({
   svgPath,
@@ -116,18 +117,23 @@ export const useTshirtCanvas = ({
       setSelectedObject(null);
     });
 
-    // Listen for any changes on the canvas
-    canvas.on("object:modified", notifyDesignChange);
-    canvas.on("object:added", notifyDesignChange);
-    canvas.on("object:removed", notifyDesignChange);
+    // Listen for any changes on the canvas. Будь-яка зміна макета означає, що
+    // поточний дизайн відрізняється від доданого в кошик → позначаємо «брудним».
+    const onCanvasChange = () => {
+      notifyDesignChange();
+      dispatch(markDesignDirty());
+    };
+    canvas.on("object:modified", onCanvasChange);
+    canvas.on("object:added", onCanvasChange);
+    canvas.on("object:removed", onCanvasChange);
 
     // Cleanup
     return () => {
       saveCanvas();
       window.removeEventListener("beforeunload", saveCanvas);
-      canvas.off("object:modified", notifyDesignChange);
-      canvas.off("object:added", notifyDesignChange);
-      canvas.off("object:removed", notifyDesignChange);
+      canvas.off("object:modified", onCanvasChange);
+      canvas.off("object:added", onCanvasChange);
+      canvas.off("object:removed", onCanvasChange);
       canvas.dispose();
       fabricCanvasRef.current = null;
       unregisterCanvas(selectedType, view, canvas);

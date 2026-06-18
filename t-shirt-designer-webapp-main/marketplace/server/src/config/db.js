@@ -102,6 +102,7 @@ if (process.env.DATABASE_URL) {
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
       description TEXT,
+      image_url TEXT,
       parent_id BIGINT REFERENCES categories(id) ON DELETE SET NULL,
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
@@ -222,6 +223,18 @@ if (process.env.DATABASE_URL) {
       value TEXT NOT NULL,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS slides (
+      id BIGSERIAL PRIMARY KEY,
+      image_url TEXT,
+      title TEXT,
+      subtitle TEXT,
+      link TEXT,
+      cta_label TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Default admin (idempotent)
@@ -232,6 +245,9 @@ if (process.env.DATABASE_URL) {
             'Адміністратор', 'superadmin')
     ON CONFLICT (email) DO NOTHING
   `);
+
+  // Idempotent column migrations (PostgreSQL)
+  await _pool.query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT;");
 
 // ═══════════════════════════════════════════════════════════════════════
 // SQLite  (default when DATABASE_URL is not set)
@@ -303,6 +319,7 @@ if (process.env.DATABASE_URL) {
         name TEXT NOT NULL,
         slug TEXT NOT NULL UNIQUE,
         description TEXT,
+        image_url TEXT NULL,
         parent_id INTEGER NULL,
         sort_order INTEGER NOT NULL DEFAULT 0,
         is_active INTEGER NOT NULL DEFAULT 1,
@@ -470,6 +487,18 @@ if (process.env.DATABASE_URL) {
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES service_categories(id) ON DELETE CASCADE ON UPDATE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS slides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_url TEXT,
+      title TEXT,
+      subtitle TEXT,
+      link TEXT,
+      cta_label TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Seed price list on first run
@@ -509,6 +538,11 @@ if (process.env.DATABASE_URL) {
   const adminCols = db.prepare("PRAGMA table_info(admins)").all();
   if (!adminCols.some((c) => c.name === "permissions")) {
     db.exec("ALTER TABLE admins ADD COLUMN permissions TEXT NULL;");
+  }
+
+  const catCols = db.prepare("PRAGMA table_info(categories)").all();
+  if (catCols.length && !catCols.some((c) => c.name === "image_url")) {
+    db.exec("ALTER TABLE categories ADD COLUMN image_url TEXT NULL;");
   }
 
   const productCols = db.prepare("PRAGMA table_info(products)").all();

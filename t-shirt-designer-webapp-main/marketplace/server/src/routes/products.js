@@ -3,6 +3,7 @@ import { query, transaction } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/requirePermission.js";
 import { getProductById, logAuditSync, slugify, uniqueSlug } from "../utils/helpers.js";
+import { DESIGNER_SERVICE_MAP, buildTshirtMatrix, buildCanvasMatrix, servicePriceFor } from "../utils/designerPricing.js";
 
 const router = Router();
 
@@ -63,12 +64,61 @@ router.get("/", async (req, res) => {
       page: req.query.page || 1,
       limit: req.query.limit || 12,
       activeOnly: true,
-      hideDesignerTypes: true,
+      // Товари з типом конструктора теж показуємо у каталозі — їх можна обрати
+      // й натиснути «Створити власний дизайн».
+      hideDesignerTypes: false,
     });
     res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch products" });
+  }
+});
+
+// Public: prices for the live price in the constructor.
+//  - types:  designer_type → catalog price (mug, photo formats…). Mirrors the
+//            checkout query in orders.js (is_featured DESC, id).
+//  - tshirt: футболка з ПРАЙСУ (services): біла(985)/чорна(986) × А4/А3 + друга
+//            сторона(1353). Прайс — єдине джерело: правка в адмінці діє й тут,
+//            і при оформленні (orders.js рахує так само).
+router.get("/designer-prices", async (req, res) => {
+  try {
+    const services = await query("SELECT code, format, price FROM services WHERE is_active = 1");
+
+    // Каталог (products.designer_type) — для назв та фолбеку, якщо в прайсі нема рядка.
+    const catRows = await query(
+      `SELECT designer_type, price, compare_at_price, name
+       FROM products
+       WHERE designer_type IS NOT NULL AND is_active = 1
+       ORDER BY is_featured DESC, id`
+    );
+    const catalog = {};
+    for (const r of catRows) if (!catalog[r.designer_type]) catalog[r.designer_type] = r;
+
+    // types: ціна кожного типу з ПРАЙСУ за мапою; фолбек — каталог.
+    const types = {};
+    for (const dt of Object.keys(DESIGNER_SERVICE_MAP)) {
+      const p = servicePriceFor(dt, services);
+      if (p != null) types[dt] = { price: p, compare_at_price: null, name: catalog[dt]?.name || null };
+    }
+    for (const dt of Object.keys(catalog)) {
+      if (types[dt]) continue; // прайс має пріоритет
+      types[dt] = {
+        price: Number(catalog[dt].price),
+        compare_at_price: catalog[dt].compare_at_price != null ? Number(catalog[dt].compare_at_price) : null,
+        name: catalog[dt].name,
+      };
+    }
+
+    // Футболка — матриця з прайсу (біла/чорна × А4/А3 + друга сторона).
+    const tshirt = buildTshirtMatrix(services);
+    // Полотно — матриця розмір → ціна.
+    const canvas = buildCanvasMatrix(services);
+
+    res.json({ types, tshirt, canvas });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch designer prices" });
   }
 });
 
@@ -81,7 +131,9 @@ router.get("/admin/all", authMiddleware, requirePermission("products.view"), asy
       page: req.query.page || 1,
       limit: req.query.limit || 20,
       activeOnly: false,
-      hideDesignerTypes: true,
+      // В адмінці показуємо ВСІ товари, зокрема з типом конструктора — інакше
+      // після призначення типу товар «зникав» зі списку.
+      hideDesignerTypes: false,
     });
     res.json(result);
   } catch (err) {

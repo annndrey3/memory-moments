@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, LayoutGrid } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { HeroBanner } from "@/components/HeroBanner";
@@ -11,6 +11,49 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useSeo } from "@/lib/seo";
 import { scrollToCatalog } from "@/lib/scroll";
+
+// Плитка категорії: квадратна іконка (картинка з адмінки або плейсхолдер) + назва.
+function CategoryTile({ name, count, image, active, onClick, all }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group flex flex-col items-center gap-2 rounded-2xl p-2 transition-all active:scale-95",
+        active ? "bg-violet-50 ring-2 ring-violet-400 shadow-sm" : "ring-1 ring-transparent hover:bg-slate-50"
+      )}
+    >
+      <div
+        className={cn(
+          "relative w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center",
+          image ? "bg-slate-100" : "bg-gradient-to-br from-violet-100 to-fuchsia-100"
+        )}
+      >
+        {image ? (
+          <img
+            src={image}
+            alt={name}
+            loading="lazy"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : all ? (
+          <LayoutGrid className="h-7 w-7 text-violet-400" />
+        ) : (
+          <span className="text-2xl font-bold text-violet-300">{name?.[0] || "?"}</span>
+        )}
+      </div>
+      <span
+        className={cn(
+          "text-xs font-medium text-center leading-tight line-clamp-2",
+          active ? "text-violet-700" : "text-slate-600"
+        )}
+      >
+        {name}
+        {count !== undefined && <span className="text-slate-400"> ({count})</span>}
+      </span>
+    </button>
+  );
+}
 
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -91,76 +134,60 @@ export default function MarketplacePage() {
           </p>
         </Reveal>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          <aside className="lg:w-56 shrink-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Категорії
-            </p>
-            <div className="flex flex-wrap lg:flex-col gap-2">
-              <button
-                onClick={() => setCategory("")}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm text-left transition-all duration-200 active:scale-95 lg:hover:translate-x-1",
-                  !category ? "bg-violet-100 text-violet-700 font-medium shadow-sm" : "hover:bg-slate-100 text-slate-600"
-                )}
-              >
-                Усі товари
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setCategory(c.slug)}
-                  className={cn(
-                    "rounded-lg px-3 py-2 text-sm text-left transition-all duration-200 active:scale-95 lg:hover:translate-x-1",
-                    category === c.slug
-                      ? "bg-violet-100 text-violet-700 font-medium shadow-sm"
-                      : "hover:bg-slate-100 text-slate-600"
-                  )}
-                >
-                  {c.name}
-                  <span className="ml-1 text-xs text-slate-400">({c.product_count})</span>
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          <div className="flex-1 min-w-0">
-            <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Пошук товарів..."
-                  className="pl-10 rounded-xl"
-                />
-              </div>
-              <Button type="submit" className="rounded-xl">Знайти</Button>
-            </form>
-
-            <ProductGrid products={products} loading={loading} />
-
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-10">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <Button
-                    key={p}
-                    variant={p === page ? "default" : "outline"}
-                    size="sm"
-                    className="rounded-lg w-9"
-                    onClick={() => {
-                      const params = new URLSearchParams(searchParams);
-                      params.set("page", String(p));
-                      setSearchParams(params);
-                    }}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
-            )}
+        {/* Категорії — плитками з іконками (картинки редагуються в адмінці) */}
+        <Reveal as="section" className="mb-8">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+            Категорії
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 md:gap-4">
+            <CategoryTile name="Усі товари" all active={!category} onClick={() => setCategory("")} />
+            {categories.map((c) => (
+              <CategoryTile
+                key={c.id}
+                name={c.name}
+                count={c.product_count}
+                image={c.image_url}
+                active={category === c.slug}
+                onClick={() => setCategory(c.slug)}
+              />
+            ))}
           </div>
-        </div>
+        </Reveal>
+
+        <form onSubmit={handleSearch} className="flex gap-2 mb-6 max-w-xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Пошук товарів..."
+              className="pl-10 rounded-xl"
+            />
+          </div>
+          <Button type="submit" className="rounded-xl">Знайти</Button>
+        </form>
+
+        <ProductGrid products={products} loading={loading} />
+
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-10">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <Button
+                key={p}
+                variant={p === page ? "default" : "outline"}
+                size="sm"
+                className="rounded-lg w-9"
+                onClick={() => {
+                  const params = new URLSearchParams(searchParams);
+                  params.set("page", String(p));
+                  setSearchParams(params);
+                }}
+              >
+                {p}
+              </Button>
+            ))}
+          </div>
+        )}
       </main>
       <SiteFooter />
     </div>

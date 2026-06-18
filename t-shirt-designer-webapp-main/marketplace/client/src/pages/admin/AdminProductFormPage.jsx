@@ -5,14 +5,32 @@ import { Button, Input, Label, Textarea } from "@/components/ui";
 import { api } from "@/lib/api";
 import DesignSelector from "./DesignSelector";
 
+// Має відповідати PRODUCT_TYPES конструктора (src/constants/designConstants.js).
+// Тип, обраний тут, передається у конструктор при «Створити власний дизайн».
 const DESIGNER_TYPES = [
   { value: "", label: "— Без конструктора —" },
   { value: "crew-neck", label: "Футболка" },
-  { value: "mug", label: "Чашка" },
-  { value: "polaroid", label: "Полароїд" },
+  { value: "mug", label: "Чашка біла" },
+  { value: "mug-giant", label: "Чашка велетень" },
+  { value: "mug-magic", label: "Чашка Магічна (хамелеон)" },
+  { value: "mug-color", label: "Чашка кольорова (всередині+ручка)" },
+  { value: "mug-text-inside", label: "Чашка з написами всередині" },
+  { value: "canvas", label: "Полотно (натяжка)" },
+  { value: "polaroid", label: "Полароїд 10×12 верт." },
+  { value: "polaroid-10x12-h", label: "Полароїд 10×12 гор." },
+  { value: "polaroid-8x10-v", label: "Полароїд 8×10 верт." },
+  { value: "polaroid-8x10-h", label: "Полароїд 8×10 гор." },
   { value: "instax-mini", label: "Instax Mini" },
+  { value: "phone-case", label: "Під чохол" },
   { value: "photo-10x15", label: "Фото 10×15" },
   { value: "photo-15x10", label: "Фото 15×10" },
+  { value: "photo-13x18", label: "Фото 13×18" },
+  { value: "photo-18x13", label: "Фото 18×13" },
+  { value: "photo-15x21", label: "Фото 15×21" },
+  { value: "photo-21x15", label: "Фото 21×15" },
+  { value: "photo-a4-p", label: "Фото A4 (верт.)" },
+  { value: "photo-a4-l", label: "Фото A4 (гор.)" },
+  { value: "photo-square", label: "Квадратне фото" },
 ];
 
 const emptyForm = {

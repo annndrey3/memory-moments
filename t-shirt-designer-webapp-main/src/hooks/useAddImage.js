@@ -31,6 +31,7 @@ export function useAddImage() {
             variant: "destructive",
             title: "Низька якість (DPI)",
             description: `Роздільна здатність файлу ${imgObj.width}×${imgObj.height} px. Рекомендується мінімум ${DESIGNER_CONFIG.minWidthPx}×${DESIGNER_CONFIG.minHeightPx} px для якісного друку.`,
+            duration: 6000,
           });
         }
         const image = new fabric.Image(imgObj);

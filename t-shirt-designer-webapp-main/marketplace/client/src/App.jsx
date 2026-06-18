@@ -22,6 +22,7 @@ import AdminServicesPage from "./pages/admin/AdminServicesPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import PhotoPrintPage from "./pages/PhotoPrintPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
+import AdminSlidesPage from "./pages/admin/AdminSlidesPage";
 import { ContactFloatingButton } from "./components/ContactFloatingButton";
 
 export default function App() {
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="services" element={<AdminServicesPage />} />
           <Route path="categories" element={<AdminCategoriesPage />} />
+          <Route path="slides" element={<AdminSlidesPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
       </Routes>

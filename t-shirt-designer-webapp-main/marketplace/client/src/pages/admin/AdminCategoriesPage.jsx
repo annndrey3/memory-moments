@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Layers, Plus, Trash2, Check, X } from "lucide-react";
+import { Loader2, Layers, Plus, Trash2, Check, X, Image as ImageIcon } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
 
@@ -7,6 +7,7 @@ export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
+  const [uploading, setUploading] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [edits, setEdits] = useState({});
   const [newName, setNewName] = useState("");
@@ -43,9 +44,34 @@ export default function AdminCategoriesPage() {
     return (
       e.name !== cat.name ||
       (e.description || "") !== (cat.description || "") ||
+      (e.image_url || "") !== (cat.image_url || "") ||
       Number(e.sort_order) !== Number(cat.sort_order) ||
       Number(e.is_active) !== Number(cat.is_active)
     );
+  };
+
+  // Завантаження іконки: вантажимо файл → одразу зберігаємо категорію (без
+  // окремого кліку «✓»), щоб іконка точно застосувалась.
+  const uploadIcon = async (cat, file) => {
+    if (!file) return;
+    setUploading(cat.id);
+    try {
+      const { url } = await api.uploadImage(file);
+      const data = getEdit(cat);
+      await api.updateCategory(cat.id, {
+        name: data.name,
+        description: data.description || null,
+        image_url: url,
+        sort_order: Number(data.sort_order ?? 0),
+        is_active: Number(data.is_active) ? 1 : 0,
+      });
+      discard(cat.id);
+      load();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setUploading(null);
+    }
   };
 
   const save = async (cat) => {
@@ -55,6 +81,7 @@ export default function AdminCategoriesPage() {
       await api.updateCategory(cat.id, {
         name: data.name,
         description: data.description || null,
+        image_url: data.image_url || null,
         sort_order: Number(data.sort_order ?? 0),
         is_active: Number(data.is_active) ? 1 : 0,
       });
@@ -173,6 +200,9 @@ export default function AdminCategoriesPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 w-32">
+                  Іконка
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Назва / Slug
                 </th>
@@ -197,6 +227,37 @@ export default function AdminCategoriesPage() {
                 const dirty = isDirty(cat);
                 return (
                   <tr key={cat.id} className="group hover:bg-slate-50/60 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center shrink-0">
+                          {e.image_url ? (
+                            <img src={e.image_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon className="h-5 w-5 text-slate-300" />
+                          )}
+                        </div>
+                        <div className="flex flex-col items-start gap-0.5">
+                          <label className="cursor-pointer text-xs font-medium text-violet-600 hover:underline">
+                            {uploading === cat.id ? "…" : e.image_url ? "Змінити" : "Завантажити"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(ev) => uploadIcon(cat, ev.target.files?.[0])}
+                            />
+                          </label>
+                          {e.image_url && (
+                            <button
+                              type="button"
+                              onClick={() => patch(cat.id, "image_url", "")}
+                              className="text-[11px] text-slate-400 hover:text-red-500"
+                            >
+                              Прибрати
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <Input
                         value={e.name}
@@ -294,7 +355,7 @@ export default function AdminCategoriesPage() {
               })}
               {categories.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">
+                  <td colSpan={7} className="text-center py-12 text-slate-400">
                     <Layers className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                     Категорій поки немає
                   </td>
