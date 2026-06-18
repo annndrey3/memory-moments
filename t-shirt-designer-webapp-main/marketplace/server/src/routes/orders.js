@@ -6,6 +6,7 @@ import { query, transaction } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { sendOrderNotification } from "../utils/telegram.js";
+import { sendOrderConfirmation } from "../utils/email.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor } from "../utils/designerPricing.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
@@ -35,10 +36,19 @@ const createOrderLimiter = rateLimit({
   message: { error: "Забагато замовлень. Спробуйте за хвилину." },
 });
 
-function generateOrderNumber() {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
-  return `MM-${ts}-${rand}`;
+// Атомарний лічильник у таблиці settings. Виконується всередині транзакції,
+// щоб номер і вставка замовлення були нерозривними.
+async function generateOrderNumber(tx, source) {
+  const prefix = source === "designer" ? "K" : "S";
+  const seqKey = `order_seq_${prefix}`;
+  await tx.run(
+    `INSERT INTO settings (key, value) VALUES (:key, '1')
+     ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT), updated_at = CURRENT_TIMESTAMP`,
+    { key: seqKey }
+  );
+  const row = await tx.get("SELECT value FROM settings WHERE key = :key", { key: seqKey });
+  const n = String(row?.value ?? 1).padStart(4, "0");
+  return `${prefix}${n}`;
 }
 
 // Атомарне списання складу позиції: спершу обраний варіант (розмір/колір),
@@ -112,7 +122,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
       return res.status(400).json({ error: "Кошик порожній" });
     }
 
-    const orderNumber = generateOrderNumber();
+    // Унікальний ключ для файлів друку — не залежить від номера замовлення.
+    const fileKey = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
     // Прайс-лист один раз на замовлення — джерело цін для всіх позицій конструктора.
     const servicesRows = await query("SELECT code, format, price FROM services WHERE is_active = 1");
@@ -229,23 +240,22 @@ router.post("/", createOrderLimiter, async (req, res) => {
 
         // Зберігаємо друкарські макети на диск (base64 → PNG-файл),
         // щоб уникнути зберігання великих blob у SQLite.
-        const ts = Date.now();
         const printFrontUrl = item.print_front
-          ? savePrintImage(item.print_front, `print_${orderNumber}_${ts}_front.png`)
+          ? savePrintImage(item.print_front, `print_${fileKey}_front.png`)
           : null;
         const printBackUrl = item.print_back
-          ? savePrintImage(item.print_back, `print_${orderNumber}_${ts}_back.png`)
+          ? savePrintImage(item.print_back, `print_${fileKey}_back.png`)
           : null;
         // Сирий кроп зони друку (фото клієнта без рамки шаблону) — для прев'ю в адмінці.
         const rawFrontUrl = item.raw_front
-          ? savePrintImage(item.raw_front, `raw_${orderNumber}_${ts}_front.png`)
+          ? savePrintImage(item.raw_front, `raw_${fileKey}_front.png`)
           : null;
         const rawBackUrl = item.raw_back
-          ? savePrintImage(item.raw_back, `raw_${orderNumber}_${ts}_back.png`)
+          ? savePrintImage(item.raw_back, `raw_${fileKey}_back.png`)
           : null;
         // Зберігаємо мокап-прев'ю на диск (JPEG) замість blob у SQLite.
         const previewUrl = item.design_preview?.startsWith("data:image")
-          ? savePrintImage(item.design_preview, `preview_${orderNumber}_${ts}.jpg`)
+          ? savePrintImage(item.design_preview, `preview_${fileKey}.jpg`)
           : (item.design_preview || null);
 
         // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
@@ -278,7 +288,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
     const total = subtotal; // доставка/податки можна додати тут пізніше
 
     // Уся вставка замовлення + списання складу — в одній транзакції.
+    // Номер замовлення генерується тут же, щоб лічильник і INSERT були атомарними.
     const orderId = await transaction(async (tx) => {
+      const orderNumber = await generateOrderNumber(tx, orderSource);
       const { insertId } = await tx.run(
         `INSERT INTO orders
          (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, total)
@@ -318,6 +330,13 @@ router.post("/", createOrderLimiter, async (req, res) => {
       await sendOrderNotification(order, req.body.images, req.body.documents);
     } catch (e) {
       console.warn("Telegram notify failed:", e.message);
+    }
+
+    // Email-підтвердження покупцю (best-effort).
+    try {
+      await sendOrderConfirmation(order);
+    } catch (e) {
+      console.warn("Email confirmation failed:", e.message);
     }
 
     res.status(201).json(order);

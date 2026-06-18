@@ -17,6 +17,7 @@ import photoUploadRoutes from "./routes/photoUpload.js";
 import cleanupRouter from "./routes/cleanup.js";
 import dataIORoutes from "./routes/dataIO.js";
 import slideRoutes from "./routes/slides.js";
+import customerRoutes from "./routes/customers.js";
 import prerenderRoutes from "./prerender.js";
 
 dotenv.config();
@@ -99,6 +100,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/photos", photoUploadRoutes);
 app.use("/api/admin/cleanup", cleanupRouter);
 app.use("/api/admin/data", dataIORoutes);
+app.use("/api/admin/customers", customerRoutes);
 
 // SSR-пререндер OG для сторінок товару (/product/:slug). nginx направляє сюди
 // лише ботів соцмереж/месенджерів; живі відвідувачі отримують SPA зі статики.

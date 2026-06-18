@@ -1,37 +1,44 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
 import { useCanvas } from "@/hooks/useCanvas";
-import * as fabric from "fabric";
 import { ImageIcon, Move, Crosshair } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const maskBtnClass =
-  "rounded-lg h-8 text-xs bg-sidebar-accent/50 border-sidebar-border/50 text-sidebar-foreground/90 hover:bg-sidebar-accent hover:border-sidebar-primary/30";
+const RAIL_BTN =
+  "flex flex-col items-center justify-center gap-1 h-14 w-14 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all";
+const RAIL_BTN_ACTIVE =
+  "flex flex-col items-center justify-center gap-1 h-14 w-14 shrink-0 rounded-xl border border-violet-400/60 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-all";
 
 const ImageMaskToolBar = ({ manualSync }) => {
   const { activeCanvas, selectedObject } = useCanvas();
-  // Режим «рухати маску»: тягнемо мишею — зміщується clipPath відносно фото.
   const [moveMask, setMoveMask] = useState(false);
+  const [maskScale, setMaskScale] = useState(1);
+  const baseScaleRef = useRef({ x: 1, y: 1 });
 
-  // Зміна вибраного об'єкта скидає режим руху маски.
+  // Скидаємо стан при зміні вибраного об'єкта
   useEffect(() => {
     setMoveMask(false);
+    setMaskScale(1);
   }, [selectedObject]);
 
-  // Прив'язка перетягування, поки активний режим руху маски.
+  // Коли змінюється сам clipPath (нова маска з дропдауна або зміна форми) —
+  // підхоплюємо базовий масштаб, збережений у _baseScaleX/_baseScaleY,
+  // і скидаємо ползунок на 100%
   useEffect(() => {
-    if (
-      !moveMask ||
-      !activeCanvas ||
-      !selectedObject ||
-      selectedObject.type !== "image" ||
-      !selectedObject.clipPath
-    ) {
-      return;
+    const cp = selectedObject?.clipPath;
+    if (cp) {
+      baseScaleRef.current = {
+        x: cp._baseScaleX ?? cp.scaleX ?? 1,
+        y: cp._baseScaleY ?? cp.scaleY ?? 1,
+      };
+      setMaskScale(1);
     }
+  }, [selectedObject?.clipPath]);
+
+  // Перетягування маски мишею
+  useEffect(() => {
+    if (!moveMask || !activeCanvas || !selectedObject || selectedObject.type !== "image" || !selectedObject.clipPath) return;
 
     const img = selectedObject;
-    // Фіксуємо саме зображення, щоб тягнулась маска, а не фото.
     const prev = { x: img.lockMovementX, y: img.lockMovementY };
     img.lockMovementX = true;
     img.lockMovementY = true;
@@ -42,41 +49,32 @@ const ImageMaskToolBar = ({ manualSync }) => {
     const point = (e) =>
       activeCanvas.getScenePoint ? activeCanvas.getScenePoint(e) : activeCanvas.getPointer(e);
 
-    // Канвасні пікселі → локальні пікселі зображення (з урахуванням масштабу й кута).
     const toLocal = (dx, dy) => {
       const sx = img.scaleX || 1;
       const sy = img.scaleY || 1;
       const rad = -((img.angle || 0) * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      return { x: (dx * cos - dy * sin) / sx, y: (dx * sin + dy * cos) / sy };
+      return {
+        x: (dx * Math.cos(rad) - dy * Math.sin(rad)) / sx,
+        y: (dx * Math.sin(rad) + dy * Math.cos(rad)) / sy,
+      };
     };
 
-    const onDown = (opt) => {
-      if (opt.target !== img) return;
-      dragging = true;
-      last = point(opt.e);
-    };
+    const onDown = (opt) => { if (opt.target !== img) return; dragging = true; last = point(opt.e); };
     const onMove = (opt) => {
       if (!dragging || !img.clipPath) return;
       const p = point(opt.e);
       const d = toLocal(p.x - last.x, p.y - last.y);
       last = p;
       img.clipPath.left = (img.clipPath.left || 0) + d.x;
-      img.clipPath.top = (img.clipPath.top || 0) + d.y;
-      img.dirty = true; // скинути кеш промальовки, інакше маска не зрушиться
+      img.clipPath.top  = (img.clipPath.top  || 0) + d.y;
+      img.dirty = true;
       activeCanvas.requestRenderAll();
     };
-    const onUp = () => {
-      if (!dragging) return;
-      dragging = false;
-      manualSync();
-    };
+    const onUp = () => { if (!dragging) return; dragging = false; manualSync(); };
 
     activeCanvas.on("mouse:down", onDown);
     activeCanvas.on("mouse:move", onMove);
     activeCanvas.on("mouse:up", onUp);
-
     return () => {
       activeCanvas.off("mouse:down", onDown);
       activeCanvas.off("mouse:move", onMove);
@@ -86,66 +84,22 @@ const ImageMaskToolBar = ({ manualSync }) => {
     };
   }, [moveMask, activeCanvas, selectedObject, manualSync]);
 
-  if (!selectedObject || selectedObject.type !== "image") {
-    return null;
-  }
+  if (!selectedObject || selectedObject.type !== "image" || !selectedObject.clipPath) return null;
 
-  const hasMask = Boolean(selectedObject.clipPath);
-
-  const applyMask = (shapeType) => {
-    if (!selectedObject || !activeCanvas) return;
-
-    const width = selectedObject.width;
-    const height = selectedObject.height;
-
-    let clipPath = null;
-
-    if (shapeType === "circle") {
-      const radius = Math.min(width, height) / 2;
-      clipPath = new fabric.Circle({
-        radius: radius,
-        originX: "center",
-        originY: "center",
-      });
-    } else if (shapeType === "oval") {
-      clipPath = new fabric.Ellipse({
-        rx: width / 2,
-        ry: height / 2,
-        originX: "center",
-        originY: "center",
-      });
-    } else if (shapeType === "square") {
-      const size = Math.min(width, height);
-      clipPath = new fabric.Rect({
-        width: size,
-        height: size,
-        originX: "center",
-        originY: "center",
-      });
-    } else if (shapeType === "heart") {
-      const size = Math.min(width, height);
-      const path = "M 10,30 A 20,20 0,0,1 50,30 A 20,20 0,0,1 90,30 Q 90,60 50,90 Q 10,60 10,30 z";
-
-      clipPath = new fabric.Path(path, {
-        originX: "center",
-        originY: "center",
-      });
-
-      const bbox = clipPath.getBoundingRect();
-      const scale = size / Math.max(bbox.width, bbox.height);
-      clipPath.scaleX = scale;
-      clipPath.scaleY = scale;
-    }
-
-    selectedObject.set({ clipPath: clipPath });
-    activeCanvas.renderAll();
-    manualSync();
+  const handleMaskScale = (e) => {
+    const val = parseFloat(e.target.value);
+    setMaskScale(val);
+    if (!selectedObject?.clipPath || !activeCanvas) return;
+    selectedObject.clipPath.scaleX = baseScaleRef.current.x * val;
+    selectedObject.clipPath.scaleY = baseScaleRef.current.y * val;
+    selectedObject.dirty = true;
+    activeCanvas.requestRenderAll();
   };
 
   const centerMask = () => {
     if (!selectedObject?.clipPath || !activeCanvas) return;
     selectedObject.clipPath.left = 0;
-    selectedObject.clipPath.top = 0;
+    selectedObject.clipPath.top  = 0;
     selectedObject.dirty = true;
     activeCanvas.renderAll();
     manualSync();
@@ -154,6 +108,7 @@ const ImageMaskToolBar = ({ manualSync }) => {
   const removeMask = () => {
     if (!selectedObject || !activeCanvas) return;
     setMoveMask(false);
+    setMaskScale(1);
     selectedObject.set({ clipPath: null });
     activeCanvas.renderAll();
     manualSync();
@@ -166,62 +121,84 @@ const ImageMaskToolBar = ({ manualSync }) => {
         <p className="text-xs font-semibold text-sidebar-foreground">Маска зображення</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        {[
-          { id: "circle", label: "Коло" },
-          { id: "oval", label: "Овал" },
-          { id: "square", label: "Квадрат" },
-          { id: "heart", label: "Серце" },
-        ].map(({ id, label }) => (
-          <Button
-            key={id}
-            size="sm"
-            variant="outline"
-            className={maskBtnClass}
-            onClick={() => applyMask(id)}
-          >
-            {label}
-          </Button>
-        ))}
+      {/* Масштаб маски */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
+            Розмір маски
+          </span>
+          <span className="text-[10px] font-medium tabular-nums text-sidebar-foreground/70">
+            {Math.round(maskScale * 100)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min="0.1"
+          max="2"
+          step="0.01"
+          value={maskScale}
+          onChange={handleMaskScale}
+          onPointerUp={() => manualSync()}
+          className={cn(
+            "w-full h-1.5 rounded-full appearance-none cursor-pointer",
+            "bg-sidebar-accent/60",
+            "[&::-webkit-slider-thumb]:appearance-none",
+            "[&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4",
+            "[&::-webkit-slider-thumb]:rounded-full",
+            "[&::-webkit-slider-thumb]:bg-violet-500",
+            "[&::-webkit-slider-thumb]:cursor-pointer",
+            "[&::-webkit-slider-thumb]:shadow-sm",
+            "[&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white/20",
+            "[&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4",
+            "[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0",
+            "[&::-moz-range-thumb]:bg-violet-500 [&::-moz-range-thumb]:cursor-pointer"
+          )}
+        />
+        <div className="flex justify-between text-[9px] text-sidebar-foreground/30 select-none">
+          <span>10%</span>
+          <span>100%</span>
+          <span>200%</span>
+        </div>
       </div>
 
-      {hasMask && (
-        <>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setMoveMask((v) => !v)}
-              className={cn(
-                maskBtnClass,
-                moveMask &&
-                  "bg-violet-500/20 border-violet-400/50 text-violet-200 hover:bg-violet-500/30"
-              )}
-            >
-              <Move className="h-3.5 w-3.5" />
-              {moveMask ? "Готово" : "Рухати маску"}
-            </Button>
-            <Button size="sm" variant="outline" className={maskBtnClass} onClick={centerMask}>
-              <Crosshair className="h-3.5 w-3.5" />
-              Центрувати
-            </Button>
-          </div>
-          {moveMask && (
-            <p className="text-[11px] leading-snug text-sidebar-foreground/60">
-              Перетягуйте фото мишею — рухатиметься маска відносно зображення.
-            </p>
-          )}
-        </>
-      )}
+      {/* Дії з маскою */}
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          title={moveMask ? "Готово" : "Рухати маску"}
+          onClick={() => setMoveMask((v) => !v)}
+          className={moveMask ? RAIL_BTN_ACTIVE : RAIL_BTN}
+        >
+          <Move className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">
+            {moveMask ? "Готово" : "Рухати"}
+          </span>
+        </button>
+        <button
+          type="button"
+          title="Центрувати маску"
+          onClick={centerMask}
+          className={RAIL_BTN}
+        >
+          <Crosshair className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Центр</span>
+        </button>
+        <button
+          type="button"
+          title="Зняти маску"
+          onClick={removeMask}
+          className="flex flex-col items-center justify-center gap-1 h-14 w-14 shrink-0 rounded-xl border border-red-500/30 bg-red-500/5 text-red-400 hover:bg-red-500/10 transition-all"
+        >
+          <ImageIcon className="h-5 w-5" />
+          <span className="text-[10px] font-medium leading-none">Зняти</span>
+        </button>
+      </div>
 
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={removeMask}
-        className={cn(maskBtnClass, "w-full text-red-400 bg-red-500/10 border-red-500/20 hover:bg-red-500/20 hover:text-red-300")}
-      >
-        Зняти маску
-      </Button>
+      {moveMask && (
+        <p className="text-[11px] leading-snug text-sidebar-foreground/60">
+          Перетягуйте фото мишею — рухатиметься маска відносно зображення.
+        </p>
+      )}
     </div>
   );
 };

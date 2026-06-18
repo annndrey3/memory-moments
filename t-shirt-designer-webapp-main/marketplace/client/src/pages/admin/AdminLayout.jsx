@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, LogOut, Store, Palette, ShoppingBag, Tag, Settings, Layers, GalleryHorizontal } from "lucide-react";
+import { LayoutDashboard, Package, LogOut, Store, Palette, ShoppingBag, Tag, Settings, Layers, GalleryHorizontal, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
@@ -11,6 +11,7 @@ function Sidebar({ onLogout }) {
 
   const navItems = [
     { to: "/admin/orders",     icon: ShoppingBag, label: "Замовлення",   show: can("orders.view") },
+    { to: "/admin/customers",  icon: Users,       label: "Клієнти",      show: can("orders.view") },
     { to: "/admin/products",   icon: Package,     label: "Товари",       show: can("products.view") },
     { to: "/admin/categories", icon: Layers,      label: "Категорії",    show: can("products.view") },
     { to: "/admin/slides",     icon: GalleryHorizontal, label: "Слайди",   show: true },

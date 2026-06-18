@@ -58,12 +58,12 @@ function App() {
           </header>
 
           <main className="flex-1 px-4 py-3 pb-24 md:px-8 md:py-4">
-            <div className="mx-auto max-w-7xl">
-              <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-start ${showPreview ? "xl:grid-cols-2" : ""}`}>
+            <div className="mx-auto max-w-none">
+              <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${showPreview ? "xl:grid-cols-2" : ""}`}>
                 {/* Preview panel — приховано для футболки (видно в редакторі) */}
                 {showPreview && (
-                <section className="order-2 animate-fade-in-up">
-                  <div className="rounded-2xl border border-border/60 bg-card shadow-soft overflow-hidden transition-shadow hover:shadow-elevated">
+                <section className="order-2 animate-fade-in-up flex flex-col">
+                  <div className="flex flex-col flex-1 rounded-2xl border border-border/60 bg-card shadow-soft overflow-hidden transition-shadow hover:shadow-elevated">
                     <div className="px-4 py-2.5 border-b border-border/50 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50">
                       <h2 className="text-sm font-semibold text-foreground/80 tracking-wide uppercase">
                         Попередній перегляд
@@ -73,8 +73,8 @@ function App() {
                       </p>
                     </div>
 
-                    <div className="p-3">
-                      <div className="h-[clamp(180px,34vh,400px)] relative">
+                    <div className="p-3 flex flex-col flex-1 min-h-0">
+                      <div className="relative flex-1 min-h-[220px]">
                         {product.previewMode === "3d" && product.previewShape === "mug" ? (
                           <>
                             <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
@@ -175,7 +175,7 @@ function App() {
                 )}
 
                 {/* Design canvas panel */}
-                <section className="order-1 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+                <section className="order-1 animate-fade-in-up flex flex-col" style={{ animationDelay: "0.1s" }}>
                   <DesignArea manualSync={manualSync} />
                 </section>
               </div>

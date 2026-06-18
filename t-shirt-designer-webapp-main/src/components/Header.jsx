@@ -26,6 +26,7 @@ const Header = () => {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,12 +43,13 @@ const Header = () => {
     try {
       // Замовлення йде в маркетплейс-API: він зберігає його в адмінці
       // та сам надсилає сповіщення в Telegram (токен бота — лише на сервері).
-      await sendOrderToMarketplace(cartItems, { name, phone, comment });
+      await sendOrderToMarketplace(cartItems, { name, phone, email, comment });
       toast({ title: "Успішно!", description: "Ваше замовлення відправлено!" });
       dispatch(clearCart());
       dispatch(toggleCart(false));
       setName("");
       setPhone("");
+      setEmail("");
       setComment("");
     } catch (error) {
       console.error(error);
@@ -186,6 +188,10 @@ const Header = () => {
                 <div className="space-y-1.5">
                   <Label htmlFor="phone">Телефон *</Label>
                   <Input id="phone" required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+38 (000) 000-00-00" className="rounded-lg" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="rounded-lg" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="comment">Коментар (доставка, відділення)</Label>

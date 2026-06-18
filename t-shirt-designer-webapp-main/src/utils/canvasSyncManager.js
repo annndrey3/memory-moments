@@ -46,6 +46,7 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
     customer: {
       name: customerDetails.name,
       phone: customerDetails.phone,
+      email: customerDetails.email || null,
       notes: customerDetails.comment || null,
     },
     items: cartItems.map((item) => ({

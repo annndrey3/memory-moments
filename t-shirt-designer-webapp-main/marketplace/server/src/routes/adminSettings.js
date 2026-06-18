@@ -243,4 +243,101 @@ router.delete("/gemini", requirePermission("settings.system"), async (req, res) 
   }
 });
 
+// ─── SMTP ─────────────────────────────────────────────────────────────────────
+
+const SMTP_KEYS = ["smtp_host", "smtp_port", "smtp_secure", "smtp_user", "smtp_pass"];
+
+// GET /api/admin/settings/smtp — returns current SMTP config (password masked)
+router.get("/smtp", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const fromDb = {};
+    for (const k of SMTP_KEYS) {
+      fromDb[k] = await getSetting(k);
+    }
+
+    const dbConfigured = Boolean(fromDb.smtp_host && fromDb.smtp_user && fromDb.smtp_pass);
+    const envConfigured = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+    const source = dbConfigured ? "db" : envConfigured ? "env" : null;
+    const active = dbConfigured
+      ? { host: fromDb.smtp_host, port: fromDb.smtp_port, secure: fromDb.smtp_secure, user: fromDb.smtp_user }
+      : envConfigured
+      ? { host: process.env.SMTP_HOST, port: process.env.SMTP_PORT, secure: process.env.SMTP_SECURE, user: process.env.SMTP_USER }
+      : null;
+
+    res.json({
+      configured: Boolean(source),
+      source,
+      host: active?.host || "",
+      port: active?.port || "587",
+      secure: active?.secure || "false",
+      user: active?.user || "",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch SMTP settings" });
+  }
+});
+
+// PUT /api/admin/settings/smtp — save SMTP config to DB
+router.put("/smtp", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const { host, port, secure, user, pass } = req.body;
+    if (!host?.trim() || !user?.trim() || !pass?.trim()) {
+      return res.status(400).json({ error: "Host, user та пароль обов'язкові" });
+    }
+    await setSetting("smtp_host", host.trim());
+    await setSetting("smtp_port", String(port || "587"));
+    await setSetting("smtp_secure", String(secure === true || secure === "true"));
+    await setSetting("smtp_user", user.trim());
+    await setSetting("smtp_pass", pass.trim());
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save SMTP settings" });
+  }
+});
+
+// DELETE /api/admin/settings/smtp — clear DB config (falls back to .env)
+router.delete("/smtp", requirePermission("settings.system"), async (req, res) => {
+  try {
+    for (const k of SMTP_KEYS) {
+      await query("DELETE FROM settings WHERE key = :k", { k });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to clear SMTP settings" });
+  }
+});
+
+// POST /api/admin/settings/smtp/test — send a test email to the current admin
+router.post("/smtp/test", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const { sendOrderConfirmation, isSmtpConfigured } = await import("../utils/email.js");
+    if (!await isSmtpConfigured()) {
+      return res.status(400).json({ error: "SMTP не налаштовано. Спочатку збережіть налаштування." });
+    }
+    const [admin] = await query("SELECT email FROM admins WHERE id = :id", { id: req.admin.id });
+    if (!admin?.email) return res.status(400).json({ error: "Не знайдено email адміна" });
+
+    await sendOrderConfirmation({
+      order_number: "TEST-0001",
+      customer_name: "Тест",
+      customer_email: admin.email,
+      customer_phone: "+380000000000",
+      shipping_address: "вул. Тестова, 1, Одеса",
+      notes: null,
+      total: 350,
+      items: [
+        { product_name: "Футболка з принтом", variant_label: "Розмір: L", quantity: 1, line_total: 350 },
+      ],
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Не вдалося надіслати тестовий лист" });
+  }
+});
+
 export default router;

@@ -141,6 +141,15 @@ export const api = {
     request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
 
+  // Customers
+  getCustomers: (params = {}) => {
+    const q = buildQuery(params);
+    return request(`/admin/customers${q ? `?${q}` : ""}`);
+  },
+  createCustomer: (data) =>
+    request("/admin/customers", { method: "POST", body: JSON.stringify(data) }),
+  deleteCustomer: (id) => request(`/admin/customers/${id}`, { method: "DELETE" }),
+
   // Services / price list
   getServices: () => request("/services"),
   getServicesAdmin: () => request("/services/admin/all"),
@@ -170,6 +179,14 @@ export const api = {
     request("/admin/settings/gemini", { method: "PUT", body: JSON.stringify({ apiKey }) }),
   deleteGeminiKey: () =>
     request("/admin/settings/gemini", { method: "DELETE" }),
+
+  getSmtpSettings: () => request("/admin/settings/smtp"),
+  setSmtpSettings: (data) =>
+    request("/admin/settings/smtp", { method: "PUT", body: JSON.stringify(data) }),
+  deleteSmtpSettings: () =>
+    request("/admin/settings/smtp", { method: "DELETE" }),
+  testSmtp: () =>
+    request("/admin/settings/smtp/test", { method: "POST" }),
 
   // Admin user management
   getAdminUsers: () => request("/admin/settings/users"),

@@ -9,6 +9,10 @@ import SaveDesign from "./SaveDesign";
 import TextToolBar from "./TextToolBar";
 import LineToolBar from "./LineToolBar";
 import ImageMaskToolBar from "./ImageMaskToolBar";
+import MaskDropdownBtn from "./MaskDropdownBtn";
+import ObjectControls from "./ObjectControls";
+import FillDropdownBtn from "./FillDropdownBtn";
+import PropertiesBtn from "./PropertiesBtn";
 import { setSelectedView } from "../features/tshirtSlice";
 import { useCanvas } from "@/hooks/useCanvas";
 import { useAddImage } from "@/hooks/useAddImage";
@@ -67,6 +71,39 @@ const DesignArea = ({ manualSync }) => {
       c.off("object:removed", update);
     };
   }, [activeCanvas]);
+
+  // Delete / Backspace — видалення вибраного; стрілки — переміщення (Shift × 10px)
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
+      if (!activeCanvas) return;
+      const obj = activeCanvas.getActiveObject();
+      if (!obj) return;
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        activeCanvas.remove(obj);
+        activeCanvas.discardActiveObject();
+        activeCanvas.renderAll();
+        manualSync?.();
+        return;
+      }
+
+      const step = e.shiftKey ? 10 : 1;
+      const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      if (moves[e.key]) {
+        e.preventDefault();
+        const [dx, dy] = moves[e.key];
+        obj.set({ left: (obj.left || 0) + dx, top: (obj.top || 0) + dy });
+        obj.setCoords();
+        activeCanvas.renderAll();
+        manualSync?.();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [activeCanvas, manualSync]);
 
   const getPrintableArea = () =>
     activeCanvas?.printArea || { left: 0, top: 0, width: CANVAS_CONFIG.width, height: CANVAS_CONFIG.height };
@@ -191,6 +228,8 @@ const DesignArea = ({ manualSync }) => {
               <ToolBtn icon={ImagePlus} label="Фото" onClick={triggerFileInput} />
               <ToolBtn icon={Type} label="Текст" onClick={handleAddText} />
               <ToolBtn icon={Slash} label="Лінія" onClick={handleAddLine} />
+              <MaskDropdownBtn manualSync={manualSync} />
+              <FillDropdownBtn manualSync={manualSync} />
             </div>
 
             {/* CANVAS + контекстне редагування */}
@@ -227,18 +266,12 @@ const DesignArea = ({ manualSync }) => {
                 )}
               </div>
 
-              {/* Контекстне редагування вибраного об'єкта (темна панель під холстом) */}
-              {selectedObject && (
-                <div className="w-full max-w-[450px] bg-sidebar text-sidebar-foreground rounded-xl px-3 pb-3">
-                  <TextToolBar manualSync={manualSync} />
-                  <LineToolBar manualSync={manualSync} />
-                  <ImageMaskToolBar manualSync={manualSync} />
-                </div>
-              )}
             </div>
 
             {/* ACTIONS (ряд на мобільному / стовпчик справа на ПК) */}
             <div className="flex flex-row lg:flex-col gap-1.5 justify-center lg:justify-start">
+              <PropertiesBtn manualSync={manualSync} />
+              <ObjectControls manualSync={manualSync} />
               <ToolBtn icon={Trash} label="Видалити" onClick={handleDelete} danger disabled={!selectedObject} />
               <ToolBtn icon={Trash2} label="Очистити" onClick={handleClearAll} danger />
               <SaveDesign className={RAIL_BTN} />

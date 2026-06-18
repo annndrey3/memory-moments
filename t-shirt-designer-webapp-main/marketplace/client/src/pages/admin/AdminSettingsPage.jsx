@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Loader2, Save, KeyRound, Lock, CheckCircle, AlertCircle,
   Eye, EyeOff, Trash2, UserPlus, Users, Mail, ShieldCheck, ChevronDown, ChevronUp,
-  HardDrive, Database, Download, Upload,
+  HardDrive, Database, Download, Upload, Send,
 } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -600,6 +600,186 @@ function UsersSection() {
   );
 }
 
+// ─── SMTP section ─────────────────────────────────────────────────────────────
+function SmtpSection() {
+  const [info, setInfo] = useState(null);
+  const [form, setForm] = useState({ host: "", port: "587", secure: false, user: "", pass: "" });
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    api.getSmtpSettings()
+      .then((data) => {
+        setInfo(data);
+        if (!data.configured) setEditing(true);
+      })
+      .catch((e) => setStatus({ type: "error", msg: e.message }))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const save = async () => {
+    setSaving(true); setStatus(null);
+    try {
+      await api.setSmtpSettings({
+        host: form.host.trim(),
+        port: form.port,
+        secure: form.secure,
+        user: form.user.trim(),
+        pass: form.pass.trim(),
+      });
+      setStatus({ type: "success", msg: "Налаштування збережено" });
+      setEditing(false);
+      setForm((f) => ({ ...f, pass: "" }));
+      load();
+    } catch (e) {
+      setStatus({ type: "error", msg: e.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!window.confirm("Видалити збережені SMTP-налаштування? Буде використано .env (якщо є).")) return;
+    try {
+      await api.deleteSmtpSettings();
+      setStatus({ type: "success", msg: "Налаштування видалено" });
+      setEditing(true);
+      load();
+    } catch (e) {
+      setStatus({ type: "error", msg: e.message });
+    }
+  };
+
+  const test = async () => {
+    setTesting(true); setStatus(null);
+    try {
+      await api.testSmtp();
+      setStatus({ type: "success", msg: "Тестовий лист надіслано на вашу пошту адміна" });
+    } catch (e) {
+      setStatus({ type: "error", msg: e.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const setF = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  return (
+    <div className="space-y-4">
+      {loading ? (
+        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+      ) : (
+        <>
+          {info?.configured && !editing && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">SMTP налаштовано</p>
+              <p className="text-sm text-emerald-900 font-mono">{info.user}</p>
+              <p className="text-xs text-emerald-600">Хост: {info.host}:{info.port} · Джерело: {info.source === "db" ? "БД" : ".env"}</p>
+            </div>
+          )}
+
+          {!info?.configured && !editing && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              SMTP не налаштовано — підтверджувальні листи не надсилаються.
+            </div>
+          )}
+
+          {editing && (
+            <div className="space-y-3 max-w-sm">
+              <div className="space-y-1.5">
+                <Label>SMTP хост</Label>
+                <Input value={form.host} onChange={(e) => setF("host", e.target.value)} placeholder="mail.memory-moments.online" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Порт</Label>
+                  <Input value={form.port} onChange={(e) => setF("port", e.target.value)} placeholder="587" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>SSL (порт 465)</Label>
+                  <div className="flex items-center h-10">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={form.secure}
+                        onChange={(e) => setF("secure", e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
+                      <span className="text-sm text-slate-700">Увімкнено</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Адреса відправника (SMTP login)</Label>
+                <Input type="email" value={form.user} onChange={(e) => setF("user", e.target.value)} placeholder="orders@memory-moments.online" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Пароль</Label>
+                <div className="relative">
+                  <Input
+                    type={showPass ? "text" : "password"}
+                    value={form.pass}
+                    onChange={(e) => setF("pass", e.target.value)}
+                    placeholder="••••••••"
+                    className="pr-10"
+                  />
+                  <button type="button" onClick={() => setShowPass((s) => !s)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <StatusMsg {...(status || {})} />
+
+          <div className="flex flex-wrap gap-2">
+            {editing ? (
+              <>
+                <Button onClick={save} disabled={saving || !form.host.trim() || !form.user.trim() || !form.pass.trim()} className="rounded-lg">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Зберегти
+                </Button>
+                {info?.configured && (
+                  <Button variant="outline" onClick={() => setEditing(false)} className="rounded-lg">
+                    Скасувати
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button variant="outline" onClick={() => setEditing(true)} className="rounded-lg">
+                Змінити
+              </Button>
+            )}
+            {info?.configured && !editing && (
+              <>
+                <Button variant="outline" onClick={test} disabled={testing} className="rounded-lg">
+                  {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Тестовий лист
+                </Button>
+                {info.source === "db" && (
+                  <Button variant="outline" onClick={remove} className="rounded-lg text-red-600 border-red-200 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                    Видалити
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Cleanup section ──────────────────────────────────────────────────────────
 function CleanupSection() {
   const [days, setDays] = useState(30);
@@ -713,6 +893,12 @@ export default function AdminSettingsPage() {
       {isSuperadmin && (
         <SectionCard icon={KeyRound} title="Gemini API">
           <GeminiSection />
+        </SectionCard>
+      )}
+
+      {isSuperadmin && (
+        <SectionCard icon={Send} title="Email / SMTP">
+          <SmtpSection />
         </SectionCard>
       )}
 

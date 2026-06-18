@@ -2,6 +2,26 @@ import { Center, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { useMemo } from "react";
 
+// Градієнтна alphaMap для країв термопокриття: чорний (прозорий) на краях → білий (непрозорий) в центрі.
+// Нижній край набуває м'якого fade-ефекту — виглядає як нагрівання від окропу.
+function buildCoatAlphaMap() {
+  const w = 4, h = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0,    "white");  // верхній край — повністю непрозорий
+  grad.addColorStop(0.82, "white");  // плавний вихід
+  grad.addColorStop(1,    "black");  // нижній край — прозорий
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export function MugModel({
   innerColor = "#FFFFFF",
   designTexture,
@@ -35,6 +55,7 @@ export function MugModel({
   // було z-fighting (мерехтіння/вертикальна смуга) при зумі. Вище за корпус (2.4),
   // щоб на 0% повністю закривати низ/вінця.
   const coatGeometry = useMemo(() => new THREE.CylinderGeometry(1.03, 1.03, 2.4, 64, 1, true), []);
+  const coatAlphaMap = useMemo(() => buildCoatAlphaMap(), []);
 
   return (
     <Center position={[0, -0.2, 0]}>
@@ -78,6 +99,9 @@ export function MugModel({
               clearcoat={0.6}
               clearcoatRoughness={0.2}
               side={THREE.FrontSide}
+              transparent={true}
+              opacity={0.88}
+              alphaMap={coatAlphaMap}
               polygonOffset={true}
               polygonOffsetFactor={-4}
               polygonOffsetUnits={-4}
