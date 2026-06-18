@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Loader2, Save, KeyRound, Lock, CheckCircle, AlertCircle,
+  Loader2, Save, Lock, CheckCircle, AlertCircle,
   Eye, EyeOff, Trash2, UserPlus, Users, Mail, ShieldCheck, ChevronDown, ChevronUp,
   HardDrive, Database, Download, Upload, Send,
 } from "lucide-react";
@@ -41,7 +41,7 @@ const PERM_SECTIONS = [
   {
     label: "Налаштування",
     perms: [
-      { key: "settings.system", label: "Gemini API ключ" },
+      { key: "settings.system", label: "Системні налаштування" },
     ],
   },
 ];
@@ -314,103 +314,6 @@ function PasswordSection() {
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
         Змінити пароль
       </Button>
-    </div>
-  );
-}
-
-// ─── Gemini section ───────────────────────────────────────────────────────────
-function GeminiSection() {
-  const [info, setInfo] = useState(null);
-  const [key, setKey] = useState("");
-  const [show, setShow] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState(null);
-
-  const load = () => {
-    setLoading(true);
-    api.getGeminiSettings()
-      .then(setInfo)
-      .catch((e) => setStatus({ type: "error", msg: e.message }))
-      .finally(() => setLoading(false));
-  };
-  useEffect(load, []);
-
-  const save = async () => {
-    if (!key.trim()) return;
-    setSaving(true); setStatus(null);
-    try {
-      await api.setGeminiKey(key.trim());
-      setKey("");
-      setStatus({ type: "success", msg: "Ключ збережено в БД" });
-      load();
-    } catch (e) {
-      setStatus({ type: "error", msg: e.message });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const remove = async () => {
-    if (!window.confirm("Видалити збережений ключ?")) return;
-    try {
-      await api.deleteGeminiKey();
-      setStatus({ type: "success", msg: "Ключ видалено" });
-      load();
-    } catch (e) {
-      setStatus({ type: "error", msg: e.message });
-    }
-  };
-
-  return (
-    <div className="space-y-4 max-w-sm">
-      {loading ? (
-        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
-      ) : (
-        <>
-          {info?.hasKey ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Ключ активний</p>
-              <p className="font-mono text-sm text-emerald-900">{info.masked}</p>
-              <p className="text-xs text-emerald-600">Джерело: {info.source === "db" ? "БД" : ".env"}</p>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Ключ не налаштовано — імпорт Excel не працюватиме.
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label>Новий API ключ</Label>
-            <div className="relative">
-              <Input
-                type={show ? "text" : "password"}
-                value={key}
-                onChange={(e) => setKey(e.target.value)}
-                placeholder="AIza..."
-                className="pr-10 font-mono text-sm"
-              />
-              <button type="button" onClick={() => setShow((s) => !s)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-slate-400">Безкоштовний ключ: aistudio.google.com</p>
-          </div>
-          <StatusMsg {...(status || {})} />
-          <div className="flex gap-2">
-            <Button onClick={save} disabled={saving || !key.trim()} className="rounded-lg">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-              Зберегти ключ
-            </Button>
-            {info?.hasKey && info.source === "db" && (
-              <Button variant="outline" onClick={remove} className="rounded-lg text-red-600 border-red-200 hover:bg-red-50">
-                <Trash2 className="h-4 w-4" />
-                Видалити
-              </Button>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }
@@ -893,12 +796,6 @@ export default function AdminSettingsPage() {
       {isSuperadmin && (
         <SectionCard icon={Users} title="Користувачі адмінки">
           <UsersSection />
-        </SectionCard>
-      )}
-
-      {isSuperadmin && (
-        <SectionCard icon={KeyRound} title="Gemini API">
-          <GeminiSection />
         </SectionCard>
       )}
 
