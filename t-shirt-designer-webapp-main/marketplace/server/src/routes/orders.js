@@ -44,7 +44,7 @@ async function generateOrderNumber(tx, source) {
   const seqKey = `order_seq_${prefix}`;
   await tx.run(
     `INSERT INTO settings (key, value) VALUES (:key, '1')
-     ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT), updated_at = CURRENT_TIMESTAMP`,
+     ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT), updated_at = CURRENT_TIMESTAMP`,
     { key: seqKey }
   );
   const row = await tx.get("SELECT value FROM settings WHERE key = :key", { key: seqKey });
