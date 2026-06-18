@@ -63,4 +63,4 @@ export function FrontT({ tshirtColor, designTexture, onViewChange }) {
   );
 }
 
-useGLTF.preload("/3Dmodels/front.glb");
+useGLTF.preload(FRONT_GLB);

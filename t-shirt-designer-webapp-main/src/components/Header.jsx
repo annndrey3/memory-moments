@@ -61,9 +61,10 @@ const Header = () => {
     <div className="w-full flex justify-between items-center gap-4 px-4 py-3 md:px-8 md:py-4">
       <div className="flex items-center gap-3 min-w-0">
         <picture>
-          <source srcSet="/logo-mm.webp" type="image/webp" />
+          {/* BASE_URL = "/designer/" у проді — інакше лого шукається в корені домену (маркетплейс) і не вантажиться */}
+          <source srcSet={`${import.meta.env.BASE_URL}logo-mm.webp`} type="image/webp" />
           <img
-            src="/logo-mm.png"
+            src={`${import.meta.env.BASE_URL}logo-mm.png`}
             alt="Memory Moments"
             className="h-10 md:h-12 w-auto object-contain"
           />
