@@ -264,8 +264,8 @@ server {
     root $PROJECT_DIR/marketplace/client/dist;
     index index.html;
 
-    # 25 MB — замовлення з конструктора несуть base64 PNG макетів
-    client_max_body_size 25m;
+    # 100 MB — замовлення з конструктора несуть base64 PNG макетів (front+back, друк+прев'ю)
+    client_max_body_size 100m;
 
     # ── API ──────────────────────────────────────────────────────────────────
     location /api/ {
