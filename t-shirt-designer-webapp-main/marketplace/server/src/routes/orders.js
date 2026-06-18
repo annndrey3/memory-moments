@@ -7,6 +7,7 @@ import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
+import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor } from "../utils/designerPricing.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
@@ -323,6 +324,14 @@ router.post("/", createOrderLimiter, async (req, res) => {
     });
 
     const order = await getOrderWithItems(orderId);
+
+    // Авто-захоплення клієнта (best-effort): зливаємо за телефоном/email, інакше створюємо.
+    // Клієнт одразу зʼявляється в адмінці. Помилка не валить замовлення.
+    try {
+      await upsertCustomerFromContact({ name, email, phone, source });
+    } catch (e) {
+      console.warn("Customer upsert failed:", e.message);
+    }
 
     // Сповіщення в Telegram (best-effort — не валимо замовлення, якщо TG недоступний).
     // images — стиснені прев'ю (інлайн), documents — друкарські макети (без перестиску).

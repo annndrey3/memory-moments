@@ -8,7 +8,6 @@ import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
 import TextToolBar from "./TextToolBar";
 import LineToolBar from "./LineToolBar";
-import ImageMaskToolBar from "./ImageMaskToolBar";
 import MaskDropdownBtn from "./MaskDropdownBtn";
 import ObjectControls from "./ObjectControls";
 import FillDropdownBtn from "./FillDropdownBtn";
@@ -255,6 +254,9 @@ const DesignArea = ({ manualSync }) => {
                       <ImagePlus className="h-9 w-9 text-violet-500" />
                       <span className="text-sm font-semibold text-violet-700">Натисніть, щоб додати фото</span>
                       <span className="text-[11px] text-muted-foreground">або перетягніть зображення сюди</span>
+                      <span className="mt-1 max-w-[230px] text-center text-[10px] leading-snug text-amber-600">
+                        Важливо: завантажуйте оригінал фото у високій якості — від цього залежить чіткість друку
+                      </span>
                     </span>
                   </button>
                 )}

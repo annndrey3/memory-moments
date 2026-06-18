@@ -50,8 +50,8 @@ export default function AdminCustomersPage() {
   const handleAdd = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.name.trim() || !form.email.trim()) {
-      setError("Ім'я та email обов'язкові");
+    if (!form.name.trim() || (!form.email.trim() && !form.phone.trim())) {
+      setError("Вкажіть ім'я та email або телефон");
       return;
     }
     setSaving(true);
@@ -115,14 +115,13 @@ export default function AdminCustomersPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Email *</label>
+              <label className="text-xs font-medium text-slate-600">Email</label>
               <Input
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={handleFormChange}
                 placeholder="client@example.com"
-                required
               />
             </div>
             <div className="space-y-1">
@@ -135,6 +134,9 @@ export default function AdminCustomersPage() {
                 placeholder="+38 (000) 000-00-00"
               />
             </div>
+            <p className="sm:col-span-2 -mt-1 text-xs text-slate-400">
+              Потрібен email або телефон — за ними клієнти звіряються й не дублюються.
+            </p>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">Нотатки</label>
               <Input
@@ -215,13 +217,17 @@ export default function AdminCustomersPage() {
                 <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-slate-900">{c.name}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    <a
-                      href={`mailto:${c.email}`}
-                      className="flex items-center gap-1.5 hover:text-violet-600 transition-colors"
-                    >
-                      <Mail className="h-3.5 w-3.5 shrink-0" />
-                      {c.email}
-                    </a>
+                    {c.email ? (
+                      <a
+                        href={`mailto:${c.email}`}
+                        className="flex items-center gap-1.5 hover:text-violet-600 transition-colors"
+                      >
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        {c.email}
+                      </a>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-500 hidden md:table-cell">
                     {c.phone ? (

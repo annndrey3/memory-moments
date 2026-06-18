@@ -48,15 +48,21 @@ const PERM_SECTIONS = [
 
 // ─── Shared components ────────────────────────────────────────────────────────
 // ─── Імпорт / експорт даних (JSON) ─────────────────────────────────────────────
+// Третій елемент = true → лише для суперадміна (персональні дані клієнтів).
 const DATA_KINDS = [
   ["categories", "Категорії"],
   ["services", "Прайс"],
   ["products", "Товари"],
+  ["customers", "Клієнти", true],
 ];
 
 function DataSection() {
+  const { role } = usePermissions();
+  const isSuperadmin = role === "superadmin";
   const [busy, setBusy] = useState(null);
   const [msg, setMsg] = useState("");
+
+  const kinds = DATA_KINDS.filter(([, , superOnly]) => !superOnly || isSuperadmin);
 
   const exportKind = async (kind, label) => {
     setBusy(`${kind}-exp`); setMsg("");
@@ -89,7 +95,7 @@ function DataSection() {
         Імпорт лише <b>оновлює та додає</b> (нічого не видаляє), тож ціни, до яких прив'язаний
         конструктор, не зламаються.
       </p>
-      {DATA_KINDS.map(([kind, label]) => (
+      {kinds.map(([kind, label]) => (
         <div key={kind} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
           <span className="text-sm font-medium text-slate-700">{label}</span>
           <div className="flex items-center gap-2">

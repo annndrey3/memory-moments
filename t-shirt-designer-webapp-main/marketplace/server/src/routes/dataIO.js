@@ -8,6 +8,7 @@ import ExcelJS from "exceljs";
 import { query } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { slugify, uniqueSlug } from "../utils/helpers.js";
+import { findCustomerByContact, normalizeEmail, phoneKey } from "../utils/customers.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -19,6 +20,7 @@ const COLUMNS = {
   services: ["category", "code", "name", "format", "price", "price_insta", "sort_order"],
   products: ["name", "slug", "category_slug", "short_description", "description", "price",
     "compare_at_price", "sku", "stock_quantity", "designer_type", "is_active", "is_featured", "images", "variants"],
+  customers: ["name", "email", "phone", "notes", "source"],
 };
 
 // ── Розгортання значення комірки exceljs у примітив ──
@@ -42,6 +44,9 @@ async function rowsServices() {
      ORDER BY sc.sort_order, sc.id, s.sort_order, s.id`
   );
 }
+async function rowsCustomers() {
+  return query("SELECT name, email, phone, notes, source FROM customers ORDER BY created_at DESC, id DESC");
+}
 async function rowsProducts() {
   const products = await query("SELECT * FROM products ORDER BY id");
   const cats = await query("SELECT id, slug FROM categories");
@@ -63,7 +68,10 @@ async function rowsProducts() {
 }
 
 async function buildWorkbook(kind) {
-  const rows = kind === "categories" ? await rowsCategories() : kind === "services" ? await rowsServices() : await rowsProducts();
+  const rows = kind === "categories" ? await rowsCategories()
+    : kind === "services" ? await rowsServices()
+    : kind === "customers" ? await rowsCustomers()
+    : await rowsProducts();
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(kind);
   ws.columns = COLUMNS[kind].map((c) => ({ header: c, key: c, width: c === "description" || c === "variants" || c === "images" ? 40 : 18 }));
@@ -76,6 +84,9 @@ router.get("/export/:kind", authMiddleware, async (req, res) => {
   try {
     const { kind } = req.params;
     if (!COLUMNS[kind]) return res.status(400).json({ error: "Невідомий тип експорту" });
+    // База клієнтів — персональні дані, лише суперадмін.
+    if (kind === "customers" && req.admin?.role !== "superadmin")
+      return res.status(403).json({ error: "Доступ лише для суперадміна" });
     const wb = await buildWorkbook(kind);
     const buf = await wb.xlsx.writeBuffer();
     res.setHeader("Content-Type", XLSX_MIME);
@@ -239,15 +250,51 @@ async function importProducts(rows) {
   return { created, updated, skipped };
 }
 
+async function importCustomers(rows) {
+  let created = 0, updated = 0, skipped = 0;
+  for (const r of rows) {
+    const name = s(r.name);
+    const email = normalizeEmail(s(r.email));
+    const phone = s(r.phone) || null;
+    const notes = s(r.notes) || null;
+    // Потрібне ім'я + хоча б один контакт (email або телефон) для звірки.
+    if (!name || (!email && !phoneKey(phone))) { skipped++; continue; }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { skipped++; continue; }
+    // Звірка за email АБО телефоном — той самий механізм, що й при замовленнях.
+    const existing = await findCustomerByContact({ email, phone });
+    if (existing) {
+      await query(
+        `UPDATE customers SET name=:name, email=COALESCE(email, :email),
+         phone=COALESCE(NULLIF(phone, ''), :phone), notes=COALESCE(:notes, notes),
+         updated_at=CURRENT_TIMESTAMP WHERE id=:id`,
+        { name, email, phone, notes, id: existing.id }
+      );
+      updated++;
+    } else {
+      const source = s(r.source) || "import";
+      await query(
+        "INSERT INTO customers (name, email, phone, notes, source) VALUES (:name,:email,:phone,:notes,:source)",
+        { name, email, phone, notes, source }
+      );
+      created++;
+    }
+  }
+  return { created, updated, skipped };
+}
+
 router.post("/import/:kind", authMiddleware, upload.single("file"), async (req, res) => {
   try {
     const { kind } = req.params;
     if (!COLUMNS[kind]) return res.status(400).json({ error: "Невідомий тип імпорту" });
+    // База клієнтів — персональні дані, лише суперадмін.
+    if (kind === "customers" && req.admin?.role !== "superadmin")
+      return res.status(403).json({ error: "Доступ лише для суперадміна" });
     if (!req.file) return res.status(400).json({ error: "Файл не надіслано" });
     const rows = await parseSheet(req.file.buffer);
     const result =
       kind === "categories" ? await importCategories(rows)
       : kind === "services" ? await importServices(rows)
+      : kind === "customers" ? await importCustomers(rows)
       : await importProducts(rows);
     res.json({ ok: true, ...result });
   } catch (e) {

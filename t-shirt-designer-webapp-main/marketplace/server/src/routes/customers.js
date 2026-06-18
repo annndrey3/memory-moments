@@ -2,6 +2,7 @@ import { Router } from "express";
 import { query } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/requirePermission.js";
+import { findCustomerByContact, normalizeEmail, phoneKey } from "../utils/customers.js";
 
 const router = Router();
 router.use(authMiddleware);
@@ -30,25 +31,30 @@ router.get("/", requirePermission("orders.view"), async (req, res) => {
   }
 });
 
-// POST /api/admin/customers
+// POST /api/admin/customers — додає лише нового; дублі звіряються за email АБО телефоном.
 router.post("/", requirePermission("orders.manage"), async (req, res) => {
   try {
     const { name, email, phone, notes } = req.body;
-    if (!name?.trim() || !email?.trim()) {
-      return res.status(400).json({ error: "Ім'я та email обов'язкові" });
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "Ім'я обов'язкове" });
+    }
+
+    const cleanEmail = normalizeEmail(email);
+    const cleanPhone = phone?.trim() || null;
+
+    // Прив'язка йде за телефоном або email — потрібен хоча б один контакт.
+    if (!cleanEmail && !phoneKey(cleanPhone)) {
+      return res.status(400).json({ error: "Вкажіть email або телефон" });
     }
 
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRe.test(email.trim())) {
+    if (cleanEmail && !emailRe.test(cleanEmail)) {
       return res.status(400).json({ error: "Невалідний email" });
     }
 
-    const existing = await query(
-      "SELECT id FROM customers WHERE email = :email LIMIT 1",
-      { email: email.trim().toLowerCase() }
-    );
-    if (existing.length) {
-      return res.status(409).json({ error: "Клієнт з таким email вже існує" });
+    const existing = await findCustomerByContact({ email: cleanEmail, phone: cleanPhone });
+    if (existing) {
+      return res.status(409).json({ error: "Клієнт з таким email або телефоном вже існує" });
     }
 
     const result = await query(
@@ -56,8 +62,8 @@ router.post("/", requirePermission("orders.manage"), async (req, res) => {
        VALUES (:name, :email, :phone, :notes, 'manual')`,
       {
         name: name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone?.trim() || null,
+        email: cleanEmail,
+        phone: cleanPhone,
         notes: notes?.trim() || null,
       }
     );

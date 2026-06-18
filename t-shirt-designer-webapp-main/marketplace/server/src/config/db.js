@@ -238,7 +238,7 @@ if (process.env.DATABASE_URL) {
     CREATE TABLE IF NOT EXISTS customers (
       id BIGSERIAL PRIMARY KEY,
       name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
+      email TEXT UNIQUE,
       phone TEXT,
       notes TEXT,
       source TEXT NOT NULL DEFAULT 'manual',
@@ -258,6 +258,8 @@ if (process.env.DATABASE_URL) {
 
   // Idempotent column migrations (PostgreSQL)
   await _pool.query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT;");
+  // Клієнти із замовлень конструктора часто без email (там обов'язковий лише телефон).
+  await _pool.query("ALTER TABLE customers ALTER COLUMN email DROP NOT NULL;");
 
 // ═══════════════════════════════════════════════════════════════════════
 // SQLite  (default when DATABASE_URL is not set)
@@ -548,7 +550,7 @@ if (process.env.DATABASE_URL) {
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
+      email TEXT UNIQUE,
       phone TEXT,
       notes TEXT,
       source TEXT NOT NULL DEFAULT 'manual',
@@ -556,6 +558,31 @@ if (process.env.DATABASE_URL) {
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // Робимо email необов'язковим, якщо таблиця створена раніше з NOT NULL.
+  // SQLite не вміє DROP NOT NULL через ALTER — перебудовуємо таблицю.
+  const customerCols = db.prepare("PRAGMA table_info(customers)").all();
+  const emailCol = customerCols.find((c) => c.name === "email");
+  if (emailCol && emailCol.notnull === 1) {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE customers_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE,
+          phone TEXT,
+          notes TEXT,
+          source TEXT NOT NULL DEFAULT 'manual',
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO customers_new (id, name, email, phone, notes, source, created_at, updated_at)
+          SELECT id, name, NULLIF(email, ''), phone, notes, source, created_at, updated_at FROM customers;
+        DROP TABLE customers;
+        ALTER TABLE customers_new RENAME TO customers;
+      `);
+    })();
+  }
 
   // Column migrations (idempotent)
   const adminCols = db.prepare("PRAGMA table_info(admins)").all();

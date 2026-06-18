@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, Trash2, Camera, Loader2 } from "lucide-react";
+import { Upload, Trash2, Camera, Loader2, Info } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui";
@@ -168,6 +168,20 @@ export default function PhotoPrintPage() {
             className="hidden"
             onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
           />
+        </div>
+
+        {/* Нагадування про якість оригіналів */}
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 animate-fade-in-up">
+          <Info className="h-5 w-5 shrink-0 text-amber-500 mt-0.5" />
+          <div className="text-sm leading-relaxed text-amber-900/90">
+            <p className="font-semibold mb-0.5">Важливо: якість оригіналів фото</p>
+            <p>
+              Завантажуйте фото у максимальній якості — чим більша роздільна здатність,
+              тим чіткіший друк. Знімки, надіслані через Viber, Telegram чи Instagram,
+              сильно стискаються й можуть вийти розмитими. Краще беріть оригінали з галереї
+              телефону або камери.
+            </p>
+          </div>
         </div>
 
         {photos.length > 0 && (
