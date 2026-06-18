@@ -56,9 +56,12 @@ if (process.env.DATABASE_URL) {
       const tx = {
         run: async (sql, params = {}) => {
           // Auto-append RETURNING id to INSERT so callers get insertId.
+          // Виняток — settings: PK = key, колонки id немає (інакше "column id does not exist").
+          // Її upsert-и (лічильник номерів замовлень) insertId не потребують.
           const isInsert = /^\s*INSERT/i.test(sql);
+          const intoSettings = /^\s*INSERT\s+INTO\s+settings\b/i.test(sql);
           const finalSql =
-            isInsert && !/RETURNING/i.test(sql)
+            isInsert && !intoSettings && !/RETURNING/i.test(sql)
               ? sql.replace(/;?\s*$/, "") + " RETURNING id"
               : sql;
           const { text, values } = namedToPositional(finalSql, params);
