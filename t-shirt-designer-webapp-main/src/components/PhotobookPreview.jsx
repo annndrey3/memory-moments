@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import HTMLFlipBook from "react-pageflip";
 import { X, ChevronLeft, ChevronRight, Minimize2, Maximize2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,7 @@ export default function PhotobookPreview({
 
   // ── Згорнутий стан: плаваюча кнопка для відновлення ──
   if (minimized) {
-    return (
+    return createPortal(
       <div className="fixed bottom-4 right-4 z-[60] flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 shadow-elevated">
         <BookOpen className="h-4 w-4 text-violet-600" />
         <button className="text-sm font-semibold text-foreground hover:text-violet-600" onClick={onRestore}>
@@ -67,7 +68,8 @@ export default function PhotobookPreview({
         <button className="rounded-md p-1 text-muted-foreground hover:text-destructive" title="Закрити" onClick={onClose}>
           <X className="h-4 w-4" />
         </button>
-      </div>
+      </div>,
+      document.body
     );
   }
 
@@ -78,7 +80,7 @@ export default function PhotobookPreview({
   pageH = Math.round(Math.max(220, Math.min(pageH, 1000)));
   const pageW = Math.round(pageH * ratio);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex flex-col bg-slate-900/95 backdrop-blur-sm">
       {/* Топ-бар */}
       <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3 text-white">
@@ -168,6 +170,7 @@ export default function PhotobookPreview({
           </p>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
