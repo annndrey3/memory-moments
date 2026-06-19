@@ -46,10 +46,14 @@ export default function PhotobookPreview({
   const [w, h] = String(format).split("x").map(Number);
   const ratio = w && h ? w / h : 0.7;
 
+  // Кожне фото-розворот = ДВІ сторінки книги (як у редакторі): ліва половина на
+  // лівій сторінці, права — на правій, тож відкритий розворот = цілісне фото.
   const pages = useMemo(() => {
     const list = [{ type: "cover" }];
-    photos.forEach((src, i) => list.push({ type: "photo", src, i }));
-    if (photos.length % 2 === 1) list.push({ type: "blank" });
+    photos.forEach((src, i) => {
+      list.push({ type: "spread", src, i, half: "left" });
+      list.push({ type: "spread", src, i, half: "right" });
+    });
     list.push({ type: "back" });
     return list;
   }, [photos]);
@@ -131,8 +135,17 @@ export default function PhotobookPreview({
                       Обкладинка
                     </div>
                   )
-                ) : p.type === "photo" ? (
-                  <img src={p.src} alt={`Фото ${p.i + 1}`} className="h-full w-full object-cover" />
+                ) : p.type === "spread" ? (
+                  // Половина ландшафтного розвороту (2w:h): 200%×100% без спотворення.
+                  <div
+                    className="h-full w-full bg-white"
+                    style={{
+                      backgroundImage: `url(${p.src})`,
+                      backgroundSize: "200% 100%",
+                      backgroundPosition: p.half === "left" ? "left center" : "right center",
+                      backgroundRepeat: "no-repeat",
+                    }}
+                  />
                 ) : p.type === "back" ? (
                   backCoverImage ? (
                     <img src={backCoverImage} alt="Обкладинка (зад)" className="h-full w-full object-cover" />

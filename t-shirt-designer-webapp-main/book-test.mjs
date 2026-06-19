@@ -143,6 +143,8 @@ async function runBook(browser, type, label, unitWord, basePrice, s15Price) {
   try { await clickByText(page, "Передперегляд"); await sleep(1200); } catch (e) { issues.push("preview: " + e.message); }
   const t3 = await bodyText(page);
   check(/Передперегляд книги/.test(t3), "відкрився передперегляд книги (фліпбук)");
+  // Гортаємо на перший розворот — побачити дві половини фото (ліва+права).
+  try { const nx = await page.$('button[title="Далі"]'); if (nx) { await nx.click(); await sleep(1500); } } catch {}
   await page.screenshot({ path: `${OUT}/05-preview.png` });
   // Закрити передперегляд.
   await page.keyboard.press("Escape"); await sleep(400);
