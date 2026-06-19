@@ -156,6 +156,18 @@ export const api = {
     }
     return res.blob();
   },
+  downloadOrderPhotos: async (id) => {
+    const res = await fetch(`/api/orders/${id}/photos-archive`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      let msg = `HTTP ${res.status}`;
+      try { msg = (await res.json()).error || msg; } catch { /* */ }
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
 
   // Customers
   getCustomers: (params = {}) => {

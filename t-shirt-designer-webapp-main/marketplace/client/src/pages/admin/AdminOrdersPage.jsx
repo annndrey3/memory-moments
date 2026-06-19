@@ -91,6 +91,49 @@ export default function AdminOrdersPage() {
       try { return Array.isArray(JSON.parse(it.design_data || "{}").innerPhotos); } catch { return false; }
     });
 
+  // Чи є у замовленні хоч один файл на диску (для кнопки «Скачати всі фото»).
+  const hasPhotos = (full) =>
+    full?.items?.some((it) => /\/uploads\//.test(`${it.design_data || ""} ${it.design_preview || ""}`));
+
+  const downloadOrderPhotos = async (order) => {
+    try {
+      const blob = await api.downloadOrderPhotos(order.id);
+      const url = URL.createObjectURL(blob);
+      triggerDownload(url, `order-${order.order_number}-photos.zip`);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      alert(err.message || "Не вдалося зібрати фото");
+    }
+  };
+
+  // Друк замовлення: окреме вікно з деталями + прев'ю дизайнів → window.print().
+  const printOrder = (full) => {
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const abs = (u) => (u && u.startsWith("/") ? window.location.origin + u : u);
+    const rows = (full.items || []).map((it) => {
+      const prev = it.design_preview ? `<img src="${esc(abs(it.design_preview))}" />` : "";
+      return `<tr><td class="p">${prev}</td><td>${esc(it.product_name)}${it.variant_label ? `<div class="m">${esc(it.variant_label)}</div>` : ""}</td><td class="n">${it.quantity}</td><td class="n">${formatPrice(it.line_total)}</td></tr>`;
+    }).join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Замовлення ${esc(full.order_number)}</title><style>
+      body{font-family:Arial,sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0 0 4px}.m{color:#666;font-size:12px}
+      .h{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px}
+      .c{margin:8px 0 16px;font-size:13px;line-height:1.5}table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border-bottom:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f3f3f3}
+      td.n,th.n{text-align:right;white-space:nowrap}td.p{width:64px}td.p img{width:56px;height:72px;object-fit:cover;border:1px solid #ccc}
+      .t{margin-top:12px;text-align:right;font-size:15px;font-weight:bold}@media print{button{display:none}}
+    </style></head><body>
+      <div class="h"><div><h1>Замовлення ${esc(full.order_number)}</h1><div class="m">${esc(full.created_at?.slice(0, 16) || "")} · ${full.source === "designer" ? "Конструктор" : "Сайт"} · ${esc(statusMeta(full.status).label)}</div></div><div class="m">Memory Moments</div></div>
+      <div class="c"><b>${esc(full.customer_name || "")}</b><br>${full.customer_phone ? esc(full.customer_phone) + "<br>" : ""}${full.customer_email ? esc(full.customer_email) + "<br>" : ""}${full.shipping_address ? "Доставка: " + esc(full.shipping_address) + "<br>" : ""}${full.notes ? "Коментар: " + esc(full.notes) : ""}</div>
+      <table><thead><tr><th></th><th>Товар</th><th class="n">К-сть</th><th class="n">Сума</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="t">Разом: ${formatPrice(full.total)}${full.discount ? ` (знижка ${formatPrice(full.discount)})` : ""}</div>
+      <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { alert("Дозвольте спливаючі вікна, щоб друкувати"); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
   const handleDelete = async (order) => {
     if (!confirm(`Видалити замовлення ${order.order_number}? Це незворотньо.`)) return;
     try {
@@ -208,22 +251,38 @@ export default function AdminOrdersPage() {
                       </div>
                     ) : (
                       <>
-                        {hasBook(full) && (
-                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => printOrder(full)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                          >
+                            🖨 Друк
+                          </button>
+                          {hasPhotos(full) && (
                             <button
-                              onClick={() => downloadBookArchive(full)}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                              onClick={() => downloadOrderPhotos(full)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
                             >
-                              {full.archive_url ? "⬇ Завантажити архів книги (ZIP)" : "⬇ Зібрати та завантажити архів книги"}
+                              ⬇ Скачати всі фото (ZIP)
                             </button>
-                            {full.archive_status === "pending" && !full.archive_url && (
-                              <span className="text-xs text-amber-600">архів готується…</span>
-                            )}
-                            {full.archive_status === "failed" && (
-                              <span className="text-xs text-red-600">фон не вдався — зберемо на льоту</span>
-                            )}
-                          </div>
-                        )}
+                          )}
+                          {hasBook(full) && (
+                            <>
+                              <button
+                                onClick={() => downloadBookArchive(full)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                              >
+                                {full.archive_url ? "⬇ Архів книги (ZIP)" : "⬇ Зібрати архів книги"}
+                              </button>
+                              {full.archive_status === "pending" && !full.archive_url && (
+                                <span className="text-xs text-amber-600">архів готується…</span>
+                              )}
+                              {full.archive_status === "failed" && (
+                                <span className="text-xs text-red-600">фон не вдався — зберемо на льоту</span>
+                              )}
+                            </>
+                          )}
+                        </div>
                         <div className="grid sm:grid-cols-2 gap-6">
                         <div>
                           <p className="font-medium text-slate-700 mb-2">Позиції</p>

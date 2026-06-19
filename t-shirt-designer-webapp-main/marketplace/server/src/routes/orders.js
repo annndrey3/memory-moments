@@ -9,7 +9,7 @@ import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
-import { streamBookArchive, buildBookArchiveToDisk } from "../utils/bookArchive.js";
+import { streamBookArchive, buildBookArchiveToDisk, streamOrderPhotos } from "../utils/bookArchive.js";
 import { getPhotoDiscountTiers } from "../utils/siteConfig.js";
 import { markOrderForDelivery, tryDeliverOrder } from "../utils/photoDelivery.js";
 
@@ -603,6 +603,20 @@ router.get("/:id/book-archive", authMiddleware, requirePermission("orders.view")
   } catch (err) {
     console.error("book-archive error:", err);
     if (!res.headersSent) res.status(500).json({ error: "Не вдалося зібрати архів" });
+  }
+});
+
+// GET /api/orders/:id/photos-archive — ZIP усіх файлів замовлення (принти, прев'ю,
+// сирі фото, розвороти) як є з диска. Для кнопки «Скачати всі фото» в адмінці.
+router.get("/:id/photos-archive", authMiddleware, requirePermission("orders.view"), async (req, res) => {
+  try {
+    const order = await getOrderWithItems(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    const ok = await streamOrderPhotos(order, res);
+    if (!ok && !res.headersSent) res.status(400).json({ error: "У замовленні немає фото" });
+  } catch (err) {
+    console.error("photos-archive error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Не вдалося зібрати фото" });
   }
 });
 

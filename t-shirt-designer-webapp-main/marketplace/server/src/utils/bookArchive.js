@@ -110,3 +110,29 @@ export async function buildBookArchiveToDisk(order) {
   await fs.promises.writeFile(path.join(UPLOAD_DIR, name), buffer);
   return `/uploads/${name}`;
 }
+
+// УСІ файли замовлення (принти/прев'ю/сирі фото/розвороти) одним ZIP — як є з диска,
+// без композиції. Для кнопки «Скачати всі фото» в адмінці (будь-який тип товару).
+export async function streamOrderPhotos(order, res) {
+  const names = new Set();
+  const re = /\/uploads\/([\w.\-]+)/g;
+  for (const it of order.items || []) {
+    const hay = `${it.design_data || ""} ${it.design_preview || ""}`;
+    let m;
+    while ((m = re.exec(hay))) names.add(m[1]);
+  }
+  const zip = new JSZip();
+  let count = 0;
+  for (const name of names) {
+    const p = path.join(UPLOAD_DIR, path.basename(name));
+    try {
+      if (fs.existsSync(p)) { zip.file(`${order.order_number}/${name}`, fs.readFileSync(p)); count++; }
+    } catch { /* пропускаємо недоступний файл */ }
+  }
+  if (!count) return false;
+  const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="order-${order.order_number}-photos.zip"`);
+  res.send(buffer);
+  return true;
+}
