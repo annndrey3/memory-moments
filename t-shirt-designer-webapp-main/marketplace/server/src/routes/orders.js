@@ -9,6 +9,7 @@ import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
+import { streamBookArchive } from "../utils/bookArchive.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -310,6 +311,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
         // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
         let fabricData = {};
         try { fabricData = JSON.parse(item.design_data || "{}"); } catch { /* */ }
+        const isBook = item.product_type === "slim-book" || item.product_type === "print-book";
         const designDataFull = JSON.stringify({
           ...fabricData,
           ...(printFrontUrl ? { printFrontUrl } : {}),
@@ -317,6 +319,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
           ...(rawFrontUrl ? { rawFrontUrl } : {}),
           ...(rawBackUrl ? { rawBackUrl } : {}),
           ...(innerPhotoUrls.length ? { innerPhotos: innerPhotoUrls } : {}),
+          ...(isBook ? { book: { type: item.product_type, format: item.format || item.canvas_size || null, spreads: item.spreads || null, extra: item.extra_spreads || null } } : {}),
         });
 
         resolved.push({
@@ -521,6 +524,20 @@ router.get("/:id", authMiddleware, requirePermission("orders.view"), async (req,
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch order" });
+  }
+});
+
+// GET /api/orders/:id/book-archive — ZIP фотокниги: обкладинки (перед/зад) +
+// розгортки, розкладені на готові друкарські сторінки (300 dpi, поля, R/L).
+router.get("/:id/book-archive", authMiddleware, requirePermission("orders.view"), async (req, res) => {
+  try {
+    const order = await getOrderWithItems(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    const ok = await streamBookArchive(order, res);
+    if (!ok && !res.headersSent) res.status(400).json({ error: "У замовленні немає фотокниги" });
+  } catch (err) {
+    console.error("book-archive error:", err);
+    if (!res.headersSent) res.status(500).json({ error: "Не вдалося зібрати архів" });
   }
 });
 

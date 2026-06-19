@@ -144,6 +144,18 @@ export const api = {
   updateOrderStatus: (id, status) =>
     request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
+  downloadBookArchive: async (id) => {
+    const res = await fetch(`/api/orders/${id}/book-archive`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      let msg = `Помилка ${res.status}`;
+      try { msg = (await res.json()).error || msg; } catch { /* */ }
+      throw new Error(msg);
+    }
+    return res.blob();
+  },
 
   // Customers
   getCustomers: (params = {}) => {

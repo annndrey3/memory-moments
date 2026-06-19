@@ -75,6 +75,22 @@ export default function AdminOrdersPage() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const downloadBookArchive = async (order) => {
+    try {
+      const blob = await api.downloadBookArchive(order.id);
+      const url = URL.createObjectURL(blob);
+      triggerDownload(url, `book-${order.order_number}.zip`);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      alert(err.message || "Не вдалося зібрати архів книги");
+    }
+  };
+
+  const hasBook = (full) =>
+    full?.items?.some((it) => {
+      try { return Array.isArray(JSON.parse(it.design_data || "{}").innerPhotos); } catch { return false; }
+    });
+
   const handleDelete = async (order) => {
     if (!confirm(`Видалити замовлення ${order.order_number}? Це незворотньо.`)) return;
     try {
@@ -191,7 +207,16 @@ export default function AdminOrdersPage() {
                         <Loader2 className="h-4 w-4 animate-spin" /> Завантаження...
                       </div>
                     ) : (
-                      <div className="grid sm:grid-cols-2 gap-6">
+                      <>
+                        {hasBook(full) && (
+                          <button
+                            onClick={() => downloadBookArchive(full)}
+                            className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                          >
+                            ⬇ Завантажити архів книги (ZIP)
+                          </button>
+                        )}
+                        <div className="grid sm:grid-cols-2 gap-6">
                         <div>
                           <p className="font-medium text-slate-700 mb-2">Позиції</p>
                           <div className="space-y-2">
@@ -336,6 +361,7 @@ export default function AdminOrdersPage() {
                           </dl>
                         </div>
                       </div>
+                      </>
                     )}
                   </div>
                 )}

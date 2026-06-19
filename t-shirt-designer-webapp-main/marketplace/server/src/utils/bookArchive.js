@@ -1,0 +1,96 @@
+import fs from "fs";
+import path from "path";
+import { createRequire } from "module";
+
+// jszip/jimp — CommonJS; під ESM вантажимо через createRequire (стабільно).
+const require = createRequire(import.meta.url);
+const JSZip = require("jszip");
+const Jimp = require("jimp");
+
+const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
+const DPI = 300;
+const cmToPx = (cm) => Math.round((cm / 2.54) * DPI);
+const MARGIN_SPINE = cmToPx(1); // ~118 px (1 см — бік корінця)
+const MARGIN_OUT = cmToPx(0.5); // ~59 px (0.5 см — решта сторін)
+
+// Розмір сторінки (см) за форматом книги. 21x30 — за спекою студії (21.4×29 см).
+// Квадратні формати — номінальний розмір (за потреби студія уточнить).
+const PAGE_CM = {
+  "21x30": { w: 21.4, h: 29 },
+  "20x20": { w: 20, h: 20 },
+  "25x25": { w: 25, h: 25 },
+};
+
+function fileFromUrl(u) {
+  if (!u || typeof u !== "string") return null;
+  const p = path.join(UPLOAD_DIR, path.basename(u));
+  return fs.existsSync(p) ? p : null;
+}
+
+// Розкладка одного фото на готову друкарську сторінку: білий фон, поля
+// (1 см корінець / 0.5 см решта), дзеркальність лівої/правої сторінки, фото по центру.
+async function composePage(srcPath, { pageW, pageH, isRight }) {
+  const leftM = isRight ? MARGIN_SPINE : MARGIN_OUT; // права сторінка → корінець ліворуч
+  const rightM = isRight ? MARGIN_OUT : MARGIN_SPINE;
+  const safeW = pageW - leftM - rightM;
+  const safeH = pageH - MARGIN_OUT - MARGIN_OUT;
+
+  const photo = await Jimp.read(srcPath);
+  photo.scaleToFit(safeW, safeH); // вписати без обрізки, зберегти пропорції
+  const x = Math.round(leftM + (safeW - photo.bitmap.width) / 2);
+  const y = Math.round(MARGIN_OUT + (safeH - photo.bitmap.height) / 2);
+
+  const page = await Jimp.create(pageW, pageH, 0xffffffff); // білий фон
+  page.composite(photo, x, y);
+  page.quality(92);
+  return page.getBufferAsync(Jimp.MIME_JPEG);
+}
+
+// Збирає ZIP книги у памʼяті й віддає в res. false — якщо в замовленні немає книги.
+export async function streamBookArchive(order, res) {
+  const books = (order.items || [])
+    .map((it) => {
+      let d = {};
+      try { d = JSON.parse(it.design_data || "{}"); } catch { /* */ }
+      return { it, d };
+    })
+    .filter(({ d }) => Array.isArray(d.innerPhotos) && d.innerPhotos.length);
+
+  if (!books.length) return false;
+
+  const zip = new JSZip();
+
+  for (let bi = 0; bi < books.length; bi++) {
+    const { d } = books[bi];
+    const baseDir = books.length > 1 ? `${order.order_number}/book-${bi + 1}/` : `${order.order_number}/`;
+    const fmt = d.book?.format && PAGE_CM[d.book.format] ? d.book.format : "21x30";
+    const cm = PAGE_CM[fmt];
+    const pageW = cmToPx(cm.w);
+    const pageH = cmToPx(cm.h);
+
+    // Обкладинки — як є (готові макети).
+    const cf = fileFromUrl(d.printFrontUrl);
+    if (cf) zip.file(baseDir + "cover-front" + path.extname(cf), fs.readFileSync(cf));
+    const cb = fileFromUrl(d.printBackUrl);
+    if (cb) zip.file(baseDir + "cover-back" + path.extname(cb), fs.readFileSync(cb));
+
+    // Розгортки → готові сторінки (нумерація + сторона R/L).
+    for (let i = 0; i < d.innerPhotos.length; i++) {
+      const src = fileFromUrl(d.innerPhotos[i]);
+      if (!src) continue;
+      const isRight = (i + 1) % 2 === 1;
+      try {
+        const buf = await composePage(src, { pageW, pageH, isRight });
+        zip.file(`${baseDir}pages/page-${String(i + 1).padStart(2, "0")}-${isRight ? "R" : "L"}.jpg`, buf);
+      } catch (e) {
+        console.error(`composePage ${i + 1} failed:`, e.message);
+      }
+    }
+  }
+
+  const out = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
+  res.setHeader("Content-Type", "application/zip");
+  res.setHeader("Content-Disposition", `attachment; filename="book-${order.order_number}.zip"`);
+  res.send(out);
+  return true;
+}
