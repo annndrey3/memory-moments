@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Скріншоти мобільного smoke-тесту (mobile-test.mjs)
+mobile-shots/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

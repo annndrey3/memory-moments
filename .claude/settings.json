@@ -6,7 +6,18 @@
       "Bash(curl -s -i -X OPTIONS \"http://localhost:3001/api/orders\" -H \"Origin: http://localhost:5173\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type\")",
       "Bash(curl -s -i -X POST \"http://localhost:3001/api/orders\" -H \"Origin: http://localhost:5173\" -H \"Content-Type: application/json\" -d '{\"source\":\"designer\",\"customer\":{\"name\":\"Тест Конструктор\",\"phone\":\"+380991112233\",\"notes\":\"НП 7\"},\"items\":[{\"product_name\":\"Футболка\",\"product_type\":\"crew-neck\",\"color\":\"Чорний\",\"quantity\":1}]}')",
       "Bash(curl -s http://localhost:3001/api/orders?limit=3 -H 'Authorization: Bearer __TRACKED_VAR__')",
-      "Bash(node -e 'let d=\"\";process.stdin.on\\(\"data\",c=>d+=c\\).on\\(\"end\",\\(\\)=>{JSON.parse\\(d\\).items.forEach\\(o=>console.log\\(`  ${o.order_number} source=${o.source} ${o.customer_name} total=${o.total}`\\)\\)}\\)')"
+      "Bash(node -e 'let d=\"\";process.stdin.on\\(\"data\",c=>d+=c\\).on\\(\"end\",\\(\\)=>{JSON.parse\\(d\\).items.forEach\\(o=>console.log\\(`  ${o.order_number} source=${o.source} ${o.customer_name} total=${o.total}`\\)\\)}\\)')",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(cd e:/memory-moments/t-shirt-designer-webapp-main/marketplace/client && npm run build 2>&1 | tail -2 && cd ../.. && npm run dev --prefix marketplace/client > /tmp/mk-dev.log 2>&1 & *)",
+      "Read(//e//**)",
+      "Bash(cat .env)",
+      "Bash(cat .env.example)",
+      "Bash(node _slides_e2e.mjs)",
+      "Bash(cd e:/memory-moments/t-shirt-designer-webapp-main/marketplace/server && node --check src/routes/slides.js && echo \"slides OK\" *)",
+      "PowerShell(5173,5174,5175,5176 | ForEach-Object { $c = Get-NetTCPConnection -LocalPort $_ -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { \"$_ LISTENING\" } })",
+      "Bash(git -c core.quotepath=false status --short)",
+      "Bash(echo \"=== exit $? ===\")"
     ]
   }
 }
