@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Minus, Plus, ShoppingCart, Images, X } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Images, X, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
@@ -9,6 +9,8 @@ import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookTyp
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
 import { cn } from "@/lib/utils";
+import { canvasSyncManager } from "@/utils/canvasSyncManager";
+import PhotobookPreview from "@/components/PhotobookPreview";
 
 // Вибір кольору ВСЕРЕДИНІ — лише для «Чашка кольорова всередині». Біла = тільки біла,
 // «хамелеон» = тільки чорна, тож у них вибору кольору немає.
@@ -36,6 +38,8 @@ const OrderBar = () => {
   const { addCurrentDesignToCart, hasDesign } = useAddToCart();
   const { priceFor, tshirtPrice, canvasPrice, bookPrice } = usePricing();
   const spreadInputRef = useRef(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [coverImage, setCoverImage] = useState(null);
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
   // (друга сторона додає ціну з прайсу). Реактивно слухаємо обидва полотна.
@@ -135,6 +139,12 @@ const OrderBar = () => {
     if (!files.length) return;
     const urls = (await Promise.all(files.map(compressPhoto))).filter(Boolean);
     if (urls.length) dispatch(addSlimBookPhotos(urls));
+  };
+
+  const openPreview = () => {
+    const cover = frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null;
+    setCoverImage(cover || null);
+    setPreviewOpen(true);
   };
 
   const handleOrder = async () => {
@@ -301,6 +311,10 @@ const OrderBar = () => {
                   </button>
                 </span>
               )}
+              <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5" onClick={openPreview}>
+                <BookOpen className="h-4 w-4" />
+                <span className="text-xs font-semibold">Передперегляд</span>
+              </Button>
             </div>
           </>
         )}
@@ -369,6 +383,17 @@ const OrderBar = () => {
           </Button>
         </div>
       </div>
+
+      <PhotobookPreview
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        coverImage={coverImage}
+        photos={slimBookPhotos}
+        format={slimBookFormat}
+        spreads={slimBookSpreads}
+        extra={slimBookExtra}
+        unit={bookUnit(selectedType)}
+      />
     </div>
   );
 };
