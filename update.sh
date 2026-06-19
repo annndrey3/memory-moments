@@ -47,6 +47,7 @@ if [[ "$BEFORE" == "$AFTER" ]]; then
   echo
   read -rp "Все одно перезібрати і перезапустити? (y/N): " FORCE
   [[ "$FORCE" != "y" && "$FORCE" != "Y" ]] && { echo "Нічого не змінено."; exit 0; }
+  FORCE_REBUILD=1   # немає git-diff → ставимо залежності примусово (інакше нові пакети не доїдуть)
 else
   ok "Оновлено: $(git log --oneline "$BEFORE".."$AFTER" | wc -l) нових коміт(и)"
   git log --oneline "$BEFORE".."$AFTER" | sed 's/^/     /'
@@ -54,6 +55,8 @@ fi
 
 # ─── Залежності (тільки якщо змінився lockfile) ───────────────────────────────
 check_lock_changed() {
+  # На примусовій пересборці git-diff порожній — ставимо залежності всюди.
+  if [[ "${FORCE_REBUILD:-0}" == "1" ]]; then return 0; fi
   git diff "$BEFORE" "$AFTER" --name-only 2>/dev/null | grep -q "$1" 2>/dev/null || false
 }
 
