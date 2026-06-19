@@ -21,6 +21,16 @@ const TERMS = [
   "Від 200 фотографій — знижка 10%, від 300 фото — безкоштовна доставка.",
 ];
 
+// Система знижок на друк фото за кількістю (усі формати).
+const PHOTO_DISCOUNTS = [
+  { range: "від 50 до 99 шт", percent: 5 },
+  { range: "від 100 до 149 шт", percent: 10 },
+  { range: "від 150 до 199 шт", percent: 15 },
+  { range: "від 200 до 299 шт", percent: 20 },
+  { range: "від 300 до 399 шт", percent: 25 },
+  { range: "від 400 шт та більше", percent: 30 },
+];
+
 // Групуємо послуги категорії за назвою (формати — під спільною назвою).
 function groupByName(services) {
   const groups = [];
@@ -237,6 +247,27 @@ export default function PricesPage() {
                   </section>
                 );
               })}
+
+              {/* Система знижок на друк фото (за кількістю) */}
+              <section className="rounded-2xl border border-rose-200 bg-white shadow-soft overflow-hidden animate-fade-in-up">
+                <div className="px-5 py-4 bg-gradient-to-r from-rose-50 to-rose-100/60 border-b border-rose-200">
+                  <div className="flex items-center gap-2 text-rose-600 mb-0.5">
+                    <Tag className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Знижки</span>
+                  </div>
+                  <h2 className="font-bold text-slate-900">
+                    Система знижок на друк фотографій усіх форматів
+                  </h2>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {PHOTO_DISCOUNTS.map((d) => (
+                    <div key={d.percent} className="flex items-center justify-between px-5 py-3">
+                      <span className="text-sm font-medium text-slate-700">{d.range}</span>
+                      <span className="text-lg font-extrabold text-rose-600 tabular-nums">−{d.percent}%</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
 
               {/* Terms */}
               <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 animate-fade-in-up">
