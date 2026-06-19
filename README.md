@@ -36,9 +36,10 @@ Full-stack платформа для создания и продажи каст
 └──────────────────┘
 ```
 
-> ⚠️ **База данных — SQLite**, файл `marketplace/server/marketplace.db` создаётся автоматически
-> при первом запуске. **Никакие MySQL / PostgreSQL / Docker не требуются** (упоминания
-> PostgreSQL в старых доках устарели).
+> ⚠️ **Локально — SQLite** (файл `marketplace/server/marketplace.db`, создаётся автоматически,
+> Docker не нужен). **В продакшене — PostgreSQL**: задайте `DATABASE_URL` в `.env`, и сервер
+> переключится на `pg`. Единый слой `src/config/db.js` поддерживает оба движка через
+> `query()`/`transaction()` — пишите кросс-СУБД SQL (SQLite скрывает Postgres-only ошибки).
 
 ---
 
@@ -150,16 +151,19 @@ export const DESIGNER_CONFIG = {
 
 ---
 
-## 🗄️ База данных (SQLite)
+## 🗄️ База данных (SQLite dev / PostgreSQL prod)
 
-Файл: `marketplace/server/marketplace.db`. Схема создаётся при первом запуске
-(`src/config/db.js`), включая идемпотентную самомиграцию таблицы `designs` и колонки
-`products.design_id` для старых баз.
+Единый слой `src/config/db.js` поддерживает оба движка: без `DATABASE_URL` — SQLite
+(`marketplace/server/marketplace.db`, создаётся при первом запуске), с `DATABASE_URL` —
+PostgreSQL (`pg`). Схема и **идемпотентные** миграции применяются на каждом старте
+(`ADD COLUMN IF NOT EXISTS` / `PRAGMA`-проверки), поэтому деплой не требует ручных шагов с БД.
 
 **Таблицы:** `admins`, `categories`, `products`, `product_images`, `product_variants`,
-`product_audit_logs`, `designs`.
+`product_audit_logs`, `designs`, `orders`, `order_items`, `service_categories`, `services`,
+`settings`, `slides`, `customers`. У `orders` есть `idempotency_key` (защита от дублей) и
+`notify_status` (`pending`/`sent`/`failed` — статус доставки уведомления владельцу).
 
-Просмотр БД (например, через DB Browser for SQLite) — просто откройте файл `marketplace.db`.
+Просмотр dev-БД — откройте `marketplace.db` (например, в DB Browser for SQLite).
 
 ---
 
@@ -176,15 +180,36 @@ export const DESIGNER_CONFIG = {
 | POST/PUT/DELETE | `/api/products[/:id]` | token | CRUD товаров |
 | GET | `/api/designs` · `/api/designs/:id` | public | список / дизайн |
 | POST/PUT/DELETE | `/api/designs[/:id]` | token | CRUD дизайнов |
-| POST | `/api/orders` | public | оформить заказ (цены пересчитываются на сервере) |
-| GET | `/api/orders/track/:number` | public | заказ по номеру (страница подтверждения) |
+| POST | `/api/orders` | public | оформить заказ (цены — на сервере; принимает заголовок `Idempotency-Key`) |
+| GET | `/api/orders/track/:number` | public | статус заказа по номеру (**без PII**), rate-limited |
 | GET | `/api/orders` · `/api/orders/:id` | token | список / детали заказа |
-| PATCH | `/api/orders/:id/status` | token | смена статуса заказа |
+| PATCH | `/api/orders/:id/status` | token | смена статуса (с коррекцией склада) |
+| POST | `/api/orders/:id/notify` | token | повторно отправить уведомление в Telegram |
 | GET | `/api/services` | public | прайс-лист (категории + услуги) |
 | GET | `/api/services/admin/all` | token | весь прайс (вкл. скрытое) |
 | POST/PUT/DELETE | `/api/services/categories[/:id]` | token | CRUD категорий прайса |
 | POST/PUT/DELETE | `/api/services[/:id]` | token | CRUD услуг прайса |
-| POST | `/api/upload` | token | загрузка изображения |
+| POST | `/api/upload` | token | загрузка изображения (расширение — из mimetype) |
+| GET | `/api/health` | public | health-check: пинг БД, `503` если БД недоступна |
+
+---
+
+## 🛡️ Надёжность и безопасность
+
+Бэкенд прошёл аудит-хардненинг (ветка `hardening/order-audit`):
+- **Идемпотентность заказа** — клиент шлёт стабильный `Idempotency-Key`; повтор после
+  таймаута возвращает существующий заказ, а не дубль.
+- **Без утечки PII** — публичный `track/:number` отдаёт только статус/позиции/суммы
+  (порядковые номера больше нельзя перебрать ради контактов клиентов).
+- **Корректность заказа** — печатные файлы пишутся только после коммита (нет orphan'ов,
+  имя файла с индексом позиции), уведомления (Telegram/email) вынесены за ответ клиенту,
+  `DELETE` заказа возвращает склад, лимит позиций и защита от некорректной цены.
+- **Экспорт/загрузка** — экранирование формул в Excel-экспорте, расширение файла из mimetype.
+- **Наблюдаемость** — глубокий `/api/health` (`503` при мёртвой БД), структурные JSON-логи
+  запросов, статус доставки уведомления (`notify_status`) с ручной переотправкой.
+
+Эксплуатация (бэкап, ротация логов, мониторинг, отдача `/uploads` через nginx) —
+см. [deploy/OPS.md](./deploy/OPS.md) и [deploy/backup.sh](./deploy/backup.sh).
 
 ---
 
@@ -246,4 +271,4 @@ MIT — см. `LICENSE`.
 
 ---
 
-**Last Updated:** 2026-06-14 · **Status:** 🟢 Конструктор + маркетплейс + админка + корзина/заказы — интеграция завершена
+**Last Updated:** 2026-06-19 · **Status:** 🟢 Интеграция завершена + аудит-хардненинг (идемпотентность, no-PII track, observability, ops)
