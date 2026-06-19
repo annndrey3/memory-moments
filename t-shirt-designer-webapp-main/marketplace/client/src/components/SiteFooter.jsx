@@ -39,22 +39,25 @@ export function SiteFooter() {
             </span>
           </div>
 
-          <a
-            href={links.maps}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group inline-flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-elevated"
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500 text-white">
-              <MapPin className="h-4 w-4" />
-            </span>
-            <span className="leading-tight">
-              <span className="block text-[11px] uppercase tracking-wide text-slate-400">Адреса</span>
-              <span className="block max-w-[220px] text-sm font-medium text-slate-800 group-hover:text-violet-700">
-                {CONTACTS.address}
+          {CONTACTS.branches.map((b) => (
+            <a
+              key={b.address}
+              href={b.mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-elevated"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500 text-white">
+                <MapPin className="h-4 w-4" />
               </span>
-            </span>
-          </a>
+              <span className="leading-tight">
+                <span className="block text-[11px] uppercase tracking-wide text-slate-400">Адреса</span>
+                <span className="block max-w-[220px] text-sm font-medium text-slate-800 group-hover:text-violet-700">
+                  {b.address}
+                </span>
+              </span>
+            </a>
+          ))}
         </div>
 
         <div className="border-t border-slate-100 pt-5 text-center text-xs text-slate-400">

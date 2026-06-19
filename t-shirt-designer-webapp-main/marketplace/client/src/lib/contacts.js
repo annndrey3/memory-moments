@@ -5,7 +5,14 @@ export const CONTACTS = {
   telegram: "memory_moments_chern12", // нік Telegram (без @) АБО номер у форматі +380...
   viber: "+38(068) 555-05-64", // номер Viber (зазвичай той самий, що телефон)
   address: "вул. Артура Савельєва, 12, м. Одеса", // фізична адреса (текст)
-  mapsUrl: "https://maps.app.goo.gl/D32F8UPs9HEP2JUi9", // точне посилання на карту
+  mapsUrl: "https://maps.app.goo.gl/DHby2xSEnGdzn1gZA", // точне посилання на карту
+  // Філіали з посиланнями на Google Maps (показуються у футері).
+  branches: [
+    { address: "просп. Князя Ярослава Мудрого, 14/4, Одеса", mapsUrl: "https://maps.app.goo.gl/By3bwyX4DNDwsuqBA" },
+    { address: "вул. Академіка Корольова, 70/1, Одеса", mapsUrl: "https://share.google/0TE04wraWVbbZsvTR" },
+    { address: "вул. Преображенська, 48, Одеса", mapsUrl: "https://maps.app.goo.gl/g8moWYVnz2aUyCTt8" },
+    { address: "вул. Артура Савельєва, 12, Одеса", mapsUrl: "https://maps.app.goo.gl/DHby2xSEnGdzn1gZA" },
+  ],
   // Години роботи
   hours: [
     { days: "Пн–Пт", time: "09:00–19:00" },
