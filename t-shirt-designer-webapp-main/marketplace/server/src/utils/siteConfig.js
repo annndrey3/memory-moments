@@ -128,16 +128,17 @@ export async function getStorageConfig() {
   };
 }
 
-// Зберігає налаштування SFTP, не стираючи пароль, якщо передали маску/порожнє.
+// Зберігає налаштування SFTP. Пароль МІНЯЄМО лише коли введено новий непорожній
+// (і не маску). Порожнє поле «Пароль» = НЕ ЧІПАТИ наявний (раніше порожнє стирало
+// пароль → доставка падала з «authentication methods failed» при повторному save).
 export async function saveStorageConfig(patch = {}) {
   const cur = parse(await getSetting("sftp_storage")) || {};
   const next = { ...cur };
   for (const k of ["enabled", "host", "port", "username", "remotePath"]) {
     if (patch[k] !== undefined) next[k] = patch[k];
   }
-  if (typeof patch.password === "string") {
-    if (patch.password === "") delete next.password;          // очистити
-    else if (!patch.password.includes("•")) next.password = patch.password; // не маска
+  if (typeof patch.password === "string" && patch.password !== "" && !patch.password.includes("•")) {
+    next.password = patch.password;
   }
   await setSetting("sftp_storage", JSON.stringify(next));
 }
