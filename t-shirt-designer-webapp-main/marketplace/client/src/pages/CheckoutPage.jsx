@@ -8,20 +8,17 @@ import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
 import { api } from "@/lib/api";
 import { useSeo } from "@/lib/seo";
-
-const PICKUP_BRANCHES = [
-  "просп. Князя Ярослава Мудрого, 14/4, Одеса",
-  "вул. Академіка Корольова, 70/1, Одеса",
-  "вул. Преображенська, 48, Одеса",
-  "вул. Артура Савельєва, 12, Одеса",
-];
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, discount, discountPct, photoCount, total, clear } = useCart();
+  const { delivery } = useSiteConfig();
+  const methods = (delivery.methods || []).filter((m) => m.enabled);
+  const pickupBranches = delivery.pickupBranches || [];
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
-  const [deliveryType, setDeliveryType] = useState("nova_poshta");
-  const [pickupBranch, setPickupBranch] = useState(PICKUP_BRANCHES[0]);
+  const [deliveryType, setDeliveryType] = useState(methods[0]?.id || "nova_poshta");
+  const [pickupBranch, setPickupBranch] = useState("");
   const [novaPoshtaAddress, setNovaPoshtaAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -31,13 +28,17 @@ export default function CheckoutPage() {
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
   useSeo({ title: "Оформлення замовлення" });
 
+  // Обраний спосіб доставки (з фолбеком, якщо id зник із налаштувань).
+  const sel = methods.find((m) => m.id === deliveryType) || methods[0] || null;
+  const effectiveBranch = pickupBranch || pickupBranches[0] || "";
+
   if (items.length === 0) {
     return <Navigate to="/cart" replace />;
   }
 
   function buildShippingAddress() {
-    if (deliveryType === "pickup") {
-      return `Самовивіз: ${pickupBranch}`;
+    if (sel?.kind === "pickup") {
+      return `${sel.label}: ${effectiveBranch}`;
     }
     return novaPoshtaAddress.trim() || null;
   }
@@ -48,8 +49,8 @@ export default function CheckoutPage() {
       setError("Вкажіть ім'я, email та телефон");
       return;
     }
-    if (deliveryType === "nova_poshta" && !novaPoshtaAddress.trim()) {
-      setError("Вкажіть адресу відділення Нової Пошти");
+    if (sel?.kind === "address" && !novaPoshtaAddress.trim()) {
+      setError(`Вкажіть адресу: ${sel.label}`);
       return;
     }
     setSubmitting(true);
@@ -139,35 +140,27 @@ export default function CheckoutPage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
               <h2 className="font-semibold text-slate-800">Спосіб отримання</h2>
 
-              {/* Toggle */}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeliveryType("nova_poshta")}
-                  className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors ${
-                    deliveryType === "nova_poshta"
-                      ? "border-violet-500 bg-violet-50 text-violet-700"
-                      : "border-slate-200 text-slate-500 hover:border-slate-300"
-                  }`}
-                >
-                  Нова Пошта
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeliveryType("pickup")}
-                  className={`flex-1 rounded-xl border py-2.5 text-sm font-medium transition-colors ${
-                    deliveryType === "pickup"
-                      ? "border-violet-500 bg-violet-50 text-violet-700"
-                      : "border-slate-200 text-slate-500 hover:border-slate-300"
-                  }`}
-                >
-                  Самовивіз
-                </button>
+              {/* Способи доставки — з налаштувань сайту */}
+              <div className="flex flex-wrap gap-2">
+                {methods.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setDeliveryType(m.id)}
+                    className={`flex-1 min-w-[130px] rounded-xl border py-2.5 text-sm font-medium transition-colors ${
+                      sel?.id === m.id
+                        ? "border-violet-500 bg-violet-50 text-violet-700"
+                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
 
-              {deliveryType === "nova_poshta" && (
+              {sel?.kind === "address" && (
                 <div className="space-y-1.5">
-                  <Label>Місто та відділення Нової Пошти *</Label>
+                  <Label>{sel.label}: місто та відділення *</Label>
                   <Input
                     value={novaPoshtaAddress}
                     onChange={(e) => setNovaPoshtaAddress(e.target.value)}
@@ -176,15 +169,15 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {deliveryType === "pickup" && (
+              {sel?.kind === "pickup" && (
                 <div className="space-y-1.5">
-                  <Label>Оберіть філіал</Label>
+                  <Label>Оберіть відділення</Label>
                   <select
-                    value={pickupBranch}
+                    value={effectiveBranch}
                     onChange={(e) => setPickupBranch(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
                   >
-                    {PICKUP_BRANCHES.map((addr) => (
+                    {pickupBranches.map((addr) => (
                       <option key={addr} value={addr}>
                         {addr}
                       </option>

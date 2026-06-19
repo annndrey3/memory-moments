@@ -240,6 +240,13 @@ export const api = {
     return request(`/admin/data/import/${kind}`, { method: "POST", body: form });
   },
 
+  // Налаштування сайту (контакти / доставка / знижки / hero / SEO / Telegram)
+  getSiteConfig: () => request("/site-config"),
+  getSiteConfigAdmin: () => request("/admin/settings/site-config"),
+  saveSiteConfigSection: (section, data) =>
+    request(`/admin/settings/site-config/${section}`, { method: "PUT", body: JSON.stringify(data) }),
+  testTelegram: () => request("/admin/settings/site-config/telegram/test", { method: "POST" }),
+
   // Storage cleanup
   cleanupPreview: (days = 30) => request(`/admin/cleanup?days=${days}`),
   cleanupRun: (days = 30) =>

@@ -18,6 +18,7 @@ import cleanupRouter from "./routes/cleanup.js";
 import dataIORoutes from "./routes/dataIO.js";
 import slideRoutes from "./routes/slides.js";
 import customerRoutes from "./routes/customers.js";
+import siteConfigRoutes from "./routes/siteConfig.js";
 import prerenderRoutes from "./prerender.js";
 import { query } from "./config/db.js";
 
@@ -119,6 +120,7 @@ app.get("/api/health", async (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/site-config", siteConfigRoutes);
 app.use("/api/slides", slideRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/designs", designRoutes);

@@ -23,18 +23,20 @@ export const CONTACTS = {
 const digits = (s) => (s || "").replace(/[^\d+]/g, "");
 
 // Будує клікабельні посилання, що відкривають дзвінок/застосунок/чат напряму.
-export function contactLinks() {
-  const tg = (CONTACTS.telegram || "").trim();
+// Приймає контакти (з налаштувань сайту); за замовчуванням — статичні дефолти.
+export function contactLinks(contacts = CONTACTS) {
+  const c = contacts || CONTACTS;
+  const tg = (c.telegram || "").trim();
   const telegramHref = tg.startsWith("+")
     ? `https://t.me/${tg}` // t.me/+380... теж відкриває чат
     : `https://t.me/${tg.replace(/^@/, "")}`;
   return {
-    phone: `tel:${digits(CONTACTS.phone)}`,
-    instagram: `https://instagram.com/${(CONTACTS.instagram || "").replace(/^@/, "")}`,
+    phone: `tel:${digits(c.phone)}`,
+    instagram: `https://instagram.com/${(c.instagram || "").replace(/^@/, "")}`,
     telegram: telegramHref,
-    viber: `viber://chat?number=${encodeURIComponent(digits(CONTACTS.viber))}`,
+    viber: `viber://chat?number=${encodeURIComponent(digits(c.viber))}`,
     maps:
-      CONTACTS.mapsUrl ||
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONTACTS.address || "")}`,
+      c.mapsUrl ||
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address || "")}`,
   };
 }

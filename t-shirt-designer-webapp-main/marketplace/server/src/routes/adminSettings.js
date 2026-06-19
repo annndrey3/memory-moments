@@ -4,6 +4,7 @@ import { query } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { getSetting, setSetting } from "../utils/settings.js";
+import { getSection, setSection, getTelegramConfig, saveTelegramConfig, SITE_SECTIONS } from "../utils/siteConfig.js";
 
 const router = Router();
 router.use(authMiddleware);
@@ -337,6 +338,64 @@ router.post("/smtp/test", requirePermission("settings.system"), async (req, res)
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "Не вдалося надіслати тестовий лист" });
+  }
+});
+
+// ─── Налаштування сайту (контакти/доставка/знижки/hero/SEO/Telegram) ──────────
+
+// GET /api/admin/settings/site-config — усі секції + Telegram (токен маскований)
+router.get("/site-config", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const out = {};
+    for (const s of SITE_SECTIONS) out[s] = await getSection(s);
+    const tg = await getTelegramConfig();
+    out.telegram = {
+      source: tg.source,
+      chatId: tg.chatId || "",
+      hasToken: Boolean(tg.token),
+      tokenMasked: tg.token ? tg.token.slice(0, 6) + "••••••" + tg.token.slice(-4) : "",
+    };
+    res.json(out);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load site config" });
+  }
+});
+
+// PUT /api/admin/settings/site-config/:section — зберегти одну секцію
+router.put("/site-config/:section", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const { section } = req.params;
+
+    if (section === "telegram") {
+      await saveTelegramConfig({ botToken: req.body?.botToken, chatId: req.body?.chatId });
+      return res.json({ success: true });
+    }
+
+    if (!SITE_SECTIONS.includes(section)) {
+      return res.status(400).json({ error: "Невідома секція" });
+    }
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+      return res.status(400).json({ error: "Очікується об'єкт налаштувань" });
+    }
+    await setSection(section, req.body);
+    res.json({ success: true, [section]: await getSection(section) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save site config" });
+  }
+});
+
+// POST /api/admin/settings/site-config/telegram/test — надіслати тестове повідомлення
+router.post("/site-config/telegram/test", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const { sendTelegramTest } = await import("../utils/telegram.js");
+    const ok = await sendTelegramTest();
+    if (!ok) return res.status(400).json({ error: "Telegram не налаштовано (немає токена або chat id)" });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Не вдалося надіслати тест" });
   }
 });
 

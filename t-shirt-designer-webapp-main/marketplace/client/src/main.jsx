@@ -6,9 +6,12 @@ import "@fontsource/poppins/700.css";
 import "./index.css";
 import App from "./App.jsx";
 import { CartProvider } from "./lib/cart";
+import { SiteConfigProvider } from "./lib/siteConfig";
 
 createRoot(document.getElementById("root")).render(
-  <CartProvider>
-    <App />
-  </CartProvider>
+  <SiteConfigProvider>
+    <CartProvider>
+      <App />
+    </CartProvider>
+  </SiteConfigProvider>
 );

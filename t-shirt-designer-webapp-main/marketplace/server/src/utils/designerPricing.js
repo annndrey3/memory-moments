@@ -122,12 +122,14 @@ export function bookPriceFromServices(services, type, { format, spreads, extra }
 }
 
 // ── Знижка на друк фото за кількістю (усі формати). Поріг → відсоток. ──
+// Дефолт; реальні пороги редагуються в адмінці (settings → site_discounts) і
+// передаються сюди з orders.js. Має бути відсортовано за спаданням `min`.
 export const PHOTO_DISCOUNT_TIERS = [
   { min: 400, pct: 30 }, { min: 300, pct: 25 }, { min: 200, pct: 20 },
   { min: 150, pct: 15 }, { min: 100, pct: 10 }, { min: 50, pct: 5 },
 ];
-export function photoDiscountPct(count) {
-  for (const t of PHOTO_DISCOUNT_TIERS) if (Number(count) >= t.min) return t.pct;
+export function photoDiscountPct(count, tiers = PHOTO_DISCOUNT_TIERS) {
+  for (const t of tiers) if (Number(count) >= t.min) return t.pct;
   return 0;
 }
 

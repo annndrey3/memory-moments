@@ -20,6 +20,7 @@ import AdminDesignsPage from "./pages/admin/AdminDesignsPage";
 import AdminOrdersPage from "./pages/admin/AdminOrdersPage";
 import AdminServicesPage from "./pages/admin/AdminServicesPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminSiteConfigPage from "./pages/admin/AdminSiteConfigPage";
 import PhotoPrintPage from "./pages/PhotoPrintPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminSlidesPage from "./pages/admin/AdminSlidesPage";
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="slides" element={<AdminSlidesPage />} />
           <Route path="customers" element={<AdminCustomersPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="site" element={<AdminSiteConfigPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

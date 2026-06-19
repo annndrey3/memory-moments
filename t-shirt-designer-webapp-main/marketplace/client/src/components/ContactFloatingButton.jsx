@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Phone, Instagram, Send, MessageCircle, X } from "lucide-react";
-import { CONTACTS, contactLinks } from "@/lib/contacts";
+import { contactLinks } from "@/lib/contacts";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 export function ContactFloatingButton() {
   const [open, setOpen] = useState(false);
@@ -17,22 +18,24 @@ export function ContactFloatingButton() {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  const { contacts } = useSiteConfig();
+
   if (pathname.startsWith("/admin")) return null;
 
-  const links = contactLinks();
-  const tgValue = CONTACTS.telegram?.startsWith("+")
-    ? CONTACTS.telegram
-    : `@${(CONTACTS.telegram || "").replace(/^@/, "")}`;
+  const links = contactLinks(contacts);
+  const tgValue = contacts.telegram?.startsWith("+")
+    ? contacts.telegram
+    : `@${(contacts.telegram || "").replace(/^@/, "")}`;
 
   const items = [
-    { key: "phone", href: links.phone, label: "Телефон", value: CONTACTS.phone, Icon: Phone, color: "bg-emerald-500" },
+    { key: "phone", href: links.phone, label: "Телефон", value: contacts.phone, Icon: Phone, color: "bg-emerald-500" },
     {
       key: "instagram", href: links.instagram, label: "Instagram",
-      value: `@${(CONTACTS.instagram || "").replace(/^@/, "")}`,
+      value: `@${(contacts.instagram || "").replace(/^@/, "")}`,
       Icon: Instagram, color: "bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400", external: true,
     },
     { key: "telegram", href: links.telegram, label: "Telegram", value: tgValue, Icon: Send, color: "bg-sky-500", external: true },
-    { key: "viber", href: links.viber, label: "Viber", value: CONTACTS.viber, Icon: MessageCircle, color: "bg-violet-600" },
+    { key: "viber", href: links.viber, label: "Viber", value: contacts.viber, Icon: MessageCircle, color: "bg-violet-600" },
   ];
 
   return (

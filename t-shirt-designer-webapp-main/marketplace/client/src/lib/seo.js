@@ -1,12 +1,11 @@
 import { useEffect } from "react";
+import { useSiteConfig } from "./siteConfig";
 
 // Клієнтський SEO-хелпер: оновлює <title> та мета-теги (description/OG/Twitter)
 // при зміні сторінки. ВАЖЛИВО: це SPA без SSR — соц-скрапери (Telegram/Facebook),
 // які не виконують JS, бачать лише статичні мета з index.html. Цей хук покращує
 // вкладки браузера та SEO для краулерів, що рендерять JS (Googlebot).
-const SITE = "Memory Moments";
-const DEFAULT_DESC =
-  "Друк фото, сувеніри та конструктор кастомних товарів: футболки, чашки, фотоформати. Створіть унікальний дизайн онлайн.";
+// Назва сайту та опис за замовчуванням беруться з налаштувань сайту (адмінка).
 const DEFAULT_IMAGE = "/og-image.png";
 
 function setMeta(attr, key, value) {
@@ -20,9 +19,14 @@ function setMeta(attr, key, value) {
 }
 
 export function useSeo({ title, description, image } = {}) {
+  const { seo } = useSiteConfig();
+  const siteName = seo?.siteName || "Memory Moments";
+  const defaultDesc = seo?.description ||
+    "Друк фото, сувеніри та конструктор кастомних товарів: футболки, чашки, фотоформати. Створіть унікальний дизайн онлайн.";
+
   useEffect(() => {
-    const fullTitle = title ? `${title} · ${SITE}` : `${SITE} — Маркетплейс`;
-    const desc = description || DEFAULT_DESC;
+    const fullTitle = title ? `${title} · ${siteName}` : `${siteName} — Маркетплейс`;
+    const desc = description || defaultDesc;
     const img = new URL(image || DEFAULT_IMAGE, window.location.origin).href;
     const url = window.location.href;
 
@@ -35,5 +39,5 @@ export function useSeo({ title, description, image } = {}) {
     setMeta("name", "twitter:title", fullTitle);
     setMeta("name", "twitter:description", desc);
     setMeta("name", "twitter:image", img);
-  }, [title, description, image]);
+  }, [title, description, image, siteName, defaultDesc]);
 }

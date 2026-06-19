@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui";
 import { api } from "@/lib/api";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5174";
 
@@ -31,6 +32,7 @@ function getCatIcon(name) {
 }
 
 export function HeroBanner({ categories = [], onCategorySelect }) {
+  const { hero } = useSiteConfig();
   const [activeSlide, setActiveSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   // Керовані слайди з адмінки. Якщо їх нема — фолбек на авто-слайди категорій.
@@ -206,10 +208,10 @@ export function HeroBanner({ categories = [], onCategorySelect }) {
 
         <div className="space-y-1 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
           <p className="font-hero text-3xl md:text-4xl text-[#6b3a2a] tracking-wide">
-            Зберігаємо ваші моменти
+            {hero.headline}
           </p>
           <p className="font-hero text-base md:text-lg text-[#a06450]/80 tracking-widest">
-            Фото · Друк · Дизайн · Сувеніри
+            {hero.tagline}
           </p>
         </div>
 

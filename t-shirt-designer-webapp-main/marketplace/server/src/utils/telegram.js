@@ -1,11 +1,8 @@
-// Server-side Telegram notifications. Токен живе лише в .env сервера (секретний),
-// у клієнтський бандл не потрапляє.
+// Server-side Telegram notifications. Токен живе на сервері (налаштування БД або
+// .env, секретний) і в клієнтський бандл не потрапляє.
+import { getTelegramConfig } from "./siteConfig.js";
+
 const TG_API = "https://api.telegram.org";
-
-const token = () => process.env.TG_BOT_TOKEN;
-const chatId = () => process.env.TG_CHAT_ID;
-
-export const telegramEnabled = () => Boolean(token() && chatId());
 
 const esc = (s) =>
   String(s ?? "")
@@ -19,8 +16,8 @@ function dataUrlToBlob(dataUrl) {
   return { blob: new Blob([Buffer.from(m[2], "base64")], { type: m[1] }), ext: (m[1].split("/")[1] || "png").replace(/[^\w]/g, "") };
 }
 
-async function tgCall(method, body, isForm = false) {
-  const res = await fetch(`${TG_API}/bot${token()}/${method}`,
+async function tgCall(method, body, isForm, token) {
+  const res = await fetch(`${TG_API}/bot${token}/${method}`,
     isForm
       ? { method: "POST", body }
       : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
@@ -59,10 +56,11 @@ function buildText(order) {
  *                  роздільності; ідуть як document, тож Telegram НЕ перестискає їх.
  */
 export async function sendOrderNotification(order, images = [], documents = []) {
-  if (!telegramEnabled()) return false;
+  const { token, chatId } = await getTelegramConfig();
+  if (!token || !chatId) return false;
 
   // 1) Текст замовлення окремим повідомленням (без обмеження довжини підпису фото).
-  await tgCall("sendMessage", { chat_id: chatId(), text: buildText(order), parse_mode: "HTML" });
+  await tgCall("sendMessage", { chat_id: chatId, text: buildText(order), parse_mode: "HTML" }, false, token);
 
   // 2) Прев'ю макетів (інлайн-перегляд у чаті; Telegram стискає фото — це ок для прев'ю).
   const photos = (Array.isArray(images) ? images : [])
@@ -75,10 +73,10 @@ export async function sendOrderNotification(order, images = [], documents = []) 
   try {
     if (photos.length === 1) {
       const form = new FormData();
-      form.append("chat_id", chatId());
+      form.append("chat_id", chatId);
       form.append("photo", photos[0].blob, `design.${photos[0].ext}`);
       if (photos[0].caption) form.append("caption", photos[0].caption);
-      await tgCall("sendPhoto", form, true);
+      await tgCall("sendPhoto", form, true, token);
     } else if (photos.length >= 2) {
       const form = new FormData();
       const media = photos.map((p, i) => {
@@ -86,9 +84,9 @@ export async function sendOrderNotification(order, images = [], documents = []) 
         form.append(fn, p.blob, fn);
         return { type: "photo", media: `attach://${fn}`, caption: p.caption || undefined };
       });
-      form.append("chat_id", chatId());
+      form.append("chat_id", chatId);
       form.append("media", JSON.stringify(media));
-      await tgCall("sendMediaGroup", form, true);
+      await tgCall("sendMediaGroup", form, true, token);
     }
   } catch (e) {
     console.warn("Telegram preview (photo) failed:", e.message);
@@ -110,14 +108,27 @@ export async function sendOrderNotification(order, images = [], documents = []) 
   for (const [i, d] of docs.entries()) {
     try {
       const form = new FormData();
-      form.append("chat_id", chatId());
+      form.append("chat_id", chatId);
       form.append("document", d.blob, `${orderNum}-print-${i + 1}.${d.ext}`);
       if (d.caption) form.append("caption", d.caption);
-      await tgCall("sendDocument", form, true);
+      await tgCall("sendDocument", form, true, token);
     } catch (e) {
       console.warn(`Telegram sendDocument #${i + 1} failed:`, e.message);
     }
   }
 
+  return true;
+}
+
+// Тестове повідомлення — для кнопки перевірки налаштувань в адмінці.
+export async function sendTelegramTest() {
+  const { token, chatId } = await getTelegramConfig();
+  if (!token || !chatId) return false;
+  await tgCall(
+    "sendMessage",
+    { chat_id: chatId, text: "✅ <b>Memory Moments</b>: Telegram підключено правильно.", parse_mode: "HTML" },
+    false,
+    token
+  );
   return true;
 }

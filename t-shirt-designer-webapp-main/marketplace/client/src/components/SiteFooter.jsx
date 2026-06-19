@@ -1,22 +1,24 @@
 import { Phone, Instagram, Send, MessageCircle, MapPin, Clock } from "lucide-react";
-import { CONTACTS, contactLinks } from "@/lib/contacts";
+import { contactLinks } from "@/lib/contacts";
+import { useSiteConfig } from "@/lib/siteConfig";
 
 // Контакти у футері — клікабельні, відкривають дзвінок/застосунок/чат напряму.
 export function SiteFooter() {
-  const links = contactLinks();
-  const tgValue = CONTACTS.telegram?.startsWith("+")
-    ? CONTACTS.telegram
-    : `@${(CONTACTS.telegram || "").replace(/^@/, "")}`;
+  const { contacts } = useSiteConfig();
+  const links = contactLinks(contacts);
+  const tgValue = contacts.telegram?.startsWith("+")
+    ? contacts.telegram
+    : `@${(contacts.telegram || "").replace(/^@/, "")}`;
 
   const items = [
-    { key: "phone", href: links.phone, label: "Телефон", value: CONTACTS.phone, Icon: Phone, color: "bg-emerald-500" },
+    { key: "phone", href: links.phone, label: "Телефон", value: contacts.phone, Icon: Phone, color: "bg-emerald-500" },
     {
       key: "instagram", href: links.instagram, label: "Instagram",
-      value: `@${(CONTACTS.instagram || "").replace(/^@/, "")}`, Icon: Instagram,
+      value: `@${(contacts.instagram || "").replace(/^@/, "")}`, Icon: Instagram,
       color: "bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400", external: true,
     },
     { key: "telegram", href: links.telegram, label: "Telegram", value: tgValue, Icon: Send, color: "bg-sky-500", external: true },
-    { key: "viber", href: links.viber, label: "Viber", value: CONTACTS.viber, Icon: MessageCircle, color: "bg-violet-600" },
+    { key: "viber", href: links.viber, label: "Viber", value: contacts.viber, Icon: MessageCircle, color: "bg-violet-600" },
   ];
 
   return (
@@ -31,7 +33,7 @@ export function SiteFooter() {
             </span>
             <span className="leading-tight">
               <span className="block text-[11px] uppercase tracking-wide text-slate-400">Години роботи</span>
-              {CONTACTS.hours.map((h) => (
+              {(contacts.hours || []).map((h) => (
                 <span key={h.days} className="block text-sm text-slate-700">
                   <span className="font-medium text-slate-800">{h.days}:</span> {h.time}
                 </span>
@@ -39,7 +41,7 @@ export function SiteFooter() {
             </span>
           </div>
 
-          {CONTACTS.branches.map((b) => (
+          {(contacts.branches || []).map((b) => (
             <a
               key={b.address}
               href={b.mapsUrl}

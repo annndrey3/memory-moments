@@ -10,6 +10,20 @@ import { Badge } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useSeo } from "@/lib/seo";
+import { useSiteConfig } from "@/lib/siteConfig";
+
+// Будує рядки таблиці знижок («від N до M шт → −X%») з порогів налаштувань.
+function buildDiscountRows(tiers) {
+  const sorted = [...(tiers || [])]
+    .map((t) => ({ min: Number(t.min), pct: Number(t.pct) }))
+    .filter((t) => t.min > 0)
+    .sort((a, b) => a.min - b.min);
+  return sorted.map((t, i) => {
+    const next = sorted[i + 1];
+    const range = next ? `від ${t.min} до ${next.min - 1} шт` : `від ${t.min} шт та більше`;
+    return { range, percent: t.pct };
+  });
+}
 
 const TERMS = [
   "Термін виготовлення книг — 5 робочих днів після затвердження макета.",
@@ -66,6 +80,8 @@ function getCategoryMeta(name) {
 }
 
 export default function PricesPage() {
+  const { discounts } = useSiteConfig();
+  const photoDiscountRows = buildDiscountRows(discounts?.photo);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -260,7 +276,7 @@ export default function PricesPage() {
                   </h2>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {PHOTO_DISCOUNTS.map((d) => (
+                  {(photoDiscountRows.length ? photoDiscountRows : PHOTO_DISCOUNTS).map((d) => (
                     <div key={d.percent} className="flex items-center justify-between px-5 py-3">
                       <span className="text-sm font-medium text-slate-700">{d.range}</span>
                       <span className="text-lg font-extrabold text-rose-600 tabular-nums">−{d.percent}%</span>

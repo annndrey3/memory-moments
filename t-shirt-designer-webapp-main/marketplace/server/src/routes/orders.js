@@ -10,6 +10,7 @@ import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
 import { streamBookArchive, buildBookArchiveToDisk } from "../utils/bookArchive.js";
+import { getPhotoDiscountTiers } from "../utils/siteConfig.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -341,7 +342,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
 
     const subtotal = resolved.reduce((sum, r) => sum + r.line_total, 0);
     // Знижка на друк фото за кількістю (усі формати) — лише позиції photo_print.
-    const discount = Math.round((photoSubtotal * photoDiscountPct(photoCount)) / 100);
+    // Пороги беремо з налаштувань сайту (адмінка), фолбек — дефолтні тіри.
+    const discountTiers = await getPhotoDiscountTiers();
+    const discount = Math.round((photoSubtotal * photoDiscountPct(photoCount, discountTiers)) / 100);
     const total = Math.max(0, subtotal - discount);
 
     // Уся вставка замовлення + списання складу — в одній транзакції.
