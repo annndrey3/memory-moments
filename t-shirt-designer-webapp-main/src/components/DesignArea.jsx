@@ -9,6 +9,8 @@ import SaveDesign from "./SaveDesign";
 import TextToolBar from "./TextToolBar";
 import LineToolBar from "./LineToolBar";
 import MaskDropdownBtn from "./MaskDropdownBtn";
+import FrameDropdownBtn from "./FrameDropdownBtn";
+import CollageDropdownBtn from "./CollageDropdownBtn";
 import ObjectControls from "./ObjectControls";
 import FillDropdownBtn from "./FillDropdownBtn";
 import PropertiesBtn from "./PropertiesBtn";
@@ -234,6 +236,8 @@ const DesignArea = ({ manualSync }) => {
               <ToolBtn icon={Type} label="Текст" onClick={handleAddText} />
               <ToolBtn icon={Slash} label="Лінія" onClick={handleAddLine} />
               <MaskDropdownBtn manualSync={manualSync} />
+              <CollageDropdownBtn manualSync={manualSync} />
+              <FrameDropdownBtn manualSync={manualSync} />
               <FillDropdownBtn manualSync={manualSync} />
             </div>
 
