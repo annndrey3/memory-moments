@@ -208,13 +208,8 @@ const Header = () => {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
-            )}
-          </div>
-
-          {cartItems.length > 0 && (
-            <div className="mt-4 border-t border-border/60 pt-5">
-              <form onSubmit={handleOrderSubmit} className="space-y-4">
+                <div className="mt-4 border-t border-border/60 pt-5">
+                  <form id="cart-order-form" onSubmit={handleOrderSubmit} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Ім'я *</Label>
                   <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Введіть ваше ім'я" className="rounded-lg" />
@@ -280,10 +275,17 @@ const Header = () => {
                   <Label htmlFor="comment">Коментар</Label>
                   <Input id="comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Побажання до замовлення" className="rounded-lg" />
                 </div>
-                <Button type="submit" className="w-full rounded-xl h-11 shadow-glow" disabled={isSubmitting}>
-                  {isSubmitting ? "Відправка..." : "Оформити замовлення"}
-                </Button>
-              </form>
+                  </form>
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+
+          {cartItems.length > 0 && (
+            <div className="shrink-0 border-t border-border/60 pt-3 mt-3">
+              <Button type="submit" form="cart-order-form" className="w-full rounded-xl h-11 shadow-glow" disabled={isSubmitting}>
+                {isSubmitting ? "Відправка..." : "Оформити замовлення"}
+              </Button>
             </div>
           )}
         </SheetContent>
