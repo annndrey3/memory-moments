@@ -18,7 +18,7 @@ const PICKUP_BRANCHES = [
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, discount, discountPct, photoCount, total, clear } = useCart();
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [deliveryType, setDeliveryType] = useState("nova_poshta");
   const [pickupBranch, setPickupBranch] = useState(PICKUP_BRANCHES[0]);
@@ -226,9 +226,15 @@ export default function CheckoutPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between font-bold text-lg text-slate-900 border-t border-slate-100 pt-3 mt-4">
+              {discount > 0 && (
+                <div className="flex justify-between text-sm font-medium text-rose-600 border-t border-slate-100 pt-3 mt-4">
+                  <span>Знижка на друк фото −{discountPct}% ({photoCount} шт)</span>
+                  <span>−{formatPrice(discount)}</span>
+                </div>
+              )}
+              <div className={`flex justify-between font-bold text-lg text-slate-900 ${discount > 0 ? "pt-2 mt-2" : "border-t border-slate-100 pt-3 mt-4"}`}>
                 <span>До сплати</span>
-                <span>{formatPrice(subtotal)}</span>
+                <span>{formatPrice(total)}</span>
               </div>
               <Button
                 type="submit"

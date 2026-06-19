@@ -8,7 +8,7 @@ import { requirePermission, requireSuperadmin } from "../middleware/requirePermi
 import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
-import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices } from "../utils/designerPricing.js";
+import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -153,6 +153,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
     // Resolve each line. Items with product_id come from the catalog (prices from
     // the DB); items without — custom designs from the constructor.
     const resolved = [];
+    let photoCount = 0; // сумарна кіл-ть фото (photo_print) — для знижки за кількістю
+    let photoSubtotal = 0;
     for (const [itemIndex, item] of items.entries()) {
       const quantity = Math.max(1, Number(item.quantity) || 1);
 
@@ -226,6 +228,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
           quantity,
           line_total: unitPrice * quantity,
         });
+        photoCount += quantity;
+        photoSubtotal += unitPrice * quantity;
       } else {
         // Custom design from the constructor: no catalog product_id.
         // ЦІНА ЗАВЖДИ рахується на сервері з ПРАЙСУ (services) за типом товару —
@@ -331,7 +335,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
     }
 
     const subtotal = resolved.reduce((sum, r) => sum + r.line_total, 0);
-    const total = subtotal; // доставка/податки можна додати тут пізніше
+    // Знижка на друк фото за кількістю (усі формати) — лише позиції photo_print.
+    const discount = Math.round((photoSubtotal * photoDiscountPct(photoCount)) / 100);
+    const total = Math.max(0, subtotal - discount);
 
     // Уся вставка замовлення + списання складу — в одній транзакції.
     // Номер замовлення генерується тут же, щоб лічильник і INSERT були атомарними.
@@ -339,8 +345,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
       const orderNumber = await generateOrderNumber(tx, orderSource);
       const { insertId } = await tx.run(
         `INSERT INTO orders
-         (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, total, idempotency_key)
-         VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :total, :idempotency_key)`,
+         (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, discount, total, idempotency_key)
+         VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :discount, :total, :idempotency_key)`,
         {
           order_number: orderNumber,
           name,
@@ -350,6 +356,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
           notes: notes || null,
           source: orderSource,
           subtotal,
+          discount,
           total,
           idempotency_key: idempotencyKey,
         }

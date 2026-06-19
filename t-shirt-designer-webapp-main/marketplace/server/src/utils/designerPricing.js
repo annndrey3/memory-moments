@@ -121,6 +121,16 @@ export function bookPriceFromServices(services, type, { format, spreads, extra }
   return base + extraPrice;
 }
 
+// ── Знижка на друк фото за кількістю (усі формати). Поріг → відсоток. ──
+export const PHOTO_DISCOUNT_TIERS = [
+  { min: 400, pct: 30 }, { min: 300, pct: 25 }, { min: 200, pct: 20 },
+  { min: 150, pct: 15 }, { min: 100, pct: 10 }, { min: 50, pct: 5 },
+];
+export function photoDiscountPct(count) {
+  for (const t of PHOTO_DISCOUNT_TIERS) if (Number(count) >= t.min) return t.pct;
+  return 0;
+}
+
 // Ціна звичайної позиції (чашка/фото/полароїд) з прайсу за мапою. null, якщо
 // типу немає в мапі або відповідного рядка прайсу (тоді — фолбек на каталог).
 export function servicePriceFor(designerType, services) {

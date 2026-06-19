@@ -9,7 +9,7 @@ import { useSeo } from "@/lib/seo";
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { items, updateQty, removeItem, subtotal } = useCart();
+  const { items, updateQty, removeItem, subtotal, discount, discountPct, photoCount, total } = useCart();
   useSeo({ title: "Кошик" });
 
   return (
@@ -113,9 +113,15 @@ export default function CartPage() {
                   <span>Сума</span>
                   <span>{formatPrice(subtotal)}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm font-medium text-rose-600 mb-2">
+                    <span>Знижка на друк фото −{discountPct}% ({photoCount} шт)</span>
+                    <span>−{formatPrice(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg text-slate-900 border-t border-slate-100 pt-3 mt-3">
                   <span>До сплати</span>
-                  <span>{formatPrice(subtotal)}</span>
+                  <span>{formatPrice(total)}</span>
                 </div>
                 <Button
                   onClick={() => navigate("/checkout")}
