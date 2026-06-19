@@ -6,7 +6,7 @@ import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, bui
 import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
-import TextToolBar from "./TextToolBar";
+import TextEditPanel from "./TextEditPanel";
 import LineToolBar from "./LineToolBar";
 import MaskDropdownBtn from "./MaskDropdownBtn";
 import FrameDropdownBtn from "./FrameDropdownBtn";
@@ -126,16 +126,27 @@ const DesignArea = ({ manualSync }) => {
   const handleAddText = () => {
     if (!activeCanvas) return;
     const printArea = getPrintableArea();
-    const text = new fabric.Textbox("Додайте свій текст тут...", {
+    const text = new fabric.Textbox("Ваш текст", {
       ...DEFAULT_TEXT_CONFIG,
       left: printArea.left + printArea.width / 2,
       top: printArea.top + printArea.height / 2,
-      width: Math.min(220, printArea.width * 0.8),
-      editable: false,
+      width: Math.min(260, printArea.width * 0.85),
+      editable: true,
     });
     activeCanvas.add(text);
     activeCanvas.setActiveObject(text);
     activeCanvas.renderAll();
+    // Одразу даємо друкувати: вмикаємо редагування й виділяємо текст-заготовку,
+    // щоб перший символ його замінив.
+    try { text.enterEditing(); text.selectAll(); } catch { /* canvas ще не готовий */ }
+    // Шрифт за замовчуванням (Pacifico) міг не встигнути завантажитись — перемалюємо.
+    if (document.fonts?.load) {
+      document.fonts
+        .load(`${text.fontSize}px "${text.fontFamily}"`)
+        .then(() => { activeCanvas.renderAll(); manualSync?.(); })
+        .catch(() => {});
+    }
+    manualSync?.();
   };
 
   const handleAddLine = () => {
@@ -291,6 +302,9 @@ const DesignArea = ({ manualSync }) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Плаваюча панель тексту — спливає одразу при виборі/додаванні тексту */}
+      <TextEditPanel manualSync={manualSync} />
     </div>
   );
 };

@@ -404,8 +404,10 @@ export const bookUnit = (type) => (type === "print-book" ? "листів" : "р�
 export const TSHIRT_TYPES = PRODUCT_TYPES;
 
 export const DEFAULT_TEXT_CONFIG = {
-  fontSize: 20,
-  fontFamily: "arial",
+  fontSize: 28,
+  fontFamily: "Pacifico", // шрифт за замовчуванням (застосовується й до тексту-заготовки)
+  fontStyle: "normal",
+  fontWeight: "normal",
   originX: "center",
   originY: "center",
   fill: "black",
