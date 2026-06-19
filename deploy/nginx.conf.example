@@ -35,8 +35,8 @@ server {
     root /var/www/memory-moments/t-shirt-designer-webapp-main/marketplace/client/dist;
     index index.html;
 
-    # designer-заказы несут base64 макетов (front+back, печать+превью) — нужен большой запас
-    client_max_body_size 100m;
+    # designer-заказы несут base64 макетов (фотокниги = много разворотов) — большой запас
+    client_max_body_size 250m;
 
     # API → Node (порт 3001)
     location /api/ {
