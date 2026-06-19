@@ -12,18 +12,6 @@ import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor } fro
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
-function savePrintImage(dataUrl, filename) {
-  if (!dataUrl || !dataUrl.startsWith("data:image")) return null;
-  try {
-    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-    fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(base64, "base64"));
-    return `/uploads/${filename}`;
-  } catch (e) {
-    console.error("savePrintImage failed:", e.message);
-    return null;
-  }
-}
-
 const router = Router();
 
 export const ORDER_STATUSES = ["pending", "paid", "shipped", "completed", "cancelled"];
@@ -35,6 +23,16 @@ const createOrderLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Забагато замовлень. Спробуйте за хвилину." },
+});
+
+// Публічний перегляд замовлення (сторінка підтвердження) — окремий ліміт, щоб
+// послідовні номери (K0001…) не можна було швидко перебрати в пошуках клієнтів.
+const trackOrderLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Забагато запитів. Спробуйте за хвилину." },
 });
 
 // Атомарний лічильник у таблиці settings. Виконується всередині транзакції,
@@ -110,6 +108,8 @@ async function getOrderWithItems(id) {
 // Ціни конструктора рахуються з ПРАЙСУ (services) через спільний модуль
 // designerPricing — і футболка, і решта позицій (чашка/фото/полароїд тощо).
 router.post("/", createOrderLimiter, async (req, res) => {
+  // Оголошуємо тут, щоб ключ був видимий і в catch (обробка гонки повторів).
+  let idempotencyKey = null;
   try {
     const { customer = {}, items = [], source = "marketplace" } = req.body;
     const { name, email, phone, address, notes } = customer;
@@ -122,9 +122,30 @@ router.post("/", createOrderLimiter, async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Кошик порожній" });
     }
+    // Обмеження кількості позицій — захист від обʼємного запиту, що тримав би
+    // довгу транзакцію та десятки тисяч запитів у БД (event-loop/DoS).
+    if (items.length > 50) {
+      return res.status(400).json({ error: "Забагато позицій у замовленні (макс. 50)" });
+    }
+
+    // Ідемпотентність: повтор запиту з тим самим ключем (напр. після таймауту)
+    // повертає вже створене замовлення, а не дубль. Ключ — з заголовка
+    // Idempotency-Key або з тіла. Без ключа поведінка не змінюється.
+    idempotencyKey =
+      (req.get("Idempotency-Key") || req.body.idempotency_key || "").trim() || null;
+    if (idempotencyKey) {
+      const dup = await query("SELECT id FROM orders WHERE idempotency_key = :k", { k: idempotencyKey });
+      if (dup.length) {
+        return res.status(200).json(await getOrderWithItems(dup[0].id));
+      }
+    }
 
     // Унікальний ключ для файлів друку — не залежить від номера замовлення.
     const fileKey = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    // Друкарські файли збираємо тут і пишемо на диск ЛИШЕ після успішного коміту
+    // (success-path): інакше відкіт транзакції (напр. 409 нестача складу) лишав би
+    // orphan-файли. { dataUrl, filename }.
+    const fileJobs = [];
 
     // Прайс-лист один раз на замовлення — джерело цін для всіх позицій конструктора.
     const servicesRows = await query("SELECT code, format, price FROM services WHERE is_active = 1");
@@ -132,7 +153,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
     // Resolve each line. Items with product_id come from the catalog (prices from
     // the DB); items without — custom designs from the constructor.
     const resolved = [];
-    for (const item of items) {
+    for (const [itemIndex, item] of items.entries()) {
       const quantity = Math.max(1, Number(item.quantity) || 1);
 
       if (item.product_id) {
@@ -158,6 +179,10 @@ router.post("/", createOrderLimiter, async (req, res) => {
           }
           unitPrice += Number(variant.price_modifier || 0);
           variantLabel = `${variant.attribute_name}: ${variant.attribute_value}`;
+        }
+
+        if (!Number.isFinite(unitPrice)) {
+          return res.status(400).json({ error: `Некоректна ціна товару (id ${item.product_id})` });
         }
 
         resolved.push({
@@ -236,27 +261,29 @@ router.post("/", createOrderLimiter, async (req, res) => {
           }
           unitPrice = Number(match[0].price);
         }
+        if (!Number.isFinite(Number(unitPrice))) {
+          return res.status(400).json({ error: `Некоректна ціна для типу «${item.product_type}»` });
+        }
         const variantLabel =
           item.variant_label || (item.color ? `Колір: ${item.color}` : null);
 
-        // Зберігаємо друкарські макети на диск (base64 → PNG-файл),
-        // щоб уникнути зберігання великих blob у SQLite.
-        const printFrontUrl = item.print_front
-          ? savePrintImage(item.print_front, `print_${fileKey}_front.png`)
-          : null;
-        const printBackUrl = item.print_back
-          ? savePrintImage(item.print_back, `print_${fileKey}_back.png`)
-          : null;
+        // Плануємо запис друкарських макетів на диск, але НЕ пишемо до коміту.
+        // Індекс позиції (itemIndex) у ключі унеможливлює перезапис файлів між
+        // позиціями одного замовлення (інакше другий дизайн затирав би перший).
+        const idxKey = `${fileKey}_${itemIndex}`;
+        const scheduleImage = (dataUrl, filename) => {
+          if (!dataUrl || !dataUrl.startsWith("data:image")) return null;
+          fileJobs.push({ dataUrl, filename });
+          return `/uploads/${filename}`;
+        };
+        const printFrontUrl = scheduleImage(item.print_front, `print_${idxKey}_front.png`);
+        const printBackUrl = scheduleImage(item.print_back, `print_${idxKey}_back.png`);
         // Сирий кроп зони друку (фото клієнта без рамки шаблону) — для прев'ю в адмінці.
-        const rawFrontUrl = item.raw_front
-          ? savePrintImage(item.raw_front, `raw_${fileKey}_front.png`)
-          : null;
-        const rawBackUrl = item.raw_back
-          ? savePrintImage(item.raw_back, `raw_${fileKey}_back.png`)
-          : null;
-        // Зберігаємо мокап-прев'ю на диск (JPEG) замість blob у SQLite.
+        const rawFrontUrl = scheduleImage(item.raw_front, `raw_${idxKey}_front.png`);
+        const rawBackUrl = scheduleImage(item.raw_back, `raw_${idxKey}_back.png`);
+        // Мокап-прев'ю (JPEG): або зберігаємо base64 на диск, або лишаємо готовий URL.
         const previewUrl = item.design_preview?.startsWith("data:image")
-          ? savePrintImage(item.design_preview, `preview_${fileKey}.jpg`)
+          ? scheduleImage(item.design_preview, `preview_${idxKey}.jpg`)
           : (item.design_preview || null);
 
         // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
@@ -294,8 +321,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
       const orderNumber = await generateOrderNumber(tx, orderSource);
       const { insertId } = await tx.run(
         `INSERT INTO orders
-         (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, total)
-         VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :total)`,
+         (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, total, idempotency_key)
+         VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :total, :idempotency_key)`,
         {
           order_number: orderNumber,
           name,
@@ -306,6 +333,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
           source: orderSource,
           subtotal,
           total,
+          idempotency_key: idempotencyKey,
         }
       );
 
@@ -325,31 +353,60 @@ router.post("/", createOrderLimiter, async (req, res) => {
 
     const order = await getOrderWithItems(orderId);
 
-    // Авто-захоплення клієнта (best-effort): зливаємо за телефоном/email, інакше створюємо.
-    // Клієнт одразу зʼявляється в адмінці. Помилка не валить замовлення.
+    // Друкарські файли пишемо ПІСЛЯ коміту (async, без блокування event-loop
+    // синхронним writeFileSync). Помилка запису не валить уже збережене
+    // замовлення — лише логується (файл відновлюваний/некритичний для прев'ю).
+    for (const job of fileJobs) {
+      try {
+        const base64 = job.dataUrl.replace(/^data:image\/\w+;base64,/, "");
+        await fs.promises.writeFile(path.join(UPLOAD_DIR, job.filename), Buffer.from(base64, "base64"));
+      } catch (e) {
+        console.error(`order ${order.order_number}: write ${job.filename} failed:`, e.message);
+      }
+    }
+
+    // Відповідаємо клієнту ОДРАЗУ після збереження. Зовнішні сповіщення
+    // (Telegram/email) винесені за критичний шлях: повільний/недоступний TG не
+    // тримає чекаут і не провокує дублі через таймаут проксі.
+    res.status(201).json(order);
+
+    // Best-effort побічні ефекти — поза відповіддю клієнту (помилки лише логуємо).
     try {
       await upsertCustomerFromContact({ name, email, phone, source });
     } catch (e) {
       console.warn("Customer upsert failed:", e.message);
     }
-
-    // Сповіщення в Telegram (best-effort — не валимо замовлення, якщо TG недоступний).
-    // images — стиснені прев'ю (інлайн), documents — друкарські макети (без перестиску).
+    let notifyStatus = "sent";
     try {
       await sendOrderNotification(order, req.body.images, req.body.documents);
     } catch (e) {
+      notifyStatus = "failed";
       console.warn("Telegram notify failed:", e.message);
     }
-
-    // Email-підтвердження покупцю (best-effort).
     try {
       await sendOrderConfirmation(order);
     } catch (e) {
       console.warn("Email confirmation failed:", e.message);
     }
-
-    res.status(201).json(order);
+    // Фіксуємо статус сповіщення власника: 'failed' видно в адмінці/логах —
+    // заказ не губиться тихо, його можна доставити повторно (POST /:id/notify).
+    try {
+      await query(
+        "UPDATE orders SET notify_status = :s, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
+        { s: notifyStatus, id: orderId }
+      );
+    } catch (e) {
+      console.warn("notify_status update failed:", e.message);
+    }
   } catch (err) {
+    // Гонка ідемпотентності: паралельний запит із тим самим ключем уже створив
+    // замовлення (unique-індекс відхилив наш INSERT) — повертаємо існуюче.
+    if (idempotencyKey && (err.code === "ER_DUP_ENTRY" || err.code === "23505")) {
+      try {
+        const dup = await query("SELECT id FROM orders WHERE idempotency_key = :k", { k: idempotencyKey });
+        if (dup.length) return res.status(200).json(await getOrderWithItems(dup[0].id));
+      } catch { /* провалюємось у звичайну обробку помилки */ }
+    }
     // Нестача складу — очікувана помилка валідації, повертаємо 409 з повідомленням.
     if (err.status === 409) {
       return res.status(409).json({ error: err.message });
@@ -359,15 +416,37 @@ router.post("/", createOrderLimiter, async (req, res) => {
   }
 });
 
+// Публічна проєкція замовлення: лише статус, позиції та суми — БЕЗ PII
+// (імʼя/email/телефон/адреса/нотатки). Інакше перебір послідовних номерів
+// дозволяв би зібрати контакти всіх клієнтів.
+function publicOrderView(order) {
+  return {
+    order_number: order.order_number,
+    status: order.status,
+    source: order.source,
+    subtotal: order.subtotal,
+    total: order.total,
+    created_at: order.created_at,
+    items: (order.items || []).map((it) => ({
+      id: it.id,
+      product_name: it.product_name,
+      variant_label: it.variant_label,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      line_total: it.line_total,
+    })),
+  };
+}
+
 // GET /api/orders/track/:number — public order lookup for the confirmation page.
-router.get("/track/:number", async (req, res) => {
+router.get("/track/:number", trackOrderLimiter, async (req, res) => {
   try {
     const orders = await query("SELECT * FROM orders WHERE order_number = :n", {
       n: req.params.number,
     });
     if (!orders.length) return res.status(404).json({ error: "Замовлення не знайдено" });
     const order = await getOrderWithItems(orders[0].id);
-    res.json(order);
+    res.json(publicOrderView(order));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch order" });
@@ -465,17 +544,43 @@ router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), 
   }
 });
 
+// POST /api/orders/:id/notify — повторно надіслати власнику сповіщення в Telegram
+// (напр. якщо перша спроба впала: notify_status='failed'). Текстове резюме без
+// важких вкладень — оригінальні base64-прев'ю у запиті вже не зберігаються.
+router.post("/:id/notify", authMiddleware, requirePermission("orders.manage"), async (req, res) => {
+  try {
+    const order = await getOrderWithItems(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    let notifyStatus = "sent";
+    try {
+      await sendOrderNotification(order, [], []);
+    } catch (e) {
+      notifyStatus = "failed";
+      console.warn("Telegram resend failed:", e.message);
+    }
+    await query(
+      "UPDATE orders SET notify_status = :s, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
+      { s: notifyStatus, id: req.params.id }
+    );
+    res.json({ ok: notifyStatus === "sent", notify_status: notifyStatus });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to resend notification" });
+  }
+});
+
 // Видалення замовлення — тільки суперадмін.
 // Разом із замовленням видаляються print-файли з uploads/.
 router.delete("/:id", authMiddleware, requireSuperadmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const [order] = await query("SELECT id FROM orders WHERE id = :id", { id });
+    const [order] = await query("SELECT id, status FROM orders WHERE id = :id", { id });
     if (!order) return res.status(404).json({ error: "Замовлення не знайдено" });
 
-    // Збираємо print-файли та preview перед видаленням з БД
+    // Збираємо print-файли та preview + дані для повернення складу перед видаленням.
     const items = await query(
-      "SELECT design_data, design_preview FROM order_items WHERE order_id = :id", { id }
+      "SELECT product_id, variant_id, quantity, design_data, design_preview FROM order_items WHERE order_id = :id",
+      { id }
     );
     const filesToDelete = [];
     for (const { design_data, design_preview } of items) {
@@ -490,7 +595,15 @@ router.delete("/:id", authMiddleware, requireSuperadmin, async (req, res) => {
       }
     }
 
-    await query("DELETE FROM orders WHERE id = :id", { id });
+    // Повернення складу + видалення — атомарно. Якщо замовлення не було
+    // скасоване, склад досі «зайнятий» цим замовленням, тож повертаємо його
+    // (інакше видалення pending/paid-замовлення назавжди губило б залишок).
+    await transaction(async (tx) => {
+      if (order.status !== "cancelled") {
+        for (const it of items) await releaseStock(tx, it);
+      }
+      await tx.run("DELETE FROM orders WHERE id = :id", { id });
+    });
 
     // Видаляємо файли після успішного DELETE з БД
     for (const f of filesToDelete) {

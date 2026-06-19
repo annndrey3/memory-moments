@@ -19,6 +19,7 @@ import dataIORoutes from "./routes/dataIO.js";
 import slideRoutes from "./routes/slides.js";
 import customerRoutes from "./routes/customers.js";
 import prerenderRoutes from "./prerender.js";
+import { query } from "./config/db.js";
 
 dotenv.config();
 
@@ -83,8 +84,37 @@ app.use("/api", (_req, res, next) => {
   next();
 });
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "memory-moments-marketplace-api" });
+// Лёгке структурне логування на стику HTTP: метод, шлях, статус, тривалість,
+// розмір тіла. Статика /uploads віддана вище й сюди не доходить. Без зовнішніх
+// залежностей — рядок JSON на запит (далі підхопить pm2-logrotate у проді).
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on("finish", () => {
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    console.log(
+      JSON.stringify({
+        t: new Date().toISOString(),
+        method: req.method,
+        url: req.originalUrl,
+        status: res.statusCode,
+        ms: Math.round(ms),
+        bytes: Number(req.headers["content-length"]) || 0,
+      })
+    );
+  });
+  next();
+});
+
+app.get("/api/health", async (_req, res) => {
+  // Глибока перевірка: доступність БД. 503 дозволяє зовнішньому монітору/PM2
+  // реагувати на «живий процес, але мертва БД», а не вважати сервіс здоровим.
+  try {
+    await query("SELECT 1 AS ok");
+    res.json({ status: "ok", service: "memory-moments-marketplace-api" });
+  } catch (err) {
+    console.error("health check failed:", err.message);
+    res.status(503).json({ status: "error", service: "memory-moments-marketplace-api" });
+  }
 });
 
 app.use("/api/auth", authRoutes);

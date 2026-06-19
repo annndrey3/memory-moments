@@ -67,6 +67,19 @@ async function rowsProducts() {
   return out;
 }
 
+// Захист від CSV/формульної інʼєкції: значення, що починається з = + - @ (або
+// таб/CR), Excel може виконати як формулу при відкритті. Дані клієнтів (імʼя,
+// нотатки) приходять із публічного оформлення замовлення, тож префіксуємо такі
+// РЯДКИ апострофом. Числа й решта типів — без змін.
+function csvSafe(v) {
+  return typeof v === "string" && /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+}
+function safeRow(r) {
+  const out = {};
+  for (const k of Object.keys(r)) out[k] = csvSafe(r[k]);
+  return out;
+}
+
 async function buildWorkbook(kind) {
   const rows = kind === "categories" ? await rowsCategories()
     : kind === "services" ? await rowsServices()
@@ -76,7 +89,7 @@ async function buildWorkbook(kind) {
   const ws = wb.addWorksheet(kind);
   ws.columns = COLUMNS[kind].map((c) => ({ header: c, key: c, width: c === "description" || c === "variants" || c === "images" ? 40 : 18 }));
   ws.getRow(1).font = { bold: true };
-  for (const r of rows) ws.addRow(r);
+  for (const r of rows) ws.addRow(safeRow(r));
   return wb;
 }
 
