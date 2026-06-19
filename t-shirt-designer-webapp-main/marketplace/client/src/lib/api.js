@@ -125,8 +125,12 @@ export const api = {
   },
 
   // Orders
-  createOrder: (data) =>
-    request("/orders", { method: "POST", body: JSON.stringify(data) }),
+  createOrder: (data, idempotencyKey) =>
+    request("/orders", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    }),
 
   trackOrder: (orderNumber) => request(`/orders/track/${orderNumber}`),
 

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { toggleCart, removeFromCart, updateQuantity, clearCart } from "@/features/tshirtSlice";
 import { sendOrderToMarketplace } from "@/utils/canvasSyncManager";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const MARKETPLACE_URL = import.meta.env.VITE_MARKETPLACE_URL || "http://localhost:5174";
@@ -29,6 +29,9 @@ const Header = () => {
   const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Стабільний ключ ідемпотентності: генерується раз на спробу оформлення й
+  // переживає повтори (після помилки), щоб таймаут-ретрай не плодив дублі заказу.
+  const idemKeyRef = useRef(null);
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -40,10 +43,15 @@ const Header = () => {
     }
 
     setIsSubmitting(true);
+    // Ключ генеруємо раз і тримаємо в ref до успіху — повтори несуть той самий ключ.
+    if (!idemKeyRef.current) {
+      idemKeyRef.current = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
     try {
       // Замовлення йде в маркетплейс-API: він зберігає його в адмінці
       // та сам надсилає сповіщення в Telegram (токен бота — лише на сервері).
-      await sendOrderToMarketplace(cartItems, { name, phone, email, comment });
+      await sendOrderToMarketplace(cartItems, { name, phone, email, comment }, idemKeyRef.current);
+      idemKeyRef.current = null; // успіх — наступне замовлення отримає новий ключ
       toast({ title: "Успішно!", description: "Ваше замовлення відправлено!" });
       dispatch(clearCart());
       dispatch(toggleCart(false));

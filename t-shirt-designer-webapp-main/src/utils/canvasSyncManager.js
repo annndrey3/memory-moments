@@ -21,7 +21,7 @@ export const fetchDesignerPrices = async () => {
 // Надсилає замовлення з конструктора у маркетплейс-API.
 // Сервер зберігає його в адмінці ТА надсилає сповіщення в Telegram
 // (токен бота — лише на сервері). Прев'ю макетів передаємо в полі images.
-export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
+export const sendOrderToMarketplace = async (cartItems, customerDetails, idempotencyKey = null) => {
   // images — стиснені прев'ю (інлайн у чаті); documents — друкарські макети
   // у повній роздільності (Telegram надсилає їх без перестиску → готові до друку).
   const images = [];
@@ -75,7 +75,11 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails) => {
 
   const res = await fetch(`${MARKETPLACE_API}/orders`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Ідемпотентність: той самий ключ при повторі (таймаут/ретрай) не дасть дубль.
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+    },
     body: JSON.stringify(payload),
   });
 

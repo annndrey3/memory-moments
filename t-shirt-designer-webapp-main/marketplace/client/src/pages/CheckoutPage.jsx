@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -25,6 +25,8 @@ export default function CheckoutPage() {
   const [novaPoshtaAddress, setNovaPoshtaAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // Стабільний ключ ідемпотентності на спробу оформлення (переживає ретраї).
+  const idemKeyRef = useRef(null);
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
   useSeo({ title: "Оформлення замовлення" });
@@ -52,6 +54,9 @@ export default function CheckoutPage() {
     }
     setSubmitting(true);
     setError(null);
+    if (!idemKeyRef.current) {
+      idemKeyRef.current = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
     try {
       const order = await api.createOrder({
         customer: {
@@ -78,7 +83,8 @@ export default function CheckoutPage() {
             quantity: i.quantity,
           };
         }),
-      });
+      }, idemKeyRef.current);
+      idemKeyRef.current = null; // успіх — наступне замовлення отримає новий ключ
       clear();
       navigate(`/order/${order.order_number}`);
     } catch (err) {
