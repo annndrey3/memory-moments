@@ -4,7 +4,7 @@ import { Minus, Plus, ShoppingCart, Images, X, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
-import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos } from "@/features/tshirtSlice";
+import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos, removeSlimBookPhoto, reorderSlimBookPhotos } from "@/features/tshirtSlice";
 import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookType, bookUnit } from "@/constants/designConstants";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
@@ -41,6 +41,7 @@ const OrderBar = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMin, setPreviewMin] = useState(false);
   const [coverImage, setCoverImage] = useState(null);
+  const [backCoverImage, setBackCoverImage] = useState(null);
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
   // (друга сторона додає ціну з прайсу). Реактивно слухаємо обидва полотна.
@@ -143,8 +144,8 @@ const OrderBar = () => {
   };
 
   const openPreview = () => {
-    const cover = frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null;
-    setCoverImage(cover || null);
+    setCoverImage(frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null);
+    setBackCoverImage(backCanvas ? canvasSyncManager.getCanvasTexture(backCanvas) : null);
     setPreviewMin(false);
     setPreviewOpen(true);
   };
@@ -393,7 +394,10 @@ const OrderBar = () => {
         onMinimize={() => setPreviewMin(true)}
         onRestore={() => setPreviewMin(false)}
         coverImage={coverImage}
+        backCoverImage={backCoverImage}
         photos={slimBookPhotos}
+        onReorder={(from, to) => dispatch(reorderSlimBookPhotos({ from, to }))}
+        onRemove={(i) => dispatch(removeSlimBookPhoto(i))}
         format={slimBookFormat}
         spreads={slimBookSpreads}
         extra={slimBookExtra}

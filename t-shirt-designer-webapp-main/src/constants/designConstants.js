@@ -330,23 +330,25 @@ export const PRODUCT_TYPES = {
   // пропорції обкладинки (buildSlimBookView). Кіл-ть розворотів — у панелі замовлення.
   "slim-book": {
     name: "Slim Book (фотокнига)",
-    description: "Обкладинка + фото для розворотів",
+    description: "Обкладинка (перед/зад) + фото для розворотів",
     previewMode: "flat",
     previewShape: "square",
     slimBook: true,
     views: {
-      front: { label: "Обкладинка", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
+      front: { label: "Обкладинка (перед)", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
+      back: { label: "Обкладинка (зад)", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
     },
   },
   // Print Book — та сама механіка, інші коди прайсу (1135/1132/1133), рахунок у листах.
   "print-book": {
     name: "Print Book (фотокнига)",
-    description: "Обкладинка + фото для сторінок",
+    description: "Обкладинка (перед/зад) + фото для сторінок",
     previewMode: "flat",
     previewShape: "square",
     slimBook: true,
     views: {
-      front: { label: "Обкладинка", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
+      front: { label: "Обкладинка (перед)", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
+      back: { label: "Обкладинка (зад)", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
     },
   },
 };

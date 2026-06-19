@@ -76,6 +76,14 @@ export const tshirtSlice = createSlice({
     clearSlimBookPhotos: (state) => {
       state.slimBookPhotos = [];
     },
+    reorderSlimBookPhotos: (state, action) => {
+      const { from, to } = action.payload || {};
+      const arr = state.slimBookPhotos;
+      if (from == null || to == null || from < 0 || to < 0 || from >= arr.length || to >= arr.length || from === to) return;
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      state.designDirty = true;
+    },
     setPaperType: (state, action) => {
       state.paperType = action.payload;
       state.designDirty = true;
@@ -149,6 +157,7 @@ export const {
   addSlimBookPhotos,
   removeSlimBookPhoto,
   clearSlimBookPhotos,
+  reorderSlimBookPhotos,
   setPaperType,
   markDesignDirty,
   setQuantity,

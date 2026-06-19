@@ -21,13 +21,17 @@ export default function PhotobookPreview({
   onMinimize,
   onRestore,
   coverImage,
+  backCoverImage,
   photos = [],
+  onReorder,
+  onRemove,
   format = "21x30",
   spreads = 10,
   extra = 0,
   unit = "розворотів",
 }) {
   const bookRef = useRef(null);
+  const dragRef = useRef(null);
   const [page, setPage] = useState(0);
   const [vp, setVp] = useState({ w: 1280, h: 800 });
 
@@ -48,6 +52,8 @@ export default function PhotobookPreview({
     list.push({ type: "back" });
     return list;
   }, [photos]);
+  // Підпис порядку фото — щоб HTMLFlipBook перебудувався при зміні порядку/видаленні.
+  const photoSig = useMemo(() => photos.map((p) => (p || "").slice(-10)).join("|"), [photos]);
 
   if (!open) return null;
 
@@ -103,7 +109,7 @@ export default function PhotobookPreview({
           </div>
         ) : (
           <HTMLFlipBook
-            key={`${format}-${pages.length}-${pageH}`}
+            key={`${format}-${pages.length}-${pageH}-${photoSig}`}
             width={pageW}
             height={pageH}
             size="fixed"
@@ -127,9 +133,13 @@ export default function PhotobookPreview({
                 ) : p.type === "photo" ? (
                   <img src={p.src} alt={`Фото ${p.i + 1}`} className="h-full w-full object-cover" />
                 ) : p.type === "back" ? (
-                  <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-400">
-                    Memory Moments
-                  </div>
+                  backCoverImage ? (
+                    <img src={backCoverImage} alt="Обкладинка (зад)" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm text-slate-400">
+                      Memory Moments
+                    </div>
+                  )
                 ) : (
                   <div className="h-full w-full bg-white" />
                 )}
@@ -138,6 +148,39 @@ export default function PhotobookPreview({
           </HTMLFlipBook>
         )}
       </div>
+
+      {/* Мініатюри з керуванням порядком — перетягніть, щоб змінити розкладку */}
+      {photos.length > 0 && (
+        <div className="shrink-0 border-t border-white/10 px-3 py-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((src, i) => (
+              <div
+                key={i}
+                draggable
+                onDragStart={() => { dragRef.current = i; }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { const from = dragRef.current; dragRef.current = null; if (from != null && from !== i) onReorder?.(from, i); }}
+                onClick={() => bookRef.current?.pageFlip()?.flip(i + 1)}
+                className="group relative h-16 w-16 shrink-0 cursor-grab overflow-hidden rounded-lg border-2 border-white/20 hover:border-violet-400"
+                title={`Фото ${i + 1} — перетягніть, щоб змінити порядок`}
+              >
+                <img src={src} alt={`Фото ${i + 1}`} className="pointer-events-none h-full w-full object-cover" />
+                <span className="absolute left-0.5 top-0.5 rounded bg-black/60 px-1 text-[10px] font-bold text-white">{i + 1}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemove?.(i); }}
+                  className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500"
+                  title="Прибрати"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-center text-[11px] text-white/50">
+            Перетягніть мініатюри, щоб змінити порядок фото на розворотах
+          </p>
+        </div>
+      )}
 
       {/* Навігація */}
       {photos.length > 0 && (
