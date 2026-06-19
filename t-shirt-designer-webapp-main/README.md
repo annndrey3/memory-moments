@@ -14,17 +14,20 @@
 ```
 memory-moments/
 ├── src/                        # Конструктор (Vite + React)
-│   ├── components/             # DesignArea, Header, ToolsSidebar, MugModel, ProductCanvas …
+│   ├── components/             # DesignArea, Header, ToolsSidebar, MugModel, ProductCanvas,
+│   │                           #   FrameDropdownBtn, CollageDropdownBtn, TextEditPanel,
+│   │                           #   FontOptions, DesignerTour …
 │   ├── hooks/                  # useTshirtCanvas, useCanvas, useAddImage, useCanvasTextureSync
 │   ├── features/               # Redux slices (tshirtSlice)
-│   ├── constants/              # designConstants.js — типи товарів, printZone, SVG-шляхи
+│   ├── constants/              # designConstants.js (типи товарів, printZone, FONT_OPTIONS/FONT_GROUPS),
+│   │                           #   frames.js (20 рамок), collageLayouts.js (9 шаблонів)
 │   └── utils/                  # canvasStorageManager, canvasSyncManager
 │
 ├── marketplace/
 │   ├── client/                 # SPA (Vite + React Router)
 │   │   └── src/
 │   │       ├── pages/          # MarketplacePage, ProductDetailPage, CheckoutPage …
-│   │       ├── pages/admin/    # AdminOrdersPage, AdminProductsPage, AdminSettingsPage …
+│   │       ├── pages/admin/    # AdminOrdersPage, AdminProductsPage, AdminSiteConfigPage …
 │   │       ├── components/     # SiteHeader, SiteFooter, HeroBanner, ContactFloatingButton …
 │   │       └── lib/            # api.js, cart.jsx, contacts.js, utils.js
 │   │
@@ -33,6 +36,7 @@ memory-moments/
 │   │       ├── routes/         # auth, products, categories, orders, upload, cleanup …
 │   │       ├── middleware/     # auth.js, requirePermission.js
 │   │       ├── config/         # db.js (better-sqlite3, foreign_keys ON)
+│   │       ├── utils/          # siteConfig.js (дефолти конфігу сайту), photoDelivery.js (SFTP)
 │   │       └── scripts/        # cleanUploads.js, seed-admin
 │   │
 │   └── database/               # ER-MODEL.md, schema.sql
@@ -137,9 +141,18 @@ ADMIN_PASSWORD=admin123
 # Telegram-сповіщення про нові замовлення (опційно)
 TG_BOT_TOKEN=
 TG_CHAT_ID=
+
+# Базовий URL для посилання на скачування у Telegram-повідомленні
+# при замовленні з >3 фото (опційно), напр. https://memory-moments.online
+PUBLIC_URL=
 ```
 
 > **Безпека:** Сервер не стартує якщо `JWT_SECRET` відсутній, дорівнює прикладу або коротший за 32 символи.
+
+> **Конфіг сайту в БД:** Telegram-токен, знижки на фотодрук та решта налаштувань також редагуються
+> в адмінці (**Сайт → Налаштування сайту**) і зберігаються в таблиці `settings` (ключі `site_contacts`,
+> `site_delivery`, `site_discounts`, `site_hero`, `site_seo`, `telegram`, `sftp_storage`). Значення з БД
+> мають пріоритет, дефолти лежать у коді (`utils/siteConfig.js`), `.env` — резервний відкат. Міграція не потрібна.
 
 ### `marketplace/client/.env` (опційно)
 
@@ -162,6 +175,7 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `POST` | `/api/auth/login` | Вхід адміна → JWT |
 | `POST` | `/api/orders` | Оформлення замовлення |
 | `GET` | `/api/orders/:number` | Статус замовлення (для клієнта) |
+| `GET` | `/api/site-config` | Конфіг сайту (контакти/доставка/знижки/банер/SEO; **без секретів**) |
 
 ### Адмін ендпоінти (JWT required)
 
@@ -178,6 +192,11 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `GET` | `/api/admin/cleanup?days=N` | `products.manage` | Preview очистки uploads/ |
 | `POST` | `/api/admin/cleanup` | `products.manage` | Видалити старі файли |
 | `POST` | `/api/upload` | — | Завантажити зображення товару |
+| `GET` | `/api/admin/settings/site-config` | `settings.system` | Увесь конфіг сайту для адмінки |
+| `PUT` | `/api/admin/settings/site-config/:section` | `settings.system` | Зберегти секцію конфігу |
+| `POST` | `/api/admin/settings/site-config/telegram/test` | `settings.system` | Тест Telegram («надіслати тест») |
+| `GET/PUT` | `/api/admin/settings/storage` | `settings.system` | Конфіг SFTP-сховища (пароль маскується) |
+| `POST` | `/api/admin/settings/storage/test` | `settings.system` | Перевірка SFTP-з'єднання |
 
 ---
 
@@ -195,7 +214,8 @@ VITE_DESIGNER_URL=http://localhost:5174
 | Категорії | — | Створення, редагування, видалення |
 | Дизайни | `designs.view` | Збережені дизайни з конструктора |
 | Прайс | `services.view` | Список послуг, імпорт через Excel |
-| Налаштування | superadmin | Профіль, пароль, користувачі, Gemini API, очистка сховища |
+| Налаштування | superadmin | Профіль, пароль, користувачі, очистка сховища |
+| Сайт | `settings.system` | «Налаштування сайту»: контакти/філії, доставка, знижки на фотодрук, банер/SEO, Telegram, сховище фото (SFTP) — редагується власником без розробника |
 
 ### Система дозволів
 
@@ -218,6 +238,20 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `photo-*` | Фото (7 форматів) | 2D flat | 10×15, 15×21, A4, квадрат тощо |
 
 Поле `designer_type` в таблиці `products` пов'язує товар з конкретним типом конструктора.
+
+---
+
+## Конструктор — оформлення макета
+
+| Інструмент | Що робить | Файли |
+|---|---|---|
+| **Рамка** | 20 векторних рамок (без растрових ассетів). Рамка — це Fabric-група поверх зони друку, потрапляє у друкарський файл. Пікер розширюваний (можна додавати PNG-рамки). | `src/constants/frames.js`, `src/components/FrameDropdownBtn.jsx` |
+| **Колаж** | 9 шаблонів розкладки (2/3/4/6 слотів). Клік по слоту → фото вписується (cover-fit) й обрізається по слоту, лишаючись рухомим і масштабованим. | `src/constants/collageLayouts.js`, `src/components/CollageDropdownBtn.jsx` |
+| **Текст** | Шрифт за замовчуванням — **Caveat** (рукописний, повна кирилиця). Додавання тексту одразу вмикає редагування (можна друкувати). При виділенні з'являється плавна анімована панель `TextEditPanel` (шрифт/розмір/колір + курсив/жирний). ~40 шрифтів із підтримкою кирилиці (RU + UA: і ї є ґ), згруповані (Рукописні / Без засічок / З засічками / Системні / Лише латиниця). Латиниця-only декоративні (Pacifico, Great Vibes…) лишені, але позначені «(лат.)». | `src/constants/designConstants.js` (`FONT_OPTIONS`, `FONT_GROUPS`), `src/components/FontOptions.jsx`, `src/components/TextEditPanel.jsx`; Google Fonts із кириличними сабсетами в `index.html` |
+| **Навчання** | Покроковий тур із підсвічуванням для нових відвідувачів: 5 кроків, кнопка «Пропустити навчання», показується один раз (localStorage `mm_designer_tour_v1`). Плавна кнопка «Підказки» повторює тур. | `src/components/DesignerTour.jsx` |
+
+**Мобільні:** верхній/нижній ряди інструментів горизонтально прокручуються пальцем на телефонах
+(вертикальні колонки на десктопі).
 
 ---
 
@@ -248,6 +282,26 @@ node marketplace/server/src/scripts/cleanUploads.js --days=30
 ```
 
 Захист: зображення товарів та файли замовлень молодших N днів не видаляються.
+
+---
+
+## Сховище фото та доставка дизайнеру (SFTP) + Telegram
+
+Фото покупців **завжди** зберігаються на VPS (джерело істини). Додатково в адмінці
+(**Сайт → Сховище фото**) можна налаштувати **SFTP-призначення** (host/port/user/password
+[маскується]/віддалений шлях + увімкнення + перевірка з'єднання), щоб доставляти файли
+замовлення на ПК/сервер дизайнера.
+
+- Фоновий воркер повторює спробу **кожні 10 хв** + негайна спроба при створенні замовлення.
+  Якщо призначення недоступне (напр., ПК дизайнера вимкнений уночі), замовлення лишається
+  `pending` і доставляється, щойно адреса стане доступною.
+- Статус доставки — у колонках `orders`: `photo_delivery_status`, `photo_delivery_at`,
+  `photo_delivery_attempts`.
+- Якщо у замовленні **більше 3 фото**, Telegram-сповіщення надсилає лише посилання на скачування
+  (адміну), а не вкладенням усі файли; повна якість лишається на сервері/у сховищі.
+
+Реалізація: `server/src/utils/photoDelivery.js`, `server/src/utils/siteConfig.js`.
+Залежність npm: `ssh2-sftp-client`.
 
 ---
 

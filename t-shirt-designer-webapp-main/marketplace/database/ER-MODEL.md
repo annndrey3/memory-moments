@@ -130,6 +130,9 @@ erDiagram
         text    notify_status   "pending | sent | failed"
         text    archive_url     "ZIP фотокниги"
         text    archive_status  "pending | ready | failed"
+        text    photo_delivery_status   "pending | sent — SFTP-доставка фото"
+        datetime photo_delivery_at      "час доставки у сховище"
+        int     photo_delivery_attempts "спроби (черга повторів)"
         datetime created_at
         datetime updated_at
     }
@@ -217,7 +220,7 @@ erDiagram
 | **order_items** | Позиції замовлення; `product_name` — snapshot, щоб не залежати від змін |
 | **service_categories** | Категорії прайс-листа |
 | **services** | Послуги прайс-листа (`code`+`format`→ціна; коди звʼязані з конструктором) |
-| **settings** | Key-value (налаштування + лічильники номерів замовлень `order_seq_*`) |
+| **settings** | Key-value: лічильники номерів (`order_seq_*`), SMTP, налаштування сайту (`site_contacts`/`site_delivery`/`site_discounts`/`site_hero`/`site_seo`), Telegram (`telegram`), SFTP-сховище фото (`sftp_storage`). Дефолти конфігу — у коді |
 | **slides** | Слайди банера маркетплейсу (адмін-керовані) |
 | **customers** | CRM: автозахоплення клієнтів із замовлень (за email/телефоном) |
 

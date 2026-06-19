@@ -114,6 +114,9 @@ CREATE TABLE orders (
   notify_status    TEXT,                                 -- pending|sent|failed (Telegram-сповіщення)
   archive_url      TEXT,                                 -- /uploads/...zip — ZIP фотокниги (фонова збірка)
   archive_status   TEXT,                                 -- pending|ready|failed
+  photo_delivery_status   TEXT,                          -- pending|sent — SFTP-доставка фото дизайнеру
+  photo_delivery_at       DATETIME,                      -- час успішної доставки у сховище
+  photo_delivery_attempts INTEGER NOT NULL DEFAULT 0,    -- невдалі спроби (фонова черга повторів)
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -161,7 +164,9 @@ CREATE TABLE services (
   FOREIGN KEY (category_id) REFERENCES service_categories(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE settings (          -- key/value + лічильники номерів замовлень (order_seq_*)
+CREATE TABLE settings (          -- key/value. Ключі: лічильники номерів (order_seq_*), SMTP,
+  -- налаштування сайту (site_contacts/site_delivery/site_discounts/site_hero/site_seo),
+  -- Telegram (telegram), SFTP-сховище фото (sftp_storage). Дефолти конфігу — у коді (utils/siteConfig.js).
   key        TEXT PRIMARY KEY,
   value      TEXT NOT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
