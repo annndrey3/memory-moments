@@ -177,6 +177,30 @@ try {
   check(cartClosed, "після тапу по кросс-селлу кошик закрився (перемкнулись на товар)");
   await page.screenshot({ path: `${OUT}/09-after-crosssell.png` });
 
+  // 9) Управління шарами — ізольовано, на свіжій навігації (чистий стан Radix),
+  //    щоб попап гарантовано відкрився; цей блок останній і нічого далі не ламає.
+  //    Додаємо текст → вибраний об'єкт → «Шари» активна → попап з 4 діями z-порядку
+  //    → reorder «На задній план» не падає (метод fabric v6 існує).
+  await page.goto(URL, { waitUntil: "networkidle2", timeout: 30000 });
+  await page.evaluate(() => { try { localStorage.setItem("mm_designer_tour_v1", "1"); } catch {} });
+  await sleep(1000);
+  try { await clickByText(page, "Текст"); await sleep(800); } catch (e) { issues.push("layers text: " + e.message); }
+  const layersHandle = await page.evaluateHandle(() =>
+    [...document.querySelectorAll("button")].find((b) => b.title === "Шари (порядок)") || null);
+  const layersBtn = layersHandle.asElement();
+  const layersEnabled = layersBtn ? !(await page.evaluate((b) => b.disabled, layersBtn)) : false;
+  check(layersEnabled, "кнопка «Шари» активна при вибраному об'єкті");
+  if (layersEnabled) {
+    await layersBtn.click();
+    await sleep(350);
+    const layerTxt = await page.evaluate(() => document.body.innerText);
+    check(/На передній план/.test(layerTxt) && /На задній план/.test(layerTxt),
+      "попап «Шари»: дії «На передній план» / «На задній план»");
+    await page.screenshot({ path: `${OUT}/10-layers.png` });
+    try { await clickByText(page, "На задній план"); await sleep(250); }
+    catch (e) { issues.push("layers reorder: " + e.message); }
+  }
+
   check(pageErrors.length === 0, `немає JS-помилок на сторінці (${pageErrors.length})`);
   if (pageErrors.length) pageErrors.forEach((e) => log("  JSERR", e));
 
