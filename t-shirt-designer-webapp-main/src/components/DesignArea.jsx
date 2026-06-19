@@ -240,8 +240,9 @@ const DesignArea = ({ manualSync }) => {
         <CardContent className="p-3 md:p-5 bg-gradient-to-b from-card to-muted/20">
           {/* ── Периметр: зліва — додати, в центрі — холст, справа — дії ── */}
           <div className="flex flex-col lg:flex-row lg:items-start gap-3">
-            {/* ADD (ряд на мобільному / стовпчик зліва на ПК) */}
-            <div className="flex flex-row lg:flex-col gap-1.5 justify-center lg:justify-start" data-tour="add">
+            {/* ADD (ряд на мобільному / стовпчик зліва на ПК). На мобільному —
+                горизонтальна тач-прокрутка, щоб усі інструменти були доступні. */}
+            <div className="flex flex-row lg:flex-col flex-nowrap gap-1.5 justify-start overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 [-webkit-overflow-scrolling:touch]" data-tour="add">
               <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               <ToolBtn icon={ImagePlus} label="Фото" onClick={triggerFileInput} />
               <ToolBtn icon={Type} label="Текст" onClick={handleAddText} />
@@ -291,8 +292,9 @@ const DesignArea = ({ manualSync }) => {
 
             </div>
 
-            {/* ACTIONS (ряд на мобільному / стовпчик справа на ПК) */}
-            <div className="flex flex-row lg:flex-col gap-1.5 justify-center lg:justify-start">
+            {/* ACTIONS (ряд на мобільному / стовпчик справа на ПК). На мобільному —
+                горизонтальна тач-прокрутка. */}
+            <div className="flex flex-row lg:flex-col flex-nowrap gap-1.5 justify-start overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 [-webkit-overflow-scrolling:touch]">
               <PropertiesBtn manualSync={manualSync} />
               <ObjectControls manualSync={manualSync} />
               <ToolBtn icon={Trash} label="Видалити" onClick={handleDelete} danger disabled={!selectedObject} />
