@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Minus, Plus, ShoppingCart, Images, X, BookOpen } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Images, X, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
@@ -42,6 +42,7 @@ const OrderBar = () => {
   const [previewMin, setPreviewMin] = useState(false);
   const [coverImage, setCoverImage] = useState(null);
   const [backCoverImage, setBackCoverImage] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null); // {done,total} під час завантаження фото розворотів
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
   // (друга сторона додає ціну з прайсу). Реактивно слухаємо обидва полотна.
@@ -139,8 +140,15 @@ const OrderBar = () => {
     const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
     e.target.value = "";
     if (!files.length) return;
-    const urls = (await Promise.all(files.map(compressPhoto))).filter(Boolean);
-    if (urls.length) dispatch(addSlimBookPhotos(urls));
+    // Послідовно: показуємо реальний прогрес і не вантажимо памʼять багатьма
+    // одночасними canvas-декодуваннями великих фото. Кожне готове фото — одразу в книгу.
+    setUploadProgress({ done: 0, total: files.length });
+    for (let i = 0; i < files.length; i++) {
+      const url = await compressPhoto(files[i]);
+      if (url) dispatch(addSlimBookPhotos([url]));
+      setUploadProgress({ done: i + 1, total: files.length });
+    }
+    setUploadProgress(null);
   };
 
   const openPreview = () => {
@@ -298,26 +306,37 @@ const OrderBar = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadPhotos} className="hidden" />
-              <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5"
-                onClick={() => spreadInputRef.current?.click()}>
-                <Images className="h-4 w-4" />
-                <span className="text-xs font-semibold">Фото розворотів</span>
-              </Button>
-              {slimBookPhotos.length > 0 && (
-                <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
-                  {slimBookPhotos.length}
-                  <button type="button" title="Очистити" onClick={() => dispatch(clearSlimBookPhotos())}
-                    className="text-muted-foreground hover:text-destructive">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5">
+                <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadPhotos} className="hidden" />
+                <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5"
+                  disabled={!!uploadProgress}
+                  onClick={() => spreadInputRef.current?.click()}>
+                  {uploadProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
+                  <span className="text-xs font-semibold">
+                    {uploadProgress ? `Завантаження ${uploadProgress.done}/${uploadProgress.total}` : "Фото розворотів"}
+                  </span>
+                </Button>
+                {!uploadProgress && slimBookPhotos.length > 0 && (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
+                    {slimBookPhotos.length}
+                    <button type="button" title="Очистити" onClick={() => dispatch(clearSlimBookPhotos())}
+                      className="text-muted-foreground hover:text-destructive">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
+                <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5" onClick={openPreview}>
+                  <BookOpen className="h-4 w-4" />
+                  <span className="text-xs font-semibold">Передперегляд</span>
+                </Button>
+              </div>
+              {uploadProgress && (
+                <div className="h-1.5 w-full rounded-full bg-violet-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-violet-500 transition-all duration-200"
+                    style={{ width: `${Math.round((uploadProgress.done / Math.max(1, uploadProgress.total)) * 100)}%` }} />
+                </div>
               )}
-              <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5" onClick={openPreview}>
-                <BookOpen className="h-4 w-4" />
-                <span className="text-xs font-semibold">Передперегляд</span>
-              </Button>
             </div>
           </>
         )}
