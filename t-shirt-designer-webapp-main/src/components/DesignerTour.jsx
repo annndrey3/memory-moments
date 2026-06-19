@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, ChevronLeft, ChevronRight, Check, GraduationCap, Sparkles } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Check, Sparkles } from "lucide-react";
 
 // Підсвічуване навчання для нових відвідувачів конструктора. З'являється один раз
 // (зберігається у localStorage), має кнопку «Пропустити» і плаваючу кнопку
@@ -54,6 +54,13 @@ export default function DesignerTour() {
 
   const start = useCallback(() => { setIdx(0); setActive(true); }, []);
 
+  // Кнопка «Підказки» у шапці конструктора запускає тур через подію вікна.
+  useEffect(() => {
+    const onStart = () => start();
+    window.addEventListener("mm:start-tour", onStart);
+    return () => window.removeEventListener("mm:start-tour", onStart);
+  }, [start]);
+
   // Автозапуск один раз для нового відвідувача.
   useEffect(() => {
     let seen = "1";
@@ -103,19 +110,6 @@ export default function DesignerTour() {
 
   const next = () => (idx >= steps.length - 1 ? finish() : setIdx((i) => i + 1));
   const prev = () => setIdx((i) => Math.max(0, i - 1));
-
-  // Плаваюча кнопка «Підказки» (показуємо, коли тур не активний).
-  const HelpButton = !active ? (
-    <button
-      type="button"
-      onClick={start}
-      title="Як користуватися конструктором"
-      className="fixed bottom-24 right-4 z-40 flex items-center gap-1.5 rounded-full border border-violet-300 bg-white/95 px-3.5 py-2 text-xs font-semibold text-violet-700 shadow-elevated backdrop-blur hover:bg-violet-50 transition-colors animate-fade-in"
-    >
-      <GraduationCap className="h-4 w-4" />
-      Підказки
-    </button>
-  ) : null;
 
   let overlay = null;
   if (active && step) {
@@ -205,5 +199,5 @@ export default function DesignerTour() {
     );
   }
 
-  return (<>{HelpButton}{overlay}</>);
+  return overlay;
 }
