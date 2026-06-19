@@ -21,6 +21,7 @@ import {
 } from "../constants/designConstants";
 import { setSelectedType, setSize, setPaperType, setCanvasSize, setSlimBookFormat } from "../features/tshirtSlice";
 import { cn } from "@/lib/utils";
+import TshirtSizeTable from "./TshirtSizeTable";
 
 // Контроли «що друкуємо»: товар + розмір (футболка/полотно) / папір (фото).
 // Живуть у шапці редактора, завжди видно (без сайдбару).
@@ -66,6 +67,7 @@ const ProductControls = () => {
               {s}
             </button>
           ))}
+          <TshirtSizeTable selected={size} />
         </div>
       )}
 

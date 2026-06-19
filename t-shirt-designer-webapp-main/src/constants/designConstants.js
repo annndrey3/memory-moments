@@ -534,6 +534,17 @@ export const FONT_OPTIONS = [
 // ── Опції товару: розмір футболки та тип паперу для фотодруку ────────────────
 export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
+// Орієнтовна розмірна сітка унісекс-футболки (см). Обхват грудей + довжина виробу.
+// Допомагає клієнту зрозуміти посадку; значення приблизні (±2 см).
+export const TSHIRT_SIZE_TABLE = [
+  { size: "XS",  chest: 88,  length: 68 },
+  { size: "S",   chest: 94,  length: 71 },
+  { size: "M",   chest: 100, length: 74 },
+  { size: "L",   chest: 108, length: 76 },
+  { size: "XL",  chest: 116, length: 79 },
+  { size: "XXL", chest: 124, length: 81 },
+];
+
 export const PAPER_TYPES = [
   { value: "matte", label: "Матовий" },
   { value: "melange", label: "Меланж" },
