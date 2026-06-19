@@ -18,6 +18,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const MARKETPLACE_URL = import.meta.env.VITE_MARKETPLACE_URL || "http://localhost:5174";
 
+// Відділення для самовивозу — ті самі, що в маркетплейс-чекауті.
+const PICKUP_BRANCHES = [
+  "просп. Князя Ярослава Мудрого, 14/4, Одеса",
+  "вул. Академіка Корольова, 70/1, Одеса",
+  "вул. Преображенська, 48, Одеса",
+  "вул. Артура Савельєва, 12, Одеса",
+];
+
 const Header = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
@@ -28,6 +36,9 @@ const Header = () => {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
+  const [deliveryType, setDeliveryType] = useState("nova_poshta");
+  const [pickupBranch, setPickupBranch] = useState(PICKUP_BRANCHES[0]);
+  const [novaPoshtaAddress, setNovaPoshtaAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Стабільний ключ ідемпотентності: генерується раз на спробу оформлення й
   // переживає повтори (після помилки), щоб таймаут-ретрай не плодив дублі заказу.
@@ -35,10 +46,20 @@ const Header = () => {
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
+  // Формуємо рядок доставки так само, як у маркетплейс-чекауті.
+  const buildShippingAddress = () => {
+    if (deliveryType === "pickup") return `Самовивіз: ${pickupBranch}`;
+    return novaPoshtaAddress.trim() || null;
+  };
+
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
     if (!name || !phone) {
       toast({ variant: "destructive", title: "Помилка", description: "Заповніть обов'язкові поля (Ім'я та Телефон)." });
+      return;
+    }
+    if (deliveryType === "nova_poshta" && !novaPoshtaAddress.trim()) {
+      toast({ variant: "destructive", title: "Помилка", description: "Вкажіть місто та відділення Нової Пошти." });
       return;
     }
 
@@ -50,7 +71,11 @@ const Header = () => {
     try {
       // Замовлення йде в маркетплейс-API: він зберігає його в адмінці
       // та сам надсилає сповіщення в Telegram (токен бота — лише на сервері).
-      await sendOrderToMarketplace(cartItems, { name, phone, email, comment }, idemKeyRef.current);
+      await sendOrderToMarketplace(
+        cartItems,
+        { name, phone, email, comment, address: buildShippingAddress() },
+        idemKeyRef.current
+      );
       idemKeyRef.current = null; // успіх — наступне замовлення отримає новий ключ
       toast({ title: "Успішно!", description: "Ваше замовлення відправлено!" });
       dispatch(clearCart());
@@ -59,6 +84,7 @@ const Header = () => {
       setPhone("");
       setEmail("");
       setComment("");
+      setNovaPoshtaAddress("");
     } catch (error) {
       console.error(error);
       toast({ variant: "destructive", title: "Помилка відправки", description: error.message || "Спробуйте ще раз." });
@@ -202,8 +228,57 @@ const Header = () => {
                   <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="rounded-lg" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="comment">Коментар (доставка, відділення)</Label>
-                  <Input id="comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Нова Пошта №..." className="rounded-lg" />
+                  <Label>Спосіб отримання *</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={deliveryType === "nova_poshta" ? "default" : "outline"}
+                      className="flex-1 rounded-lg"
+                      onClick={() => setDeliveryType("nova_poshta")}
+                    >
+                      Нова Пошта
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={deliveryType === "pickup" ? "default" : "outline"}
+                      className="flex-1 rounded-lg"
+                      onClick={() => setDeliveryType("pickup")}
+                    >
+                      Самовивіз
+                    </Button>
+                  </div>
+                </div>
+                {deliveryType === "nova_poshta" ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="np">Місто та відділення Нової Пошти *</Label>
+                    <Input
+                      id="np"
+                      value={novaPoshtaAddress}
+                      onChange={(e) => setNovaPoshtaAddress(e.target.value)}
+                      placeholder="Наприклад: Одеса, відділення № 5"
+                      className="rounded-lg"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="branch">Оберіть філіал</Label>
+                    <select
+                      id="branch"
+                      value={pickupBranch}
+                      onChange={(e) => setPickupBranch(e.target.value)}
+                      className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {PICKUP_BRANCHES.map((addr) => (
+                        <option key={addr} value={addr}>
+                          {addr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="comment">Коментар</Label>
+                  <Input id="comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Побажання до замовлення" className="rounded-lg" />
                 </div>
                 <Button type="submit" className="w-full rounded-xl h-11 shadow-glow" disabled={isSubmitting}>
                   {isSubmitting ? "Відправка..." : "Оформити замовлення"}

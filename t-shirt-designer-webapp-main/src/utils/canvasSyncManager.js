@@ -47,6 +47,7 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails, idempot
       name: customerDetails.name,
       phone: customerDetails.phone,
       email: customerDetails.email || null,
+      address: customerDetails.address || null,
       notes: customerDetails.comment || null,
     },
     items: cartItems.map((item) => ({
