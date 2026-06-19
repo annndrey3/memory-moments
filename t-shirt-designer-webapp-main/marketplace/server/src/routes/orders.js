@@ -159,6 +159,12 @@ router.post("/", createOrderLimiter, async (req, res) => {
     let photoCount = 0; // сумарна кіл-ть фото (photo_print) — для знижки за кількістю
     let photoSubtotal = 0;
     let hasBookItem = false; // є фотокнига з фото → фонова збірка ZIP-архіву
+    // Вкладення для Telegram збираємо з base64 у items[]. Клієнт БІЛЬШЕ НЕ шле
+    // окремі images/documents — це дублювало кожне фото в тілі й давало 413 на
+    // фотокнигах (десятки розворотів × двічі). innerPhotoCount → коли слати лінк.
+    const tgImages = [];
+    const tgDocuments = [];
+    let innerPhotoCount = 0;
     for (const [itemIndex, item] of items.entries()) {
       const quantity = Math.max(1, Number(item.quantity) || 1);
 
@@ -312,6 +318,18 @@ router.post("/", createOrderLimiter, async (req, res) => {
         }
         if (innerPhotoUrls.length) hasBookItem = true;
 
+        // Вкладення для Telegram — з тих самих base64, що прийшли в items[]
+        // (без дубля в тілі запиту). Прев'ю → images; друк + розвороти → documents.
+        const isData = (s) => typeof s === "string" && s.startsWith("data:image");
+        if (isData(item.design_preview)) tgImages.push({ data: item.design_preview, caption: `${productName} — Спереду` });
+        if (isData(item.design_preview_back)) tgImages.push({ data: item.design_preview_back, caption: `${productName} — Ззаду` });
+        if (isData(item.print_front)) tgDocuments.push({ data: item.print_front, caption: `🖨 ${productName} — Спереду (друк)` });
+        if (isData(item.print_back)) tgDocuments.push({ data: item.print_back, caption: `🖨 ${productName} — Ззаду (друк)` });
+        if (Array.isArray(item.inner_photos)) {
+          item.inner_photos.forEach((d, i) => { if (isData(d)) tgDocuments.push({ data: d, caption: `📖 ${productName} — розворот ${i + 1}` }); });
+        }
+        innerPhotoCount += innerPhotoUrls.length;
+
         // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
         let fabricData = {};
         try { fabricData = JSON.parse(item.design_data || "{}"); } catch { /* */ }
@@ -413,14 +431,16 @@ router.post("/", createOrderLimiter, async (req, res) => {
     }
     // Якщо фото більше 3 шт — у Telegram йде лише посилання, а не купа файлів
     // (повна якість лишається на сервері й доставляється у сховище дизайнера).
-    const imageCount = Array.isArray(req.body.images) ? req.body.images.length : 0;
-    const manyPhotos = imageCount > 3 || photoCount > 3;
+    // Вкладення зібрані з items[] під час циклу (без дубля в тілі). Лінк замість
+    // файлів — коли фото багато (фотокнига/багато позицій), щоб не спамити TG.
+    const attachmentCount = tgImages.length + tgDocuments.length;
+    const manyPhotos = tgImages.length > 3 || photoCount > 3 || innerPhotoCount > 3;
     const publicBase = process.env.PUBLIC_URL || "";
     let notifyStatus = "sent";
     try {
-      await sendOrderNotification(order, req.body.images, req.body.documents, {
+      await sendOrderNotification(order, tgImages, tgDocuments, {
         attachmentsAsLink: manyPhotos,
-        attachmentCount: Math.max(imageCount, photoCount),
+        attachmentCount: Math.max(attachmentCount, photoCount),
         downloadUrl: publicBase ? `${publicBase}/admin/orders` : "",
       });
     } catch (e) {

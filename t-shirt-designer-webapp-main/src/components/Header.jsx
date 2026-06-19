@@ -52,6 +52,7 @@ const Header = () => {
   const [pickupBranch, setPickupBranch] = useState(PICKUP_BRANCHES[0]);
   const [novaPoshtaAddress, setNovaPoshtaAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadPct, setUploadPct] = useState(null); // прогрес відправки (0..100); null = не йде
   // Стабільний ключ ідемпотентності: генерується раз на спробу оформлення й
   // переживає повтори (після помилки), щоб таймаут-ретрай не плодив дублі заказу.
   const idemKeyRef = useRef(null);
@@ -96,6 +97,7 @@ const Header = () => {
     }
 
     setIsSubmitting(true);
+    setUploadPct(0); // показуємо індикатор ОДРАЗУ — ще до перших байтів вивантаження
     // Ключ генеруємо раз і тримаємо в ref до успіху — повтори несуть той самий ключ.
     if (!idemKeyRef.current) {
       idemKeyRef.current = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -103,10 +105,12 @@ const Header = () => {
     try {
       // Замовлення йде в маркетплейс-API: він зберігає його в адмінці
       // та сам надсилає сповіщення в Telegram (токен бота — лише на сервері).
+      // onProgress оновлює % вивантаження (важливо для замовлень з багатьма фото).
       await sendOrderToMarketplace(
         cartItems,
         { name, phone, email, comment, address: buildShippingAddress() },
-        idemKeyRef.current
+        idemKeyRef.current,
+        (pct) => setUploadPct(pct)
       );
       idemKeyRef.current = null; // успіх — наступне замовлення отримає новий ключ
       toast({ title: "Успішно!", description: "Ваше замовлення відправлено!" });
@@ -122,6 +126,7 @@ const Header = () => {
       toast({ variant: "destructive", title: "Помилка відправки", description: error.message || "Спробуйте ще раз." });
     } finally {
       setIsSubmitting(false);
+      setUploadPct(null);
     }
   };
 
@@ -367,8 +372,27 @@ const Header = () => {
                 </span>
                 <span className="text-xl font-extrabold text-foreground">{formatPrice(cartTotal)} ₴</span>
               </div>
-              <Button type="submit" form="cart-order-form" className="w-full rounded-xl h-11 shadow-glow" disabled={isSubmitting}>
-                {isSubmitting ? "Відправка..." : "Оформити замовлення"}
+              <Button
+                type="submit"
+                form="cart-order-form"
+                className="relative w-full overflow-hidden rounded-xl h-11 shadow-glow"
+                disabled={isSubmitting}
+              >
+                {/* Заливка прогресу відправки (видно одразу, росте з % вивантаження) */}
+                {isSubmitting && uploadPct != null && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 bg-white/25 transition-[width] duration-200"
+                    style={{ width: `${uploadPct}%` }}
+                  />
+                )}
+                <span className="relative">
+                  {isSubmitting
+                    ? uploadPct != null && uploadPct < 100
+                      ? `Відправка… ${uploadPct}%`
+                      : "Майже готово…"
+                    : "Оформити замовлення"}
+                </span>
               </Button>
             </div>
           )}

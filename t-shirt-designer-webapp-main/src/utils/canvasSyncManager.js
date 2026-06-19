@@ -21,32 +21,40 @@ export const fetchDesignerPrices = async () => {
 // Надсилає замовлення з конструктора у маркетплейс-API.
 // Сервер зберігає його в адмінці ТА надсилає сповіщення в Telegram
 // (токен бота — лише на сервері). Прев'ю макетів передаємо в полі images.
-export const sendOrderToMarketplace = async (cartItems, customerDetails, idempotencyKey = null) => {
-  // images — стиснені прев'ю (інлайн у чаті); documents — друкарські макети
-  // у повній роздільності (Telegram надсилає їх без перестиску → готові до друку).
-  const images = [];
-  const documents = [];
-  for (const item of cartItems) {
-    if (item.designTextureFront) {
-      images.push({ data: item.designTextureFront, caption: `${item.productName} — Спереду` });
-    }
-    if (item.designTextureBack) {
-      images.push({ data: item.designTextureBack, caption: `${item.productName} — Ззаду` });
-    }
-    if (item.printFront) {
-      documents.push({ data: item.printFront, caption: `🖨 ${item.productName} — Спереду (друк)` });
-    }
-    if (item.printBack) {
-      documents.push({ data: item.printBack, caption: `🖨 ${item.productName} — Ззаду (друк)` });
-    }
-    // Slim Book: фото для внутрішніх розворотів — у Telegram як документи.
-    if (Array.isArray(item.innerPhotos)) {
-      item.innerPhotos.forEach((data, i) => {
-        documents.push({ data, caption: `📖 ${item.productName} — розворот ${i + 1}` });
-      });
-    }
-  }
+// POST JSON через XHR (не fetch) — щоб показувати прогрес ВІДПРАВКИ великого тіла
+// (fetch не дає upload-progress). onProgress(0..100) викликається у міру вивантаження.
+function postOrderJson(url, payload, { idempotencyKey, onProgress } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    if (idempotencyKey) xhr.setRequestHeader("Idempotency-Key", idempotencyKey);
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    // Дані вивантажено — далі сервер обробляє (показуємо як «майже готово»).
+    xhr.upload.onload = () => onProgress?.(100);
+    xhr.onload = () => {
+      let data = {};
+      try { data = JSON.parse(xhr.responseText || "{}"); } catch { /* не-JSON, напр. nginx 413 HTML */ }
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(data);
+      if (xhr.status === 413) {
+        return reject(new Error(
+          "Замовлення завелике (забагато або надто великі фото). Зменшіть кількість фото у розворотах або звʼяжіться з нами — оформимо вручну."
+        ));
+      }
+      reject(new Error(data.error || `Marketplace API error: ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("Помилка мережі під час відправки замовлення. Перевірте зʼєднання."));
+    xhr.send(JSON.stringify(payload));
+  });
+}
 
+export const sendOrderToMarketplace = async (cartItems, customerDetails, idempotencyKey = null, onProgress = null) => {
+  // ВАЖЛИВО: НЕ дублюємо base64 у окремих images/documents — для замовлень з
+  // багатьма фото (фотокнига) це подвоювало тіло й спричиняло 413. Усі фото йдуть
+  // ЛИШЕ в items[] (print_*/raw_*/inner_photos/design_preview*); прев'ю та
+  // друкарські файли для Telegram сервер збирає з цих же полів.
   const payload = {
     source: "designer",
     customer: {
@@ -75,31 +83,17 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails, idempot
       // Сам макет: fabric JSON (front+back) + прев'ю — сервер збереже в позицію заказу.
       design_data: JSON.stringify({ front: item.fabricFront || null, back: item.fabricBack || null }),
       design_preview: item.designTextureFront || null,
+      // Прев'ю спини (мокап) — лише для Telegram-сповіщення; сервер не зберігає окремо.
+      design_preview_back: item.designTextureBack || null,
       // Друкарські макети у повній роздільності — сервер збереже на диск для адмінки.
       print_front: item.printFront || null,
       print_back: item.printBack || null,
       raw_front: item.rawDesignFront || null,
       raw_back: item.rawDesignBack || null,
     })),
-    images,
-    documents,
   };
 
-  const res = await fetch(`${MARKETPLACE_API}/orders`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // Ідемпотентність: той самий ключ при повторі (таймаут/ретрай) не дасть дубль.
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `Marketplace API error: ${res.status}`);
-  }
-  return res.json();
+  return postOrderJson(`${MARKETPLACE_API}/orders`, payload, { idempotencyKey, onProgress });
 };
 
 // Прямокутник зони друку (clipPath) у логічних координатах полотна.
