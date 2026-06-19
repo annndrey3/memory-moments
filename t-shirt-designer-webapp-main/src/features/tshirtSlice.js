@@ -8,6 +8,10 @@ const initialState = {
   size: "M", // розмір футболки
   printSize: "A4", // формат друку футболки (А4/А3) — впливає на ціну з прайсу
   canvasSize: "30x40", // розмір полотна (натяжка) — впливає на ціну з прайсу
+  slimBookFormat: "21x30", // формат Slim Book — ціна (прайс) + пропорції обкладинки
+  slimBookSpreads: 10, // базова кіл-ть розворотів (10/15)
+  slimBookExtra: 0, // додаткові розвороти понад базу
+  slimBookPhotos: [], // фото для внутрішніх розворотів (data URL)
   paperType: "matte", // тип паперу для фотодруку
   quantity: 1, // кількість поточного дизайну (спільна для панелі та сайдбару)
   // Чи змінювався дизайн/опції з моменту останнього додавання в кошик.
@@ -48,6 +52,30 @@ export const tshirtSlice = createSlice({
       state.canvasSize = action.payload;
       state.designDirty = true;
     },
+    setSlimBookFormat: (state, action) => {
+      state.slimBookFormat = action.payload;
+      state.designDirty = true;
+    },
+    setSlimBookSpreads: (state, action) => {
+      state.slimBookSpreads = Number(action.payload) || 10;
+      state.designDirty = true;
+    },
+    setSlimBookExtra: (state, action) => {
+      state.slimBookExtra = Math.max(0, Number(action.payload) || 0);
+      state.designDirty = true;
+    },
+    addSlimBookPhotos: (state, action) => {
+      const arr = Array.isArray(action.payload) ? action.payload : [action.payload];
+      state.slimBookPhotos.push(...arr.filter(Boolean));
+      state.designDirty = true;
+    },
+    removeSlimBookPhoto: (state, action) => {
+      state.slimBookPhotos.splice(action.payload, 1);
+      state.designDirty = true;
+    },
+    clearSlimBookPhotos: (state) => {
+      state.slimBookPhotos = [];
+    },
     setPaperType: (state, action) => {
       state.paperType = action.payload;
       state.designDirty = true;
@@ -60,7 +88,7 @@ export const tshirtSlice = createSlice({
       state.quantity = Math.max(1, Number(action.payload) || 1);
     },
     addToCart: (state, action) => {
-      const { id, productType, productName, designTextureFront, designTextureBack, rawDesignFront, rawDesignBack, printFront, printBack, fabricFront, fabricBack, color, size, printSize, canvasSize, paperType, variantLabel, quantity } = action.payload;
+      const { id, productType, productName, designTextureFront, designTextureBack, rawDesignFront, rawDesignBack, printFront, printBack, fabricFront, fabricBack, color, size, printSize, canvasSize, paperType, slimBookFormat, slimBookSpreads, slimBookExtra, innerPhotos, variantLabel, quantity } = action.payload;
       state.cartItems.push({
         id,
         productType,
@@ -78,11 +106,16 @@ export const tshirtSlice = createSlice({
         printSize, // формат друку футболки (А4/А3) — для ціни з прайсу
         canvasSize, // розмір полотна — для ціни з прайсу
         paperType,
+        slimBookFormat, // формат Slim Book — для ціни
+        slimBookSpreads, // база розворотів (10/15)
+        slimBookExtra, // дод. розвороти понад базу
+        innerPhotos, // фото для розворотів (data URL) — студія розкладає
         variantLabel, // готовий підпис опцій (розмір/папір/колір) для кошика й замовлення
         quantity: quantity || 1,
       });
       state.isCartOpen = true;
       state.designDirty = false; // поточний дизайн зафіксовано в кошику
+      state.slimBookPhotos = []; // фото перенесено в позицію — очищаємо буфер
     },
     removeFromCart: (state, action) => {
       state.cartItems = state.cartItems.filter(item => item.id !== action.payload);
@@ -110,6 +143,12 @@ export const {
   setSize,
   setPrintSize,
   setCanvasSize,
+  setSlimBookFormat,
+  setSlimBookSpreads,
+  setSlimBookExtra,
+  addSlimBookPhotos,
+  removeSlimBookPhoto,
+  clearSlimBookPhotos,
   setPaperType,
   markDesignDirty,
   setQuantity,

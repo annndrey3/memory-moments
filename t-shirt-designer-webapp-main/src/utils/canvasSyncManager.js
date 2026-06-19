@@ -39,6 +39,12 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails, idempot
     if (item.printBack) {
       documents.push({ data: item.printBack, caption: `🖨 ${item.productName} — Ззаду (друк)` });
     }
+    // Slim Book: фото для внутрішніх розворотів — у Telegram як документи.
+    if (Array.isArray(item.innerPhotos)) {
+      item.innerPhotos.forEach((data, i) => {
+        documents.push({ data, caption: `📖 ${item.productName} — розворот ${i + 1}` });
+      });
+    }
   }
 
   const payload = {
@@ -58,6 +64,11 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails, idempot
       print_size: item.printSize || null,
       // Розмір полотна (30x40…) — сервер рахує ціну полотна з прайсу за ним.
       canvas_size: item.canvasSize || null,
+      // Slim Book: формат + кіл-ть розворотів → ціна з прайсу; inner_photos → диск.
+      format: item.slimBookFormat || null,
+      spreads: item.slimBookSpreads || null,
+      extra_spreads: item.slimBookExtra || null,
+      inner_photos: item.innerPhotos || null,
       // Розмір/папір/колір одним підписом → сервер збереже як variant_label.
       variant_label: item.variantLabel || null,
       quantity: item.quantity,

@@ -85,6 +85,37 @@ export function canvasPriceFromServices(services, sizeStr) {
   return m[key] != null ? m[key] : null;
 }
 
+// ── Slim book (фотокнига): база 10(1136)/15(1137) розворотів + доплата за розворот(1138). ──
+const SLIMBOOK_CODES = { s10: "1136", s15: "1137", extra: "1138" };
+
+// Матриця: { "20x20": { s10, s15, extra }, "21x30": {...}, "25x25": {...} }.
+export function buildSlimBookMatrix(services) {
+  const out = {};
+  for (const r of services || []) {
+    const code = String(r.code);
+    const bucket =
+      code === SLIMBOOK_CODES.s10 ? "s10" : code === SLIMBOOK_CODES.s15 ? "s15" : code === SLIMBOOK_CODES.extra ? "extra" : null;
+    if (!bucket) continue;
+    const fmt = norm(r.format);
+    if (!fmt) continue;
+    (out[fmt] ||= {})[bucket] = Number(r.price);
+  }
+  return out;
+}
+
+// Ціна Slim book: база (10 або 15 розворотів) за форматом + доплата за кожен
+// розворот понад базу (extra). null, якщо формату немає в прайсі.
+export function slimBookPriceFromServices(services, { format, spreads, extra }) {
+  const m = buildSlimBookMatrix(services);
+  const row = m[norm(format)];
+  if (!row) return null;
+  const base = Number(spreads) === 15 ? row.s15 : row.s10;
+  if (base == null) return null;
+  const extraN = Math.max(0, Number(extra) || 0);
+  const extraPrice = row.extra != null ? extraN * row.extra : 0;
+  return base + extraPrice;
+}
+
 // Ціна звичайної позиції (чашка/фото/полароїд) з прайсу за мапою. null, якщо
 // типу немає в мапі або відповідного рядка прайсу (тоді — фолбек на каталог).
 export function servicePriceFor(designerType, services) {

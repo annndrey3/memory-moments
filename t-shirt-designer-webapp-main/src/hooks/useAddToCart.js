@@ -19,6 +19,10 @@ export function useAddToCart() {
   const size = useSelector((state) => state.tshirt.size);
   const printSize = useSelector((state) => state.tshirt.printSize);
   const canvasSize = useSelector((state) => state.tshirt.canvasSize);
+  const slimBookFormat = useSelector((state) => state.tshirt.slimBookFormat);
+  const slimBookSpreads = useSelector((state) => state.tshirt.slimBookSpreads);
+  const slimBookExtra = useSelector((state) => state.tshirt.slimBookExtra);
+  const slimBookPhotos = useSelector((state) => state.tshirt.slimBookPhotos);
   const paperType = useSelector((state) => state.tshirt.paperType);
   const quantity = useSelector((state) => state.tshirt.quantity);
   const designDirty = useSelector((state) => state.tshirt.designDirty);
@@ -88,6 +92,9 @@ export function useAddToCart() {
       bothSides,
       paperType,
       color: tshirtColor,
+      slimBookFormat,
+      slimBookSpreads,
+      slimBookExtra,
     });
 
     dispatch(addToCart({
@@ -107,6 +114,10 @@ export function useAddToCart() {
       printSize,
       canvasSize,
       paperType,
+      slimBookFormat,
+      slimBookSpreads,
+      slimBookExtra,
+      innerPhotos: selectedType === "slim-book" ? slimBookPhotos : null,
       variantLabel,
       quantity,
     }));
@@ -117,7 +128,7 @@ export function useAddToCart() {
       duration: 3000,
     });
     return true;
-  }, [frontCanvas, backCanvas, selectedType, tshirtColor, size, printSize, canvasSize, paperType, quantity, designDirty, cartItems.length, dispatch, toast]);
+  }, [frontCanvas, backCanvas, selectedType, tshirtColor, size, printSize, canvasSize, slimBookFormat, slimBookSpreads, slimBookExtra, slimBookPhotos, paperType, quantity, designDirty, cartItems.length, dispatch, toast]);
 
   return { addCurrentDesignToCart, hasDesign };
 }

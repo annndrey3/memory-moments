@@ -13,10 +13,12 @@ import {
   PAPER_TYPES,
   CANVAS_SIZES,
   canvasSizeLabel,
+  SLIMBOOK_FORMATS,
+  slimBookFormatLabel,
   productHasSize,
   productHasPaper,
 } from "../constants/designConstants";
-import { setSelectedType, setSize, setPaperType, setCanvasSize } from "../features/tshirtSlice";
+import { setSelectedType, setSize, setPaperType, setCanvasSize, setSlimBookFormat } from "../features/tshirtSlice";
 import { cn } from "@/lib/utils";
 
 // Контроли «що друкуємо»: товар + розмір (футболка/полотно) / папір (фото).
@@ -26,6 +28,7 @@ const ProductControls = () => {
   const selectedType = useSelector((s) => s.tshirt.selectedType);
   const size = useSelector((s) => s.tshirt.size);
   const canvasSize = useSelector((s) => s.tshirt.canvasSize);
+  const slimBookFormat = useSelector((s) => s.tshirt.slimBookFormat);
   const paperType = useSelector((s) => s.tshirt.paperType);
 
   return (
@@ -75,6 +78,23 @@ const ProductControls = () => {
               {CANVAS_SIZES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {canvasSizeLabel(s)}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+
+      {selectedType === "slim-book" && (
+        <Select value={slimBookFormat} onValueChange={(v) => dispatch(setSlimBookFormat(v))}>
+          <SelectTrigger className="h-9 w-[150px] rounded-lg bg-card border-border/70">
+            <SelectValue placeholder="Формат" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {SLIMBOOK_FORMATS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {slimBookFormatLabel(f)}
                 </SelectItem>
               ))}
             </SelectGroup>

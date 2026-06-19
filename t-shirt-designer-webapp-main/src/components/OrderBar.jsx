@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Images, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
-import { setTshirtColor, setPrintSize, setQuantity, toggleCart } from "@/features/tshirtSlice";
-import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType } from "@/constants/designConstants";
+import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos } from "@/features/tshirtSlice";
+import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS } from "@/constants/designConstants";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
 import { cn } from "@/lib/utils";
@@ -27,10 +27,15 @@ const OrderBar = () => {
   const tshirtColor = useSelector((state) => state.tshirt.tshirtColor);
   const printSize = useSelector((state) => state.tshirt.printSize);
   const canvasSize = useSelector((state) => state.tshirt.canvasSize);
+  const slimBookFormat = useSelector((state) => state.tshirt.slimBookFormat);
+  const slimBookSpreads = useSelector((state) => state.tshirt.slimBookSpreads);
+  const slimBookExtra = useSelector((state) => state.tshirt.slimBookExtra);
+  const slimBookPhotos = useSelector((state) => state.tshirt.slimBookPhotos || []);
   const quantity = useSelector((state) => state.tshirt.quantity);
   const cartItems = useSelector((state) => state.tshirt.cartItems || []);
   const { addCurrentDesignToCart, hasDesign } = useAddToCart();
-  const { priceFor, tshirtPrice, canvasPrice } = usePricing();
+  const { priceFor, tshirtPrice, canvasPrice, slimBookPrice } = usePricing();
+  const spreadInputRef = useRef(null);
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
   // (друга сторона додає ціну з прайсу). Реактивно слухаємо обидва полотна.
@@ -59,6 +64,7 @@ const OrderBar = () => {
 
   const isTshirt = selectedType === "crew-neck";
   const isCanvas = selectedType === "canvas";
+  const isSlimBook = selectedType === "slim-book";
   const bothSides = counts.front > 0 && counts.back > 0;
 
   // Ціна: футболка — з прайсу (колір+формат+2 сторони), решта — з каталогу.
@@ -80,6 +86,14 @@ const OrderBar = () => {
       total = cp * quantity;
       secondNote = `Полотно ${canvasSize.replace("x", "×")} см`;
     }
+  } else if (isSlimBook) {
+    const sp = slimBookPrice({ format: slimBookFormat, spreads: slimBookSpreads, extra: slimBookExtra });
+    if (sp != null) {
+      unit = sp;
+      total = sp * quantity;
+      const totalSpreads = Number(slimBookSpreads) + Number(slimBookExtra || 0);
+      secondNote = `${totalSpreads} розворотів · фото: ${slimBookPhotos.length}`;
+    }
   } else {
     const p = priceFor(selectedType);
     if (p) {
@@ -90,6 +104,38 @@ const OrderBar = () => {
       }
     }
   }
+
+  // Стиснення фото розвороту: даунскейл до 2400px по довшій стороні, JPEG 0.88 —
+  // якість достатня для друку книги, payload лишається помірним.
+  const compressPhoto = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 2400;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          c.getContext("2d").drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL("image/jpeg", 0.88));
+        };
+        img.onerror = () => resolve(null);
+        img.src = reader.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+
+  const handleSpreadPhotos = async (e) => {
+    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
+    e.target.value = "";
+    if (!files.length) return;
+    const urls = (await Promise.all(files.map(compressPhoto))).filter(Boolean);
+    if (urls.length) dispatch(addSlimBookPhotos(urls));
+  };
 
   const handleOrder = async () => {
     if (hasDesign()) {
@@ -200,6 +246,63 @@ const OrderBar = () => {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Slim Book: кіл-ть розворотів (+дод.) та фото для внутрішніх сторінок */}
+        {isSlimBook && (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="hidden sm:inline text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Розвороти
+              </span>
+              <div className="flex rounded-lg border border-border/60 overflow-hidden">
+                {SLIMBOOK_SPREADS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => dispatch(setSlimBookSpreads(n))}
+                    className={cn(
+                      "h-8 px-3 text-sm font-semibold transition-colors",
+                      Number(slimBookSpreads) === n
+                        ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                        : "bg-transparent text-foreground/80 hover:bg-muted"
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg"
+                  onClick={() => dispatch(setSlimBookExtra(slimBookExtra - 1))} disabled={slimBookExtra <= 0}>
+                  <Minus className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-xs font-semibold tabular-nums w-9 text-center">+{slimBookExtra}</span>
+                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg"
+                  onClick={() => dispatch(setSlimBookExtra(slimBookExtra + 1))}>
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadPhotos} className="hidden" />
+              <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5"
+                onClick={() => spreadInputRef.current?.click()}>
+                <Images className="h-4 w-4" />
+                <span className="text-xs font-semibold">Фото розворотів</span>
+              </Button>
+              {slimBookPhotos.length > 0 && (
+                <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
+                  {slimBookPhotos.length}
+                  <button type="button" title="Очистити" onClick={() => dispatch(clearSlimBookPhotos())}
+                    className="text-muted-foreground hover:text-destructive">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+            </div>
+          </>
         )}
 
         {/* Кількість */}

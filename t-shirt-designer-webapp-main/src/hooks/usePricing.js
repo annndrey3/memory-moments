@@ -27,6 +27,17 @@ export function usePricing() {
     return p != null ? Number(p) : null;
   };
 
+  // Ціна Slim Book: база (10/15 розворотів) за форматом + доплата за розворот понад базу.
+  const slimBookPrice = ({ format, spreads, extra }) => {
+    const row = data?.slimBook?.[format];
+    if (!row) return null;
+    const base = Number(spreads) === 15 ? row.s15 : row.s10;
+    if (base == null) return null;
+    const extraN = Math.max(0, Number(extra) || 0);
+    const extraPrice = row.extra != null ? extraN * Number(row.extra) : 0;
+    return Number(base) + extraPrice;
+  };
+
   // Ціна футболки з прайсу: біла/чорна × А4/А3 + друга сторона (якщо обидві сторони).
   const tshirtPrice = ({ color, printSize, bothSides }) => {
     const t = data?.tshirt;
@@ -39,5 +50,5 @@ export function usePricing() {
     return { base: Number(base), second, total: Number(base) + second };
   };
 
-  return { priceFor, tshirtPrice, canvasPrice, loaded: data !== null };
+  return { priceFor, tshirtPrice, canvasPrice, slimBookPrice, loaded: data !== null };
 }

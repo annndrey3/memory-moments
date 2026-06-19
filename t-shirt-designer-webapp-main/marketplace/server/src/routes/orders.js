@@ -8,7 +8,7 @@ import { requirePermission, requireSuperadmin } from "../middleware/requirePermi
 import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
-import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor } from "../utils/designerPricing.js";
+import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, slimBookPriceFromServices } from "../utils/designerPricing.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -246,6 +246,13 @@ router.post("/", createOrderLimiter, async (req, res) => {
         } else if (item.product_type === "canvas") {
           // Полотно: ціна з прайсу за обраним розміром.
           unitPrice = canvasPriceFromServices(servicesRows, item.canvas_size);
+        } else if (item.product_type === "slim-book") {
+          // Slim book: база (10/15 розворотів) за форматом + доплата за розворот.
+          unitPrice = slimBookPriceFromServices(servicesRows, {
+            format: item.format || item.canvas_size,
+            spreads: item.spreads,
+            extra: item.extra_spreads,
+          });
         } else {
           // Решта позицій (чашка/фото/полароїд тощо) — з прайсу за мапою.
           unitPrice = servicePriceFor(item.product_type, servicesRows);
@@ -286,6 +293,16 @@ router.post("/", createOrderLimiter, async (req, res) => {
           ? scheduleImage(item.design_preview, `preview_${idxKey}.jpg`)
           : (item.design_preview || null);
 
+        // Slim Book: фото для внутрішніх розворотів — кожне окремим файлом на диск,
+        // студія розкладає по макету. URL-и зберігаємо в design_data.innerPhotos.
+        const innerPhotoUrls = [];
+        if (Array.isArray(item.inner_photos)) {
+          item.inner_photos.forEach((dataUrl, i) => {
+            const u = scheduleImage(dataUrl, `book_${idxKey}_${i + 1}.jpg`);
+            if (u) innerPhotoUrls.push(u);
+          });
+        }
+
         // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
         let fabricData = {};
         try { fabricData = JSON.parse(item.design_data || "{}"); } catch { /* */ }
@@ -295,6 +312,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
           ...(printBackUrl ? { printBackUrl } : {}),
           ...(rawFrontUrl ? { rawFrontUrl } : {}),
           ...(rawBackUrl ? { rawBackUrl } : {}),
+          ...(innerPhotoUrls.length ? { innerPhotos: innerPhotoUrls } : {}),
         });
 
         resolved.push({
@@ -586,7 +604,7 @@ router.delete("/:id", authMiddleware, requireSuperadmin, async (req, res) => {
     for (const { design_data, design_preview } of items) {
       try {
         const d = JSON.parse(design_data || "{}");
-        [d.printFrontUrl, d.printBackUrl, d.rawFrontUrl, d.rawBackUrl].forEach((u) => {
+        [d.printFrontUrl, d.printBackUrl, d.rawFrontUrl, d.rawBackUrl, ...(Array.isArray(d.innerPhotos) ? d.innerPhotos : [])].forEach((u) => {
           if (u) filesToDelete.push(path.join(UPLOAD_DIR, path.basename(u)));
         });
       } catch { /* */ }

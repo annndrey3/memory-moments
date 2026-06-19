@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import * as fabric from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
-import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView } from "../constants/designConstants";
+import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView } from "../constants/designConstants";
 import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
@@ -44,14 +44,20 @@ const DesignArea = ({ manualSync }) => {
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
   const canvasSize = useSelector((state) => state.tshirt.canvasSize);
+  const slimBookFormat = useSelector((state) => state.tshirt.slimBookFormat);
   const { activeCanvas, selectedObject, setSelectedObject } = useCanvas();
   const { addImageFile } = useAddImage();
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
   const views = Object.entries(product.views);
-  // Полотно: зона друку залежить від обраного розміру (пропорції формату).
-  const canvasView = useMemo(
-    () => (selectedType === "canvas" ? buildCanvasView(canvasSize) : null),
-    [selectedType, canvasSize]
+  // Полотно/Slim Book: зона друку залежить від обраного розміру/формату (пропорції).
+  const dynamicView = useMemo(
+    () =>
+      selectedType === "canvas"
+        ? buildCanvasView(canvasSize)
+        : selectedType === "slim-book"
+        ? buildSlimBookView(slimBookFormat)
+        : null,
+    [selectedType, canvasSize, slimBookFormat]
   );
   const [dragOver, setDragOver] = useState(false);
   const [hasObjects, setHasObjects] = useState(false);
@@ -241,7 +247,7 @@ const DesignArea = ({ manualSync }) => {
               >
                 {views.map(([view, viewConfig]) => (
                   <div key={`${selectedType}-${view}`} className={view === selectedView ? "block" : "hidden"}>
-                    <ProductCanvas view={view} viewConfig={canvasView || viewConfig} />
+                    <ProductCanvas view={view} viewConfig={dynamicView || viewConfig} />
                   </div>
                 ))}
                 {!hasObjects && !dragOver && (

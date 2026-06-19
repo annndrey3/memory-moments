@@ -325,6 +325,19 @@ export const PRODUCT_TYPES = {
       front: { label: "Полотно", path: RECTANGLE_PATHS.portrait_3x4, viewBox: "0 0 810 810", printZone: { x: 135, y: 45, width: 540, height: 720 } },
     },
   },
+  // Slim Book (фотокнига): дизайн ОБКЛАДИНКИ + фото для розворотів (студія
+  // розкладає по макету). Формат (20×20/21×30/25×25) задає і ціну (прайс), і
+  // пропорції обкладинки (buildSlimBookView). Кіл-ть розворотів — у панелі замовлення.
+  "slim-book": {
+    name: "Slim Book (фотокнига)",
+    description: "Обкладинка + фото для розворотів",
+    previewMode: "flat",
+    previewShape: "square",
+    slimBook: true,
+    views: {
+      front: { label: "Обкладинка", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
+    },
+  },
 };
 
 // Розміри полотна — беруться з прайсу (код 44 «Широкоформатний друк полотно+натяжка»).
@@ -344,6 +357,27 @@ export function buildCanvasView(sizeStr) {
   const y = Math.round((810 - H) / 2);
   return {
     label: "Полотно",
+    path: `M ${x} ${y} H ${x + W} V ${y + H} H ${x} Z`,
+    viewBox: "0 0 810 810",
+    printZone: { x, y, width: W, height: H },
+  };
+}
+
+// ── Slim Book (фотокнига) ──
+export const SLIMBOOK_FORMATS = ["20x20", "21x30", "25x25"];
+export const SLIMBOOK_SPREADS = [10, 15];
+export const slimBookFormatLabel = (f) => `${String(f).replace("x", "×")} см`;
+
+// Динамічна зона друку обкладинки за форматом (пропорції W:H) — як buildCanvasView.
+export function buildSlimBookView(format) {
+  const [w, h] = String(format || "21x30").split("x").map(Number);
+  const ratio = w && h ? w / h : 0.7;
+  const H = 700;
+  const W = Math.round(H * ratio);
+  const x = Math.round((810 - W) / 2);
+  const y = Math.round((810 - H) / 2);
+  return {
+    label: "Обкладинка",
     path: `M ${x} ${y} H ${x + W} V ${y + H} H ${x} Z`,
     viewBox: "0 0 810 810",
     printZone: { x, y, width: W, height: H },
@@ -463,10 +497,15 @@ const colorName = (hex) => (hex ? COLOR_NAMES[hex.toUpperCase?.()] || hex : null
 
 // Людиночитний підпис обраних опцій — для кошика та позиції замовлення
 // (саме він іде на сервер як variant_label → в адмінку й Telegram).
-export function buildOptionsLabel({ productType, size, paperType, color, printSize, bothSides, canvasSize }) {
+export function buildOptionsLabel({ productType, size, paperType, color, printSize, bothSides, canvasSize, slimBookFormat, slimBookSpreads, slimBookExtra }) {
   const parts = [];
   if (productHasSize(productType) && size) parts.push(`Розмір: ${size}`);
   if (productType === "canvas" && canvasSize) parts.push(`Розмір: ${canvasSizeLabel(canvasSize)}`);
+  if (productType === "slim-book") {
+    const total = (Number(slimBookSpreads) || 10) + (Number(slimBookExtra) || 0);
+    parts.push(`Формат: ${slimBookFormatLabel(slimBookFormat || "21x30")}`);
+    parts.push(`${total} розворотів`);
+  }
   if (productType === "crew-neck" && printSize) {
     parts.push(`Друк: ${printSize === "A3" ? "А3" : "А4"}${bothSides ? " · 2 сторони" : ""}`);
   }
