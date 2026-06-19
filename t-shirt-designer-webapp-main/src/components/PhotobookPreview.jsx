@@ -161,23 +161,42 @@ export default function PhotobookPreview({
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => { const from = dragRef.current; dragRef.current = null; if (from != null && from !== i) onReorder?.(from, i); }}
                 onClick={() => bookRef.current?.pageFlip()?.flip(i + 1)}
-                className="group relative h-16 w-16 shrink-0 cursor-grab overflow-hidden rounded-lg border-2 border-white/20 hover:border-violet-400"
-                title={`Фото ${i + 1} — перетягніть, щоб змінити порядок`}
+                className="relative h-20 w-20 shrink-0 cursor-grab overflow-hidden rounded-lg border-2 border-white/20 hover:border-violet-400"
+                title={`Фото ${i + 1} — перетягніть або стрілками`}
               >
                 <img src={src} alt={`Фото ${i + 1}`} className="pointer-events-none h-full w-full object-cover" />
                 <span className="absolute left-0.5 top-0.5 rounded bg-black/60 px-1 text-[10px] font-bold text-white">{i + 1}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); onRemove?.(i); }}
-                  className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500"
+                  className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white hover:bg-red-500"
                   title="Прибрати"
                 >
                   <X className="h-3 w-3" />
                 </button>
+                {/* Стрілки порядку — працюють і на тач, і мишкою */}
+                <div className="absolute inset-x-0 bottom-0 flex items-stretch justify-between bg-black/55">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (i > 0) onReorder?.(i, i - 1); }}
+                    disabled={i === 0}
+                    className="flex flex-1 items-center justify-center py-0.5 text-white hover:bg-violet-600 disabled:opacity-25"
+                    title="Лівіше"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (i < photos.length - 1) onReorder?.(i, i + 1); }}
+                    disabled={i === photos.length - 1}
+                    className="flex flex-1 items-center justify-center py-0.5 text-white hover:bg-violet-600 disabled:opacity-25"
+                    title="Правіше"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
           <p className="mt-1 text-center text-[11px] text-white/50">
-            Перетягніть мініатюри, щоб змінити порядок фото на розворотах
+            Перетягніть мініатюри або тисніть ‹ ›, щоб змінити порядок фото на розворотах
           </p>
         </div>
       )}
