@@ -44,9 +44,23 @@ if (process.env.DATABASE_URL) {
   console.log("✅ Using PostgreSQL");
 
   _query = async (sql, params = {}) => {
-    const { text, values } = namedToPositional(sql, params);
+    // Дзеркалимо поведінку SQLite-гілки: SELECT/WITH → масив рядків; мутації →
+    // { insertId, affectedRows }. Для INSERT авто-додаємо RETURNING id (окрім
+    // settings: PK = key, колонки id немає), щоб insertId був доступний і через
+    // плейн query(), а не лише в transaction().tx.run. Без цього на Postgres
+    // result.insertId === undefined ламав admin-create та Excel-імпорт нових рядків.
+    const trimmed = sql.trim();
+    const isRead = /^\s*(SELECT|WITH)/i.test(trimmed);
+    const isInsert = /^\s*INSERT/i.test(trimmed);
+    const intoSettings = /^\s*INSERT\s+INTO\s+settings\b/i.test(trimmed);
+    const finalSql =
+      isInsert && !intoSettings && !/RETURNING/i.test(trimmed)
+        ? trimmed.replace(/;?\s*$/, "") + " RETURNING id"
+        : sql;
+    const { text, values } = namedToPositional(finalSql, params);
     const result = await _pool.query(text, values);
-    return result.rows;
+    if (isRead) return result.rows;
+    return { insertId: result.rows[0]?.id ?? null, affectedRows: result.rowCount };
   };
 
   _transaction = async (fn) => {
