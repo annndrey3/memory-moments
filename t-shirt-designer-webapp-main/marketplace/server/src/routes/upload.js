@@ -11,11 +11,23 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Розширення визначаємо СУВОРО зі списку дозволених mimetype, а не з імені
+// файлу клієнта. Інакше через originalname можна було б зберегти .svg/.html і
+// отримати stored-XSS з нашого origin (mimetype теж керований клієнтом, але
+// helmet виставляє X-Content-Type-Options: nosniff, тож image/* не виконається).
+const EXT_BY_MIME = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
+    const ext = EXT_BY_MIME[file.mimetype] || ".bin";
+    cb(null, `${unique}${ext}`);
   },
 });
 

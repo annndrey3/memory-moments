@@ -263,6 +263,11 @@ if (process.env.DATABASE_URL) {
   await _pool.query("ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_url TEXT;");
   // Клієнти із замовлень конструктора часто без email (там обов'язковий лише телефон).
   await _pool.query("ALTER TABLE customers ALTER COLUMN email DROP NOT NULL;");
+  // Ідемпотентність замовлення + статус сповіщення власника.
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS idempotency_key TEXT;");
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS notify_status TEXT NOT NULL DEFAULT 'pending';");
+  // Частковий унікальний індекс: дублі ключа заборонені, але багато NULL дозволені.
+  await _pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");
 
 // ═══════════════════════════════════════════════════════════════════════
 // SQLite  (default when DATABASE_URL is not set)
@@ -618,6 +623,16 @@ if (process.env.DATABASE_URL) {
   if (oiCols.length && !oiCols.some((c) => c.name === "design_preview")) {
     db.exec("ALTER TABLE order_items ADD COLUMN design_preview TEXT;");
   }
+
+  // Ідемпотентність замовлення + статус сповіщення власника.
+  if (orderCols.length && !orderCols.some((c) => c.name === "idempotency_key")) {
+    db.exec("ALTER TABLE orders ADD COLUMN idempotency_key TEXT;");
+  }
+  if (orderCols.length && !orderCols.some((c) => c.name === "notify_status")) {
+    db.exec("ALTER TABLE orders ADD COLUMN notify_status TEXT NOT NULL DEFAULT 'pending';");
+  }
+  // Частковий унікальний індекс: дублі ключа заборонені, NULL дозволені.
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");
 }
 
 // Named exports — the only ones imported by route files.
