@@ -12,8 +12,9 @@ dist
 dist-ssr
 *.local
 
-# Скріншоти мобільного smoke-тесту (mobile-test.mjs)
+# Скріншоти мобільних smoke-тестів (mobile-test.mjs / book-test.mjs)
 mobile-shots/
+book-shots/
 
 # Editor directories and files
 .vscode/*

@@ -57,7 +57,9 @@ const DesignArea = ({ manualSync }) => {
     if (isBookType(selectedType)) {
       const spreads = (slimBookPhotos || []).map((_, i) => [
         `spread-${i}`,
-        { label: `Розворот ${i + 1}`, ...buildSlimBookView(slimBookFormat) },
+        // label ПІСЛЯ спреду: buildSlimBookView повертає свій label:"Обкладинка",
+        // який інакше перетер би «Розворот N» (усі вкладки ставали «Обкладинка»).
+        { ...buildSlimBookView(slimBookFormat), label: `Розворот ${i + 1}` },
       ]);
       return [...base, ...spreads];
     }
