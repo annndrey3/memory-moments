@@ -139,10 +139,11 @@ const DesignArea = ({ manualSync }) => {
     // Одразу даємо друкувати: вмикаємо редагування й виділяємо текст-заготовку,
     // щоб перший символ його замінив.
     try { text.enterEditing(); text.selectAll(); } catch { /* canvas ще не готовий */ }
-    // Шрифт за замовчуванням (Pacifico) міг не встигнути завантажитись — перемалюємо.
+    // Шрифт за замовчуванням (Caveat) міг не встигнути завантажитись — підтягнемо
+    // кириличні гліфи на зразку лат.+кир. і перемалюємо.
     if (document.fonts?.load) {
       document.fonts
-        .load(`${text.fontSize}px "${text.fontFamily}"`)
+        .load(`${text.fontSize}px "${text.fontFamily}"`, "AaЯяІіЇїҐґЄє")
         .then(() => { activeCanvas.renderAll(); manualSync?.(); })
         .catch(() => {});
     }

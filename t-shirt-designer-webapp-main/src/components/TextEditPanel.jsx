@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useCanvas } from "@/hooks/useCanvas";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Type, Italic, Bold, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FONT_OPTIONS } from "@/constants/designConstants";
+import FontOptions, { FONT_SAMPLE } from "./FontOptions";
 
 // Плаваюча панель редагування тексту. З'являється автоматично щойно вибрано/додано
 // текст і спливає красивою анімацією поряд з робочою зоною (як панель маски/рамки).
@@ -13,7 +13,7 @@ const TextEditPanel = ({ manualSync }) => {
   const isText = selectedObject?.type === "textbox";
 
   const [text, setText] = useState("");
-  const [font, setFont] = useState("Pacifico");
+  const [font, setFont] = useState("Caveat");
   const [fontSize, setFontSize] = useState(28);
   const [color, setColor] = useState("#000000");
   const [italic, setItalic] = useState(false);
@@ -59,8 +59,9 @@ const TextEditPanel = ({ manualSync }) => {
     setFont(v);
     selectedObject.set("fontFamily", v);
     sync();
-    // Веб-шрифт міг ще не завантажитись — дочекаємось і перемалюємо.
-    document.fonts?.load?.(`${selectedObject.fontSize || 28}px "${v}"`)
+    // Веб-шрифт (із кириличним сабсетом) міг ще не завантажитись — підтягнемо
+    // потрібні гліфи на зразку лат.+кир. і перемалюємо.
+    document.fonts?.load?.(`${selectedObject.fontSize || 28}px "${v}"`, FONT_SAMPLE)
       .then(sync).catch(() => {});
   };
 
@@ -102,13 +103,7 @@ const TextEditPanel = ({ manualSync }) => {
             <SelectValue placeholder="Шрифт" />
           </SelectTrigger>
           <SelectContent className="max-h-72">
-            <SelectGroup>
-              {FONT_OPTIONS.map((f) => (
-                <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
-                  {f.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
+            <FontOptions />
           </SelectContent>
         </Select>
 

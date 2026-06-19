@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useCanvas } from "@/hooks/useCanvas";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SlidersHorizontal, Type, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FONT_OPTIONS } from "@/constants/designConstants";
+import FontOptions, { FONT_SAMPLE } from "./FontOptions";
 
 const RAIL_BTN =
   "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed";
@@ -54,7 +54,7 @@ export default function PropertiesBtn({ manualSync }) {
     setFont(val);
     selectedObject.set("fontFamily", val);
     activeCanvas.renderAll(); manualSync?.();
-    document.fonts?.load(`${selectedObject.fontSize}px "${val}"`)
+    document.fonts?.load(`${selectedObject.fontSize}px "${val}"`, FONT_SAMPLE)
       .then(() => { activeCanvas.renderAll(); manualSync?.(); }).catch(() => {});
   };
   const applyFontSize = (e) => {
@@ -121,14 +121,8 @@ export default function PropertiesBtn({ manualSync }) {
                 <SelectTrigger className={FIELD}>
                   <SelectValue placeholder="Шрифт" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {FONT_OPTIONS.map((f) => (
-                      <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
-                        {f.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
+                <SelectContent className="max-h-72">
+                  <FontOptions />
                 </SelectContent>
               </Select>
             </div>

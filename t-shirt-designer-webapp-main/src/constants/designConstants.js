@@ -405,7 +405,10 @@ export const TSHIRT_TYPES = PRODUCT_TYPES;
 
 export const DEFAULT_TEXT_CONFIG = {
   fontSize: 28,
-  fontFamily: "Pacifico", // шрифт за замовчуванням (застосовується й до тексту-заготовки)
+  // Шрифт за замовчуванням (застосовується й до тексту-заготовки). Caveat —
+  // гарний рукописний шрифт з повною кирилицею (рос. + укр.), на відміну від
+  // Pacifico, що має лише латиницю.
+  fontFamily: "Caveat",
   fontStyle: "normal",
   fontWeight: "normal",
   originX: "center",
@@ -450,34 +453,82 @@ export const MUG_INNER_COLORS = [
 export const mugColorName = (hex) =>
   MUG_INNER_COLORS.find((c) => c.hex.toUpperCase() === String(hex).toUpperCase())?.label || hex;
 
+// Порядок груп у випадайці шрифтів.
+export const FONT_GROUPS = [
+  "Рукописні / декоративні",
+  "Без засічок",
+  "З засічками",
+  "Системні",
+  "Лише латиниця (English)",
+];
+
+// value = точна назва сімейства (CSS font-family). Усі шрифти, крім групи
+// «Лише латиниця», підтримують кирилицю — російську та українську (і ї є ґ).
+// Веб-шрифти підключені у index.html (Google Fonts, із кириличними сабсетами).
 export const FONT_OPTIONS = [
-  // Системні
-  { value: "arial", label: "Arial" },
-  { value: "calibri", label: "Calibri" },
-  { value: "times-new-roman", label: "Times New Roman" },
-  { value: "georgia", label: "Georgia" },
-  { value: "helvetica", label: "Helvetica" },
-  { value: "courier-new", label: "Courier New" },
-  { value: "verdana", label: "Verdana" },
-  { value: "tahoma", label: "Tahoma" },
-  { value: "trebuchet-ms", label: "Trebuchet MS" },
-  { value: "impact", label: "Impact" },
-  // Google Fonts (value = точна назва сімейства; підключені в index.html)
-  { value: "Playfair Display", label: "Playfair Display" },
-  { value: "PT Serif", label: "PT Serif" },
-  { value: "Cinzel", label: "Cinzel" },
-  { value: "Lora", label: "Lora" },
-  { value: "Bodoni Moda", label: "Bodoni Moda" },
-  { value: "Montserrat", label: "Montserrat" },
-  { value: "Open Sans", label: "Open Sans" },
-  { value: "Inter", label: "Inter" },
-  { value: "Oswald", label: "Oswald" },
-  { value: "Roboto", label: "Roboto" },
-  { value: "Pacifico", label: "Pacifico" },
-  { value: "Caveat", label: "Caveat" },
-  { value: "Satisfy", label: "Satisfy" },
-  { value: "Great Vibes", label: "Great Vibes" },
-  { value: "Shadows Into Light", label: "Shadows Into Light" },
+  // Рукописні / декоративні (кирилиця)
+  { value: "Caveat",        label: "Caveat — рукописний",   group: "Рукописні / декоративні" },
+  { value: "Marck Script",  label: "Marck Script — курсив", group: "Рукописні / декоративні" },
+  { value: "Bad Script",    label: "Bad Script",            group: "Рукописні / декоративні" },
+  { value: "Pangolin",      label: "Pangolin",              group: "Рукописні / декоративні" },
+  { value: "Lobster",       label: "Lobster",               group: "Рукописні / декоративні" },
+  { value: "Yeseva One",    label: "Yeseva One",            group: "Рукописні / декоративні" },
+  { value: "Russo One",     label: "Russo One",             group: "Рукописні / декоративні" },
+  { value: "Marmelad",      label: "Marmelad",              group: "Рукописні / декоративні" },
+  { value: "Underdog",      label: "Underdog",              group: "Рукописні / декоративні" },
+  { value: "Seymour One",   label: "Seymour One",           group: "Рукописні / декоративні" },
+
+  // Без засічок (кирилиця)
+  { value: "Montserrat",  label: "Montserrat",     group: "Без засічок" },
+  { value: "Roboto",      label: "Roboto",         group: "Без засічок" },
+  { value: "Open Sans",   label: "Open Sans",      group: "Без засічок" },
+  { value: "Inter",       label: "Inter",          group: "Без засічок" },
+  { value: "PT Sans",     label: "PT Sans",        group: "Без засічок" },
+  { value: "Raleway",     label: "Raleway",        group: "Без засічок" },
+  { value: "Rubik",       label: "Rubik",          group: "Без засічок" },
+  { value: "Nunito",      label: "Nunito",         group: "Без засічок" },
+  { value: "Manrope",     label: "Manrope",        group: "Без засічок" },
+  { value: "Golos Text",  label: "Golos Text",     group: "Без засічок" },
+  { value: "Oswald",      label: "Oswald",         group: "Без засічок" },
+  { value: "Ubuntu",      label: "Ubuntu",         group: "Без засічок" },
+  { value: "Fira Sans",   label: "Fira Sans",      group: "Без засічок" },
+  { value: "Exo 2",       label: "Exo 2",          group: "Без засічок" },
+  { value: "Play",        label: "Play",           group: "Без засічок" },
+  { value: "Comfortaa",   label: "Comfortaa",      group: "Без засічок" },
+  { value: "Cuprum",      label: "Cuprum",         group: "Без засічок" },
+  { value: "Arsenal",     label: "Arsenal (укр.)", group: "Без засічок" },
+
+  // З засічками (кирилиця)
+  { value: "PT Serif",         label: "PT Serif",          group: "З засічками" },
+  { value: "Lora",             label: "Lora",              group: "З засічками" },
+  { value: "Playfair Display", label: "Playfair Display",  group: "З засічками" },
+  { value: "Merriweather",     label: "Merriweather",      group: "З засічками" },
+  { value: "Cormorant",        label: "Cormorant",         group: "З засічками" },
+  { value: "Spectral",         label: "Spectral",          group: "З засічками" },
+  { value: "Alegreya",         label: "Alegreya",          group: "З засічками" },
+  { value: "Philosopher",      label: "Philosopher",       group: "З засічками" },
+  { value: "Old Standard TT",  label: "Old Standard TT",   group: "З засічками" },
+  { value: "Kurale",           label: "Kurale",            group: "З засічками" },
+  { value: "Tinos",            label: "Tinos (як Times)",  group: "З засічками" },
+
+  // Системні (кирилиця через ОС)
+  { value: "Arial",           label: "Arial",           group: "Системні" },
+  { value: "Calibri",         label: "Calibri",         group: "Системні" },
+  { value: "Times New Roman", label: "Times New Roman", group: "Системні" },
+  { value: "Georgia",         label: "Georgia",         group: "Системні" },
+  { value: "Verdana",         label: "Verdana",         group: "Системні" },
+  { value: "Tahoma",          label: "Tahoma",          group: "Системні" },
+  { value: "Trebuchet MS",    label: "Trebuchet MS",    group: "Системні" },
+  { value: "Courier New",     label: "Courier New",     group: "Системні" },
+  { value: "Impact",          label: "Impact",          group: "Системні" },
+
+  // Лише латиниця (English) — без кирилиці, для англомовних написів
+  { value: "Pacifico",           label: "Pacifico (лат.)",           group: "Лише латиниця (English)" },
+  { value: "Great Vibes",        label: "Great Vibes (лат.)",        group: "Лише латиниця (English)" },
+  { value: "Satisfy",            label: "Satisfy (лат.)",            group: "Лише латиниця (English)" },
+  { value: "Shadows Into Light", label: "Shadows Into Light (лат.)", group: "Лише латиниця (English)" },
+  { value: "Cinzel",             label: "Cinzel (лат.)",             group: "Лише латиниця (English)" },
+  { value: "Bodoni Moda",        label: "Bodoni Moda (лат.)",        group: "Лише латиниця (English)" },
 ];
 
 // ── Опції товару: розмір футболки та тип паперу для фотодруку ────────────────
