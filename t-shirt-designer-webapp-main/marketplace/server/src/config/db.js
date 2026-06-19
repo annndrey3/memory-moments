@@ -282,6 +282,9 @@ if (process.env.DATABASE_URL) {
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS notify_status TEXT NOT NULL DEFAULT 'pending';");
   // Знижка на друк фото за кількістю — сума знижки (₴) на замовлення.
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount NUMERIC(12,2) NOT NULL DEFAULT 0;");
+  // ZIP-архів фотокниги (збирається фоном): посилання + статус (pending/ready/failed).
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archive_url TEXT;");
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archive_status TEXT;");
   // Частковий унікальний індекс: дублі ключа заборонені, але багато NULL дозволені.
   await _pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");
 
@@ -649,6 +652,12 @@ if (process.env.DATABASE_URL) {
   }
   if (orderCols.length && !orderCols.some((c) => c.name === "discount")) {
     db.exec("ALTER TABLE orders ADD COLUMN discount REAL NOT NULL DEFAULT 0;");
+  }
+  if (orderCols.length && !orderCols.some((c) => c.name === "archive_url")) {
+    db.exec("ALTER TABLE orders ADD COLUMN archive_url TEXT;");
+  }
+  if (orderCols.length && !orderCols.some((c) => c.name === "archive_status")) {
+    db.exec("ALTER TABLE orders ADD COLUMN archive_status TEXT;");
   }
   // Частковий унікальний індекс: дублі ключа заборонені, NULL дозволені.
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");

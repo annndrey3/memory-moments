@@ -46,8 +46,8 @@ async function composePage(srcPath, { pageW, pageH, isRight }) {
   return page.getBufferAsync(Jimp.MIME_JPEG);
 }
 
-// Збирає ZIP книги у памʼяті й віддає в res. false — якщо в замовленні немає книги.
-export async function streamBookArchive(order, res) {
+// Збирає ZIP книги у памʼяті. Повертає { buffer, hasBook }.
+export async function buildBookZip(order) {
   const books = (order.items || [])
     .map((it) => {
       let d = {};
@@ -56,7 +56,7 @@ export async function streamBookArchive(order, res) {
     })
     .filter(({ d }) => Array.isArray(d.innerPhotos) && d.innerPhotos.length);
 
-  if (!books.length) return false;
+  if (!books.length) return { buffer: null, hasBook: false };
 
   const zip = new JSZip();
 
@@ -88,9 +88,25 @@ export async function streamBookArchive(order, res) {
     }
   }
 
-  const out = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
+  const buffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 6 } });
+  return { buffer, hasBook: true };
+}
+
+// On-demand: збирає й віддає в res. false — якщо в замовленні немає книги.
+export async function streamBookArchive(order, res) {
+  const { buffer, hasBook } = await buildBookZip(order);
+  if (!hasBook) return false;
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", `attachment; filename="book-${order.order_number}.zip"`);
-  res.send(out);
+  res.send(buffer);
   return true;
+}
+
+// Фонова збірка: зберігає архів на диск, повертає URL (/uploads/...) або null.
+export async function buildBookArchiveToDisk(order) {
+  const { buffer, hasBook } = await buildBookZip(order);
+  if (!hasBook) return null;
+  const name = `book_${String(order.order_number).replace(/[^\w-]/g, "")}_${Date.now().toString(36)}.zip`;
+  await fs.promises.writeFile(path.join(UPLOAD_DIR, name), buffer);
+  return `/uploads/${name}`;
 }

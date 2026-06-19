@@ -9,7 +9,7 @@ import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
-import { streamBookArchive } from "../utils/bookArchive.js";
+import { streamBookArchive, buildBookArchiveToDisk } from "../utils/bookArchive.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -156,6 +156,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
     const resolved = [];
     let photoCount = 0; // сумарна кіл-ть фото (photo_print) — для знижки за кількістю
     let photoSubtotal = 0;
+    let hasBookItem = false; // є фотокнига з фото → фонова збірка ZIP-архіву
     for (const [itemIndex, item] of items.entries()) {
       const quantity = Math.max(1, Number(item.quantity) || 1);
 
@@ -307,6 +308,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
             if (u) innerPhotoUrls.push(u);
           });
         }
+        if (innerPhotoUrls.length) hasBookItem = true;
 
         // Вбудовуємо URL друкарських файлів у design_data поряд з fabric JSON.
         let fabricData = {};
@@ -348,8 +350,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
       const orderNumber = await generateOrderNumber(tx, orderSource);
       const { insertId } = await tx.run(
         `INSERT INTO orders
-         (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, discount, total, idempotency_key)
-         VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :discount, :total, :idempotency_key)`,
+         (order_number, customer_name, customer_email, customer_phone, shipping_address, notes, status, source, subtotal, discount, total, idempotency_key, archive_status)
+         VALUES (:order_number, :name, :email, :phone, :address, :notes, 'pending', :source, :subtotal, :discount, :total, :idempotency_key, :archive_status)`,
         {
           order_number: orderNumber,
           name,
@@ -362,6 +364,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
           discount,
           total,
           idempotency_key: idempotencyKey,
+          archive_status: hasBookItem ? "pending" : null,
         }
       );
 
@@ -425,6 +428,20 @@ router.post("/", createOrderLimiter, async (req, res) => {
       );
     } catch (e) {
       console.warn("notify_status update failed:", e.message);
+    }
+
+    // Фонова збірка ZIP-архіву книги (поза відповіддю клієнту) — щоб великі книги
+    // збиралися без ризику HTTP-таймауту. Готовий архів зʼявиться в адмінці.
+    if (hasBookItem) {
+      buildBookArchiveToDisk(order)
+        .then((url) => url && query(
+          "UPDATE orders SET archive_url = :u, archive_status = 'ready', updated_at = CURRENT_TIMESTAMP WHERE id = :id",
+          { u: url, id: orderId }
+        ))
+        .catch((e) => {
+          console.error(`order ${order.order_number}: book archive failed:`, e.message);
+          query("UPDATE orders SET archive_status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = :id", { id: orderId }).catch(() => {});
+        });
     }
   } catch (err) {
     // Гонка ідемпотентності: паралельний запит із тим самим ключем уже створив
@@ -533,6 +550,12 @@ router.get("/:id/book-archive", authMiddleware, requirePermission("orders.view")
   try {
     const order = await getOrderWithItems(req.params.id);
     if (!order) return res.status(404).json({ error: "Order not found" });
+    // Готовий архів (зібраний фоном) — віддаємо файл одразу, без перезбірки.
+    if (order.archive_url) {
+      const p = path.join(UPLOAD_DIR, path.basename(order.archive_url));
+      if (fs.existsSync(p)) return res.download(p, `book-${order.order_number}.zip`);
+    }
+    // Фолбек: зібрати на льоту (старі/невдалі замовлення).
     const ok = await streamBookArchive(order, res);
     if (!ok && !res.headersSent) res.status(400).json({ error: "У замовленні немає фотокниги" });
   } catch (err) {
@@ -616,7 +639,7 @@ router.post("/:id/notify", authMiddleware, requirePermission("orders.manage"), a
 router.delete("/:id", authMiddleware, requireSuperadmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const [order] = await query("SELECT id, status FROM orders WHERE id = :id", { id });
+    const [order] = await query("SELECT id, status, archive_url FROM orders WHERE id = :id", { id });
     if (!order) return res.status(404).json({ error: "Замовлення не знайдено" });
 
     // Збираємо print-файли та preview + дані для повернення складу перед видаленням.
@@ -636,6 +659,7 @@ router.delete("/:id", authMiddleware, requireSuperadmin, async (req, res) => {
         filesToDelete.push(path.join(UPLOAD_DIR, path.basename(design_preview)));
       }
     }
+    if (order.archive_url) filesToDelete.push(path.join(UPLOAD_DIR, path.basename(order.archive_url)));
 
     // Повернення складу + видалення — атомарно. Якщо замовлення не було
     // скасоване, склад досі «зайнятий» цим замовленням, тож повертаємо його

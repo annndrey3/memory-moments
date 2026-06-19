@@ -209,12 +209,20 @@ export default function AdminOrdersPage() {
                     ) : (
                       <>
                         {hasBook(full) && (
-                          <button
-                            onClick={() => downloadBookArchive(full)}
-                            className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
-                          >
-                            ⬇ Завантажити архів книги (ZIP)
-                          </button>
+                          <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() => downloadBookArchive(full)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700"
+                            >
+                              {full.archive_url ? "⬇ Завантажити архів книги (ZIP)" : "⬇ Зібрати та завантажити архів книги"}
+                            </button>
+                            {full.archive_status === "pending" && !full.archive_url && (
+                              <span className="text-xs text-amber-600">архів готується…</span>
+                            )}
+                            {full.archive_status === "failed" && (
+                              <span className="text-xs text-red-600">фон не вдався — зберемо на льоту</span>
+                            )}
+                          </div>
                         )}
                         <div className="grid sm:grid-cols-2 gap-6">
                         <div>
