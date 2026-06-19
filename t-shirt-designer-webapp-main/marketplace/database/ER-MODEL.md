@@ -1,7 +1,7 @@
 # ER-модель маркетплейсу Memory Moments
 
-**База даних:** SQLite (`marketplace/server/marketplace.db`)  
-**Бібліотека:** better-sqlite3, `foreign_keys = ON`, WAL journal mode
+**База даних:** SQLite (dev, `marketplace/server/marketplace.db`) / **PostgreSQL** (prod, `DATABASE_URL`)  
+**Шар:** `src/config/db.js` — єдиний `query()`/`transaction()` для обох рушіїв (джерело істини схеми).
 
 ---
 
@@ -124,7 +124,12 @@ erDiagram
         text    status          "pending | paid | shipped | completed | cancelled"
         text    source          "marketplace | designer"
         real    subtotal
-        real    total
+        real    discount        "знижка фотодруку"
+        real    total           "subtotal - discount"
+        text    idempotency_key "захист від дублів"
+        text    notify_status   "pending | sent | failed"
+        text    archive_url     "ZIP фотокниги"
+        text    archive_status  "pending | ready | failed"
         datetime created_at
         datetime updated_at
     }
@@ -135,8 +140,8 @@ erDiagram
         int     product_id      FK "nullable — snapshot"
         int     variant_id      FK "nullable"
         int     design_id       FK "nullable"
-        text    design_data     "JSON макет з конструктора"
-        text    design_preview  "URL PNG прев'ю"
+        text    design_data     "JSON: fabric + print-URL + innerPhotos книги + book-мета"
+        text    design_preview  "URL прев'ю (мокап/фото)"
         text    product_name    "snapshot назви"
         text    variant_label
         real    unit_price
@@ -173,6 +178,26 @@ erDiagram
         text    value
         datetime updated_at
     }
+
+    slides {
+        int     id          PK
+        text    image_url
+        text    title
+        text    subtitle
+        text    link
+        text    cta_label
+        int     sort_order
+        int     is_active
+    }
+
+    customers {
+        int     id      PK
+        text    name
+        text    email   UK "nullable"
+        text    phone
+        text    notes
+        text    source  "manual | marketplace | designer | import"
+    }
 ```
 
 ---
@@ -191,8 +216,10 @@ erDiagram
 | **orders** | Замовлення клієнтів; `source` — з сайту або з конструктора |
 | **order_items** | Позиції замовлення; `product_name` — snapshot, щоб не залежати від змін |
 | **service_categories** | Категорії прайс-листа |
-| **services** | Послуги прайс-листа (ціна роздріб + Instagram) |
-| **settings** | Key-value сховище для системних налаштувань (Gemini API ключ тощо) |
+| **services** | Послуги прайс-листа (`code`+`format`→ціна; коди звʼязані з конструктором) |
+| **settings** | Key-value (налаштування + лічильники номерів замовлень `order_seq_*`) |
+| **slides** | Слайди банера маркетплейсу (адмін-керовані) |
+| **customers** | CRM: автозахоплення клієнтів із замовлень (за email/телефоном) |
 
 ---
 
@@ -219,11 +246,11 @@ erDiagram
 
 | Значення | Тип продукту |
 |----------|-------------|
-| `crew-neck` | Футболка (2D + 3D, передня/задня сторона) |
-| `mug` | Чашка (розгортка + 3D циліндр) |
-| `polaroid` | Полароїд |
-| `instax-mini` | Instax Mini |
-| `photo-10x15` … `photo-square` | 7 форматів фотодруку |
+| `crew-neck` | Футболка (перёд/зад, 2D + 3D) |
+| `mug`, `mug-*` | Чашки (5 видів) |
+| `polaroid`, `instax-mini`, `photo-*` | Фотопродукція (полароїди, Instax, фото 10×15…А4, квадрат) |
+| `canvas` | Полотно на підрамнику |
+| `slim-book`, `print-book` | Фотокниги (обкладинка перёд/зад + фото розворотів/листів) |
 
 Товари з `designer_type IS NOT NULL` **не відображаються** у каталозі та **не видаляються** через API.
 

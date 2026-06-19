@@ -17,7 +17,8 @@ marketplace/
 │   └── src/
 │       ├── routes/       # auth, products, categories, orders, upload, cleanup …
 │       ├── middleware/   # auth.js, requirePermission.js
-│       ├── config/       # db.js (SQLite, foreign_keys ON)
+│       ├── config/       # db.js (SQLite dev / PostgreSQL prod)
+│       ├── utils/        # designerPricing, bookArchive (jimp+jszip), telegram, email …
 │       └── scripts/      # seed-admin, cleanUploads.js
 │
 └── database/
@@ -92,8 +93,9 @@ VITE_DESIGNER_URL=http://localhost:5174
 
 ## База даних
 
-**Тип:** SQLite (`marketplace.db` у папці `server/`)  
-**Бібліотека:** `better-sqlite3`, `foreign_keys = ON`
+**Тип:** SQLite (dev, `marketplace.db` у `server/`) / **PostgreSQL** (prod, через `DATABASE_URL`)  
+**Шар:** `src/config/db.js` — єдиний `query()`/`transaction()` для обох рушіїв; схема й
+**ідемпотентні міграції** застосовуються на кожному старті (джерело істини — `db.js`, `schema.sql` — довідка).
 
 ### Таблиці
 
@@ -104,11 +106,13 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `products` | Товари (`designer_type` → прив'язка до конструктора) |
 | `product_images` | Зображення товарів (кілька на товар, `is_primary`) |
 | `product_variants` | Варіанти (розмір, колір, price_modifier) |
-| `orders` | Замовлення клієнтів |
-| `order_items` | Позиції замовлення (`design_data` JSON — дані конструктора) |
+| `orders` | Замовлення (+ колонки `discount`, `idempotency_key`, `notify_status`, `archive_url`/`archive_status`) |
+| `order_items` | Позиції (`design_data` JSON: fabric-макет, URL print-файлів, `innerPhotos` книги, `book`-мета) |
 | `designs` | Збережені дизайни з конструктора |
-| `service_categories` / `service_items` | Прайс-лист |
-| `admin_settings` | Системні налаштування (Gemini API ключ тощо) |
+| `service_categories` / `services` | Прайс-лист (`code`+`format`→ціна; коди звʼязані з конструктором) |
+| `settings` | Налаштування key/value + лічильники номерів замовлень |
+| `slides` | Слайди банера маркетплейсу (адмін) |
+| `customers` | CRM: автозахоплення клієнтів із замовлень |
 | `product_audit_logs` | Журнал змін товарів |
 
 ### Поле `designer_type`
@@ -116,11 +120,12 @@ VITE_DESIGNER_URL=http://localhost:5174
 Пов'язує товар з типом продукту в конструкторі:
 
 ```
-crew-neck   → Футболка (2 боки, 3D preview)
-mug         → Чашка (розгортка, 3D preview)
-polaroid    → Полароїд
-instax-mini → Instax Mini
-photo-*     → Фотопродукція (7 форматів)
+crew-neck    → Футболка (перёд/зад, 3D preview)
+mug, mug-*   → Чашки (5 видів: біла/велетень/магічна/кольорова/з написами)
+polaroid, instax-mini, photo-*  → Фотопродукція (полароїди, Instax, фото 10×15…А4, квадрат)
+canvas       → Полотно на підрамнику (розмір із прайсу)
+slim-book    → Slim Book (фотокнига: обкладинка перёд/зад + фото розворотів)
+print-book   → Print Book (фотокнига: листи + фото)
 ```
 
 Товари з `designer_type IS NOT NULL`:
@@ -140,8 +145,9 @@ photo-*     → Фотопродукція (7 форматів)
 **Замовлення** (`/admin/orders`)
 - Перегляд усіх замовлень зі статусами
 - Зміна статусу: pending → paid → shipped → completed / cancelled
-- Для замовлень конструктора: скачування PNG макетів для друку (Спереду / Ззаду)
-- Видалення замовлення (тільки superadmin) — автоматично чистить print-файли
+- Для замовлень конструктора: скачування PNG макетів (Спереду / Ззаду)
+- Для фотокниг: кнопка **«Завантажити архів книги (ZIP)»** (обкладинки + готові друкарські сторінки)
+- Видалення замовлення (тільки superadmin) — автоматично чистить print-файли та архів
 
 **Товари** (`/admin/products`)
 - Список активних/прихованих товарів
@@ -154,13 +160,13 @@ photo-*     → Фотопродукція (7 форматів)
 
 **Дизайни** (`/admin/designs`) — збережені роботи з конструктора
 
-**Прайс** (`/admin/services`) — послуги та ціни, імпорт з Excel через Gemini AI
+**Прайс** (`/admin/services`) — послуги та ціни; Excel-імпорт/експорт прайсу (`/api/admin/data`)
 
 **Налаштування** (`/admin/settings`)
 - Зміна email / пароля
 - Управління користувачами та їх дозволами (superadmin)
-- Gemini API ключ для імпорту прайсу
-- Очистка сховища — видалення старих print/photo файлів
+- SMTP для email-підтверджень; експорт/імпорт даних (Excel)
+- Очистка сховища — видалення старих print/photo/book файлів
 
 ### Система дозволів
 
@@ -181,13 +187,15 @@ admin       → тільки призначені дозволи:
 ### Публічні
 
 ```
-GET    /api/health
+GET    /api/health                 пінг БД (503 якщо недоступна)
 GET    /api/categories
 GET    /api/products               ?category=&search=&page=&limit=
 GET    /api/products/slug/:slug
+GET    /api/products/designer-prices   ціни конструктора (футболка/полотно/Slim·Print Book)
+GET    /api/slides
 POST   /api/auth/login             { email, password } → { token }
-POST   /api/orders                 Оформлення замовлення
-GET    /api/orders/:number         Статус замовлення для клієнта
+POST   /api/orders                 Оформлення (ціни на сервері; заголовок Idempotency-Key)
+GET    /api/orders/track/:number   Статус замовлення для клієнта (без PII)
 GET    /api/services               Прайс-лист
 POST   /api/photos                 Завантаження фото клієнта (rate-limited)
 ```
@@ -205,11 +213,17 @@ POST   /api/categories
 PUT    /api/categories/:id
 DELETE /api/categories/:id
 
-GET    /api/orders/admin           ?status=&page=
-PATCH  /api/orders/:id/status      { status }
+GET    /api/orders                 ?status=&page=    список
+GET    /api/orders/:id             деталі
+PATCH  /api/orders/:id/status      { status }        (з коррекцією складу)
+POST   /api/orders/:id/notify      повторне Telegram-сповіщення
+GET    /api/orders/:id/book-archive  ZIP фотокниги (обкладинки + друкарські сторінки)
 DELETE /api/orders/:id             (тільки superadmin)
 
 POST   /api/upload                 multipart/form-data → { url }
+GET/POST /api/admin/data/export|import/:kind   Excel (товари/прайс/категорії/клієнти)
+GET/PATCH/DELETE /api/admin/customers[/:id]    CRM клієнтів
+POST/PUT/DELETE /api/slides[/:id]              слайди банера
 
 GET    /api/admin/cleanup          ?days=30  (preview)
 POST   /api/admin/cleanup          { days }  (виконати)
@@ -225,8 +239,10 @@ GET/PUT/DELETE /api/admin/settings/*
 
 | Префікс | Що | Коли чистити |
 |---|---|---|
-| `print_*` | PNG макети для друку з конструктора | Після виконання замовлення (30+ днів) |
-| `photo-*` | Фото клієнтів для фото-замовлень | Після виконання (30+ днів) |
+| `print_*` / `raw_*` / `preview_*` | Макети друку, сирі кропи, прев'ю з конструктора | 30+ днів |
+| `book_*.jpg` | Фото розворотів фотокниг | 30+ днів |
+| `book_*.zip` | Готові ZIP-архіви фотокниг (обкладинки + друкарські сторінки) | разом із замовленням |
+| `photo-*` | Фото клієнтів для фото-замовлень | 30+ днів |
 | Інші | Зображення товарів | Ніколи автоматично |
 
 **Автоматична очистка** через адмінку (Налаштування → Очистка сховища) або вручну:

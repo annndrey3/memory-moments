@@ -108,10 +108,16 @@ CREATE TABLE orders (
   status           TEXT NOT NULL DEFAULT 'pending',      -- pending|paid|shipped|completed|cancelled
   source           TEXT NOT NULL DEFAULT 'marketplace',  -- 'marketplace' | 'designer'
   subtotal         REAL NOT NULL DEFAULT 0,
-  total            REAL NOT NULL DEFAULT 0,
+  discount         REAL NOT NULL DEFAULT 0,              -- знижка на фотодрук за кількістю
+  total            REAL NOT NULL DEFAULT 0,              -- subtotal - discount
+  idempotency_key  TEXT,                                 -- захист від дублів (унікальний серед NOT NULL)
+  notify_status    TEXT,                                 -- pending|sent|failed (Telegram-сповіщення)
+  archive_url      TEXT,                                 -- /uploads/...zip — ZIP фотокниги (фонова збірка)
+  archive_status   TEXT,                                 -- pending|ready|failed
   created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;
 
 CREATE TABLE order_items (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,8 +125,8 @@ CREATE TABLE order_items (
   product_id     INTEGER NULL,   -- SET NULL if product deleted; snapshot in product_name
   variant_id     INTEGER NULL,
   design_id      INTEGER NULL,
-  design_data    TEXT,           -- Fabric.js JSON макета покупця
-  design_preview TEXT,           -- URL PNG прев'ю
+  design_data    TEXT,           -- JSON: fabric-макет + URL print/raw-файлів + innerPhotos книги + book-мета
+  design_preview TEXT,           -- URL прев'ю (мокап/фото)
   product_name   TEXT NOT NULL,  -- snapshot at order time
   variant_label  TEXT,
   unit_price     REAL NOT NULL DEFAULT 0,
@@ -155,8 +161,32 @@ CREATE TABLE services (
   FOREIGN KEY (category_id) REFERENCES service_categories(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-CREATE TABLE settings (
+CREATE TABLE settings (          -- key/value + лічильники номерів замовлень (order_seq_*)
   key        TEXT PRIMARY KEY,
   value      TEXT NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE slides (            -- слайди банера маркетплейсу (адмін-керовані)
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  image_url  TEXT,
+  title      TEXT,
+  subtitle   TEXT,
+  link       TEXT,
+  cta_label  TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active  INTEGER NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE customers (         -- CRM: автозахоплення клієнтів із замовлень
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  email      TEXT UNIQUE,        -- NULL дозволено (замовлення конструктора часто без email)
+  phone      TEXT,
+  notes      TEXT,
+  source     TEXT NOT NULL DEFAULT 'manual',  -- manual|marketplace|designer|import
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

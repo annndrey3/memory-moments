@@ -1,6 +1,6 @@
 # 🎨 Memory Moments — Custom Merch Designer & Marketplace
 
-Full-stack платформа для создания и продажи кастомизированных товаров (футболки, чашки, фотопечать) с интерактивным 2D/3D конструктором, маркетплейсом и админ-панелью.
+Full-stack платформа для создания и продажи кастомизированных товаров (футболки, чашки, фотопечать, **фотокниги Slim/Print Book**) с интерактивным 2D/3D конструктором, маркетплейсом и админ-панелью.
 
 **[Деплой](./DEPLOYMENT.md)** · **[Маркетплейс docs](./t-shirt-designer-webapp-main/marketplace/README.md)**
 
@@ -15,9 +15,9 @@ Full-stack платформа для создания и продажи каст
 
 | Компонент | Путь | Стек | Порт |
 |-----------|------|------|------|
-| 🎨 **Конструктор** (designer) | `t-shirt-designer-webapp-main/` (корень) | React 18, Redux Toolkit, **Fabric.js**, **Three.js** | **5174** |
+| 🎨 **Конструктор** (designer) | `t-shirt-designer-webapp-main/` (корень) | React 18, Redux Toolkit, **Fabric.js**, **Three.js**, react-pageflip | **5174** |
 | 🛍️ **Маркетплейс + Админка** | `t-shirt-designer-webapp-main/marketplace/client/` | React 18, Vite, React Router 7, Fabric.js | **5173** |
-| ⚙️ **API** | `t-shirt-designer-webapp-main/marketplace/server/` | Express 5, **SQLite** (better-sqlite3), JWT | **3001** |
+| ⚙️ **API** | `t-shirt-designer-webapp-main/marketplace/server/` | Express 5, **SQLite/PostgreSQL**, JWT, jimp+jszip (фотокниги) | **3001** |
 
 ```
 ┌──────────────────┐   iframe + postMessage   ┌──────────────────┐
@@ -119,13 +119,17 @@ password: admin123
 **API** — `marketplace/server/.env` (см. `.env.example`):
 ```ini
 PORT=3001
-JWT_SECRET=change-me-in-production-use-long-random-string
+JWT_SECRET=change-me-in-production-use-long-random-string   # ≥32 симв., иначе сервер не стартует
 JWT_EXPIRES_IN=7d
-# список разрешённых origin через запятую (клиент + конструктор)
-CORS_ORIGIN=http://localhost:5174,http://localhost:5173
+CORS_ORIGIN=http://localhost:5174,http://localhost:5173      # разрешённые origin (клиент + конструктор)
 UPLOAD_DIR=uploads
 ADMIN_EMAIL=admin@memory-moments.local
 ADMIN_PASSWORD=admin123
+# Прод: PostgreSQL (без переменной — SQLite). Telegram/SMTP — опционально.
+DATABASE_URL=postgres://user:pass@host:5432/db
+TG_BOT_TOKEN=        # токен бота для уведомлений о заказах (только на сервере, не в бандле)
+TG_CHAT_ID=          # чат владельца
+# SMTP_HOST / SMTP_USER / SMTP_PASS — email-подтверждение покупателю (опц.)
 ```
 
 **Маркетплейс/клиент** — `marketplace/client/.env`:
@@ -160,8 +164,13 @@ PostgreSQL (`pg`). Схема и **идемпотентные** миграции
 
 **Таблицы:** `admins`, `categories`, `products`, `product_images`, `product_variants`,
 `product_audit_logs`, `designs`, `orders`, `order_items`, `service_categories`, `services`,
-`settings`, `slides`, `customers`. У `orders` есть `idempotency_key` (защита от дублей) и
-`notify_status` (`pending`/`sent`/`failed` — статус доставки уведомления владельцу).
+`settings`, `slides`, `customers`.
+
+Колонки `orders` (добавляются идемпотентной миграцией): `idempotency_key` (защита от дублей),
+`notify_status` (`pending`/`sent`/`failed` — доставка Telegram-уведомления), `discount` (скидка
+на фотопечать по количеству), `archive_url`/`archive_status` (ZIP-архив фотокниги, собирается
+в фоне). Макет и метаданные позиции (fabric JSON, URL print-файлов, `innerPhotos` книги и
+`book`-мета) хранятся в `order_items.design_data` (JSON).
 
 Просмотр dev-БД — откройте `marketplace.db` (например, в DB Browser for SQLite).
 
@@ -177,6 +186,7 @@ PostgreSQL (`pg`). Схема и **идемпотентные** миграции
 | GET | `/api/products` | public | каталог (фильтры: `category`, `featured`, `search`) |
 | GET | `/api/products/slug/:slug` | public | товар по slug (+ данные дизайна) |
 | GET | `/api/products/admin/all` | token | все товары (вкл. скрытые) |
+| GET | `/api/products/designer-prices` | public | цены конструктора (футболка/полотно/фотокниги Slim·Print) из прайса |
 | POST/PUT/DELETE | `/api/products[/:id]` | token | CRUD товаров |
 | GET | `/api/designs` · `/api/designs/:id` | public | список / дизайн |
 | POST/PUT/DELETE | `/api/designs[/:id]` | token | CRUD дизайнов |
@@ -185,12 +195,41 @@ PostgreSQL (`pg`). Схема и **идемпотентные** миграции
 | GET | `/api/orders` · `/api/orders/:id` | token | список / детали заказа |
 | PATCH | `/api/orders/:id/status` | token | смена статуса (с коррекцией склада) |
 | POST | `/api/orders/:id/notify` | token | повторно отправить уведомление в Telegram |
+| GET | `/api/orders/:id/book-archive` | token | ZIP фотокниги (обложки + готовые печатные страницы) |
 | GET | `/api/services` | public | прайс-лист (категории + услуги) |
 | GET | `/api/services/admin/all` | token | весь прайс (вкл. скрытое) |
 | POST/PUT/DELETE | `/api/services/categories[/:id]` | token | CRUD категорий прайса |
 | POST/PUT/DELETE | `/api/services[/:id]` | token | CRUD услуг прайса |
-| POST | `/api/upload` | token | загрузка изображения (расширение — из mimetype) |
+| POST | `/api/upload` · `/api/photos` | token | загрузка изображения / фото |
+| GET/POST/PUT/DELETE | `/api/slides[/:id]` | public GET / token | слайды баннера маркетплейса |
+| GET/POST | `/api/admin/data/export/:kind` · `import/:kind` | token | Excel-экспорт/импорт (товары/прайс/категории/клиенты) |
+| GET/PATCH/DELETE | `/api/admin/customers[/:id]` | token | CRM клиентов |
 | GET | `/api/health` | public | health-check: пинг БД, `503` если БД недоступна |
+
+---
+
+## 🖼️ Конструктор: товары и фотокниги
+
+**Типы товаров** (`src/constants/designConstants.js`): футболка (перёд/зад, А4/А3, белая/чёрная),
+чашки (5 видов), фотоформаты (полароид, Instax, фото 10×15…А4, квадрат), полотно на подрамнике
+(размеры из прайса), **Slim Book** и **Print Book** (фотокниги). Цены тянутся из прайса
+(`services`) и **пересчитываются на сервере** при заказе — клиентскую цену сервер не принимает.
+
+**Фотокниги (Slim/Print Book):**
+- Обложка **перёд** и **зад** — отдельные вкладки в редакторе (дизайн на Fabric-canvas).
+- Формат **20×20 / 21×30 / 25×25**, базовые **10/15** разворотов (Slim) / листов (Print) + «+доп.».
+- Загрузка фото разворотов; **полноэкранный предпросмотр** с перелистыванием страниц
+  (`react-pageflip`), сворачиванием в плавающую кнопку и **управлением порядком** фото
+  (перетаскивание мышью + кнопки ‹ › для тача).
+- Цена из прайса: Slim — коды `1136/1137/1138`, Print — `1135/1132/1133`.
+- При заказе сервер **в фоне** собирает **ZIP-архив** (`jimp` + `jszip`): обложки + каждый
+  разворот, разложенный на готовую печатную страницу **2528×3425 px @300 dpi** (21,4×29 см),
+  поля **1 см корешок / 0,5 см** остальные, зеркально левая/правая, нумерация `page-NN-R/L`.
+  Готовый архив скачивается из админки заказа (мгновенно; для старых — собирается on-demand).
+
+**Скидка на фотопечать по количеству** (`photo_print`): 50→5%, 100→10%, 150→15%, 200→20%,
+300→25%, 400+→30%. Считается на сервере (хранится в `orders.discount`), показывается в корзине
+и чекауте; таблица — на странице `/prices`.
 
 ---
 
@@ -234,14 +273,21 @@ PostgreSQL (`pg`). Схема и **идемпотентные** миграции
   в Telegram фото; цена кастомного товара подтягивается по `designer_type` из каталога
 - **Прайс-лист / страница цен:** публичная страница `/prices` (категории, форматы, цена
   розница + Instagram, условия), управление прайсом в админке (`/admin/services` — CRUD
-  категорий и услуг). Данные засеяны из `Цены m&m.xls` → `server/src/data/priceList.json`
-  (9 категорий, 108 услуг), автосид при первом запуске
+  категорий и услуг). Данные засеяны из `Цены m&m.xls` → `server/src/data/priceList.json`,
+  автосид при первом запуске
+- **Фотокниги Slim/Print Book:** обложка перёд/зад, развороты/листы, загрузка фото,
+  полноэкранный предпросмотр с перелистыванием, управление порядком фото, **фоновая сборка
+  ZIP-архива** (готовые печатные страницы 300 dpi с полями, L/R) для скачивания в админке
+- **Скидка на фотопечать по количеству** (50→5%…400+→30%) — расчёт на сервере, показ в корзине, таблица на `/prices`
+- **Сохранение макета покупателя** (fabric JSON + print-файлы + фото книги) в `order_items.design_data`
+- **Аудит-хардненинг:** идемпотентность заказа, `track` без PII, наблюдаемость
+  (`/api/health` 503, JSON-логи запросов, `notify_status` с ручной переотправкой), ops
+  (бэкап `pg_dump`+`uploads`, `OPS.md`, фикс `update.sh`)
 
 ### В планах ⚠️
-- [ ] Управление категориями из админки (CRUD UI)
-- [ ] Сохранение готового макета покупателя (fabric_data) в позицию заказа
 - [ ] Онлайн-оплата (LiqPay / Stripe) вместо ручного подтверждения
 - [ ] Реалистичные шейдеры материалов (глянцевая чашка, матовая ткань)
+- [ ] Фоновая очередь с ретраями для тяжёлых задач (архивы больших книг, уведомления)
 - [ ] Интеграция с внешними e-commerce (Shopify / WooCommerce) — опционально
 
 ---
@@ -271,4 +317,4 @@ MIT — см. `LICENSE`.
 
 ---
 
-**Last Updated:** 2026-06-19 · **Status:** 🟢 Интеграция завершена + аудит-хардненинг (идемпотентность, no-PII track, observability, ops)
+**Last Updated:** 2026-06-19 · **Status:** 🟢 Интеграция + фотокниги (Slim/Print Book, предпросмотр, ZIP-печать), скидки на фотопечать, аудит-хардненинг и ops
