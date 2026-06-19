@@ -39,6 +39,7 @@ const OrderBar = () => {
   const { priceFor, tshirtPrice, canvasPrice, bookPrice } = usePricing();
   const spreadInputRef = useRef(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewMin, setPreviewMin] = useState(false);
   const [coverImage, setCoverImage] = useState(null);
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
@@ -144,6 +145,7 @@ const OrderBar = () => {
   const openPreview = () => {
     const cover = frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null;
     setCoverImage(cover || null);
+    setPreviewMin(false);
     setPreviewOpen(true);
   };
 
@@ -386,7 +388,10 @@ const OrderBar = () => {
 
       <PhotobookPreview
         open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
+        minimized={previewMin}
+        onClose={() => { setPreviewOpen(false); setPreviewMin(false); }}
+        onMinimize={() => setPreviewMin(true)}
+        onRestore={() => setPreviewMin(false)}
         coverImage={coverImage}
         photos={slimBookPhotos}
         format={slimBookFormat}
