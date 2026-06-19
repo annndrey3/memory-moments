@@ -4,7 +4,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SlidersHorizontal, Type, Minus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import FontOptions, { FONT_SAMPLE } from "./FontOptions";
 
 const RAIL_BTN =

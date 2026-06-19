@@ -7,7 +7,6 @@ import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
 import TextEditPanel from "./TextEditPanel";
-import LineToolBar from "./LineToolBar";
 import MaskDropdownBtn from "./MaskDropdownBtn";
 import FrameDropdownBtn from "./FrameDropdownBtn";
 import CollageDropdownBtn from "./CollageDropdownBtn";
