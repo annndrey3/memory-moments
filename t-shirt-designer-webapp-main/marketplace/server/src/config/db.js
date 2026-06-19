@@ -285,6 +285,10 @@ if (process.env.DATABASE_URL) {
   // ZIP-архів фотокниги (збирається фоном): посилання + статус (pending/ready/failed).
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archive_url TEXT;");
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archive_status TEXT;");
+  // Доставка фото клієнтів у сховище дизайнера (SFTP): статус/час/спроби.
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS photo_delivery_status TEXT;");
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS photo_delivery_at TIMESTAMP;");
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS photo_delivery_attempts INTEGER NOT NULL DEFAULT 0;");
   // Частковий унікальний індекс: дублі ключа заборонені, але багато NULL дозволені.
   await _pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");
 
@@ -658,6 +662,16 @@ if (process.env.DATABASE_URL) {
   }
   if (orderCols.length && !orderCols.some((c) => c.name === "archive_status")) {
     db.exec("ALTER TABLE orders ADD COLUMN archive_status TEXT;");
+  }
+  // Доставка фото клієнтів у сховище дизайнера (SFTP).
+  if (orderCols.length && !orderCols.some((c) => c.name === "photo_delivery_status")) {
+    db.exec("ALTER TABLE orders ADD COLUMN photo_delivery_status TEXT;");
+  }
+  if (orderCols.length && !orderCols.some((c) => c.name === "photo_delivery_at")) {
+    db.exec("ALTER TABLE orders ADD COLUMN photo_delivery_at DATETIME;");
+  }
+  if (orderCols.length && !orderCols.some((c) => c.name === "photo_delivery_attempts")) {
+    db.exec("ALTER TABLE orders ADD COLUMN photo_delivery_attempts INTEGER NOT NULL DEFAULT 0;");
   }
   // Частковий унікальний індекс: дублі ключа заборонені, NULL дозволені.
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");

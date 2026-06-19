@@ -4,7 +4,7 @@ import { query } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { getSetting, setSetting } from "../utils/settings.js";
-import { getSection, setSection, getTelegramConfig, saveTelegramConfig, SITE_SECTIONS } from "../utils/siteConfig.js";
+import { getSection, setSection, getTelegramConfig, saveTelegramConfig, SITE_SECTIONS, getStorageConfig, saveStorageConfig } from "../utils/siteConfig.js";
 
 const router = Router();
 router.use(authMiddleware);
@@ -396,6 +396,58 @@ router.post("/site-config/telegram/test", requirePermission("settings.system"), 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "Не вдалося надіслати тест" });
+  }
+});
+
+// ─── Сховище фото клієнтів (SFTP на ПК/сервер дизайнера) ─────────────────────
+
+// GET /api/admin/settings/storage — конфіг SFTP (пароль маскований)
+router.get("/storage", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const c = await getStorageConfig();
+    res.json({
+      enabled: c.enabled,
+      host: c.host,
+      port: c.port,
+      username: c.username,
+      remotePath: c.remotePath,
+      hasPassword: Boolean(c.password),
+      passwordMasked: c.password ? "••••••••" : "",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load storage config" });
+  }
+});
+
+// PUT /api/admin/settings/storage — зберегти конфіг SFTP
+router.put("/storage", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const { enabled, host, port, username, password, remotePath } = req.body || {};
+    await saveStorageConfig({
+      enabled: enabled === true || enabled === "true",
+      host: typeof host === "string" ? host.trim() : undefined,
+      port: port !== undefined ? Number(port) || 22 : undefined,
+      username: typeof username === "string" ? username.trim() : undefined,
+      remotePath: typeof remotePath === "string" ? remotePath.trim() || "/" : undefined,
+      password, // siteConfig сам ігнорує маску/порожнє
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save storage config" });
+  }
+});
+
+// POST /api/admin/settings/storage/test — перевірити SFTP-з'єднання
+router.post("/storage/test", requirePermission("settings.system"), async (req, res) => {
+  try {
+    const { testStorageConnection } = await import("../utils/photoDelivery.js");
+    await testStorageConnection();
+    res.json({ success: true });
+  } catch (err) {
+    console.error("SFTP test failed:", err.message);
+    res.status(400).json({ error: err.message || "Не вдалося з'єднатися" });
   }
 });
 

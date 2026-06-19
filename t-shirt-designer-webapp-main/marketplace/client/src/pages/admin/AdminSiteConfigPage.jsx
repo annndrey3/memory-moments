@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Loader2, Save, Plus, Trash2, Phone, MapPin, Truck, Percent, Megaphone, Send, Clock,
+  Loader2, Save, Plus, Trash2, Phone, MapPin, Truck, Percent, Megaphone, Send, Clock, HardDrive, Plug,
 } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -45,12 +45,15 @@ export default function AdminSiteConfigPage() {
   const [saving, setSaving] = useState(null);
   const [msg, setMsg] = useState({});      // { section: text }
   const [tgToken, setTgToken] = useState(""); // новий токен (порожнє = не міняти)
+  const [storage, setStorage] = useState(null);
+  const [sftpPass, setSftpPass] = useState(""); // новий пароль SFTP (порожнє = не міняти)
 
   useEffect(() => {
     api.getSiteConfigAdmin()
       .then(setCfg)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+    api.getStorageConfig().then(setStorage).catch(() => {});
   }, []);
 
   // ── мутатори стану ──
@@ -86,6 +89,24 @@ export default function AdminSiteConfigPage() {
     setSaving("tg-test"); setMsg((m) => ({ ...m, telegram: "" }));
     try { await api.testTelegram(); setMsg((m) => ({ ...m, telegram: "✅ Тест надіслано в чат" })); }
     catch (e) { setMsg((m) => ({ ...m, telegram: "❌ " + e.message })); }
+    finally { setSaving(null); }
+  };
+
+  const setStorageField = (k, v) => setStorage((s) => ({ ...s, [k]: v }));
+  const saveStorage = async () => {
+    setSaving("storage"); setMsg((m) => ({ ...m, storage: "" }));
+    try {
+      await api.saveStorageConfig({ ...storage, password: sftpPass });
+      setSftpPass("");
+      setStorage(await api.getStorageConfig());
+      setMsg((m) => ({ ...m, storage: "✅ Збережено" }));
+    } catch (e) { setMsg((m) => ({ ...m, storage: "❌ " + e.message })); }
+    finally { setSaving(null); }
+  };
+  const testStorage = async () => {
+    setSaving("st-test"); setMsg((m) => ({ ...m, storage: "" }));
+    try { await api.testStorage(); setMsg((m) => ({ ...m, storage: "✅ З'єднання успішне" })); }
+    catch (e) { setMsg((m) => ({ ...m, storage: "❌ " + e.message })); }
     finally { setSaving(null); }
   };
 
@@ -252,6 +273,43 @@ export default function AdminSiteConfigPage() {
           </Button>
         </div>
       </Section>
+
+      {/* ── Сховище фото (SFTP) ── */}
+      {storage && (
+        <Section title="Сховище фото клієнтів (SFTP)" icon={HardDrive} saving={saving === "storage"} msg={msg.storage}
+          onSave={saveStorage}>
+          <p className="text-xs text-slate-500">
+            Фото й макети замовлень автоматично доставляються на ваш ПК/сервер по SFTP. На VPS лишається копія;
+            якщо ПК офлайн (ніч) — система повторює спроби, доки він не з'явиться (напр. зранку о 9:00).
+          </p>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={!!storage.enabled}
+              onChange={(e) => setStorageField("enabled", e.target.checked)} />
+            Увімкнути доставку у сховище
+          </label>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Field label="Адреса (host / IP)" value={storage.host}
+              onChange={(v) => setStorageField("host", v)} placeholder="напр. 31.42.0.1 або home.ddns.net" />
+            <Field label="Порт" type="number" value={storage.port}
+              onChange={(v) => setStorageField("port", v)} placeholder="22" />
+            <Field label="Користувач" value={storage.username}
+              onChange={(v) => setStorageField("username", v)} />
+            <Field label="Пароль (порожнім — не міняти)" type="password" value={sftpPass}
+              onChange={setSftpPass} placeholder={storage.hasPassword ? "•••••••• (збережено)" : ""} />
+            <Field label="Папка призначення на ПК" value={storage.remotePath}
+              onChange={(v) => setStorageField("remotePath", v)} placeholder="/Orders" className="sm:col-span-2" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={testStorage} disabled={saving === "st-test"}>
+              {saving === "st-test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
+              Перевірити з'єднання
+            </Button>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            На ПК дизайнера має працювати SFTP-сервер, а на роутері — проброс порту (або DDNS), щоб VPS міг достукатись.
+          </p>
+        </Section>
+      )}
     </div>
   );
 }

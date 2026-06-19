@@ -20,6 +20,7 @@ import slideRoutes from "./routes/slides.js";
 import customerRoutes from "./routes/customers.js";
 import siteConfigRoutes from "./routes/siteConfig.js";
 import prerenderRoutes from "./prerender.js";
+import { startPhotoDeliveryWorker } from "./utils/photoDelivery.js";
 import { query } from "./config/db.js";
 
 dotenv.config();
@@ -153,4 +154,6 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, () => {
   console.log(`Marketplace API running on http://localhost:${PORT}`);
+  // Фонова доставка фото клієнтів у сховище дизайнера (SFTP) з повторами.
+  startPhotoDeliveryWorker();
 });

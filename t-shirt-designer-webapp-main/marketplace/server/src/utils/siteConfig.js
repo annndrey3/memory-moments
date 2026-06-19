@@ -115,6 +115,33 @@ export async function getTelegramConfig() {
   };
 }
 
+// ── Сховище фото клієнтів (SFTP на ПК/сервер дизайнера) ──────────────────────
+export async function getStorageConfig() {
+  const s = parse(await getSetting("sftp_storage")) || {};
+  return {
+    enabled: !!s.enabled,
+    host: s.host || "",
+    port: Number(s.port) || 22,
+    username: s.username || "",
+    password: s.password || "",
+    remotePath: s.remotePath || "/",
+  };
+}
+
+// Зберігає налаштування SFTP, не стираючи пароль, якщо передали маску/порожнє.
+export async function saveStorageConfig(patch = {}) {
+  const cur = parse(await getSetting("sftp_storage")) || {};
+  const next = { ...cur };
+  for (const k of ["enabled", "host", "port", "username", "remotePath"]) {
+    if (patch[k] !== undefined) next[k] = patch[k];
+  }
+  if (typeof patch.password === "string") {
+    if (patch.password === "") delete next.password;          // очистити
+    else if (!patch.password.includes("•")) next.password = patch.password; // не маска
+  }
+  await setSetting("sftp_storage", JSON.stringify(next));
+}
+
 // Зберігає Telegram-налаштування, не стираючи токен, якщо його не передали
 // (UI показує лише маску). Порожній botToken === "" — очистити (фолбек на .env).
 export async function saveTelegramConfig({ botToken, chatId } = {}) {

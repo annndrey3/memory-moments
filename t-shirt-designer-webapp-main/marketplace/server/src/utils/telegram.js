@@ -55,12 +55,22 @@ function buildText(order) {
  * @param documents масив { data: dataURL, caption? } — друкарські макети у повній
  *                  роздільності; ідуть як document, тож Telegram НЕ перестискає їх.
  */
-export async function sendOrderNotification(order, images = [], documents = []) {
+export async function sendOrderNotification(order, images = [], documents = [], opts = {}) {
   const { token, chatId } = await getTelegramConfig();
   if (!token || !chatId) return false;
 
   // 1) Текст замовлення окремим повідомленням (без обмеження довжини підпису фото).
-  await tgCall("sendMessage", { chat_id: chatId, text: buildText(order), parse_mode: "HTML" }, false, token);
+  let text = buildText(order);
+  if (opts.attachmentsAsLink) {
+    const n = opts.attachmentCount || (Array.isArray(images) ? images.length : 0);
+    text += `\n\n📎 <b>Фото: ${n} шт</b> — не надсилаю у чат (забагато файлів).`;
+    text += `\nПовна якість — у вашому сховищі (SFTP) та в адмінці.`;
+    if (opts.downloadUrl) text += `\n⬇️ ${esc(opts.downloadUrl)}`;
+  }
+  await tgCall("sendMessage", { chat_id: chatId, text, parse_mode: "HTML" }, false, token);
+
+  // Якщо фото забагато — обмежуємось текстом+посиланням, вкладення не надсилаємо.
+  if (opts.attachmentsAsLink) return true;
 
   // 2) Прев'ю макетів (інлайн-перегляд у чаті; Telegram стискає фото — це ок для прев'ю).
   const photos = (Array.isArray(images) ? images : [])

@@ -11,6 +11,7 @@ import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
 import { streamBookArchive, buildBookArchiveToDisk } from "../utils/bookArchive.js";
 import { getPhotoDiscountTiers } from "../utils/siteConfig.js";
+import { markOrderForDelivery, tryDeliverOrder } from "../utils/photoDelivery.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -410,9 +411,18 @@ router.post("/", createOrderLimiter, async (req, res) => {
     } catch (e) {
       console.warn("Customer upsert failed:", e.message);
     }
+    // Якщо фото більше 3 шт — у Telegram йде лише посилання, а не купа файлів
+    // (повна якість лишається на сервері й доставляється у сховище дизайнера).
+    const imageCount = Array.isArray(req.body.images) ? req.body.images.length : 0;
+    const manyPhotos = imageCount > 3 || photoCount > 3;
+    const publicBase = process.env.PUBLIC_URL || "";
     let notifyStatus = "sent";
     try {
-      await sendOrderNotification(order, req.body.images, req.body.documents);
+      await sendOrderNotification(order, req.body.images, req.body.documents, {
+        attachmentsAsLink: manyPhotos,
+        attachmentCount: Math.max(imageCount, photoCount),
+        downloadUrl: publicBase ? `${publicBase}/admin/orders` : "",
+      });
     } catch (e) {
       notifyStatus = "failed";
       console.warn("Telegram notify failed:", e.message);
@@ -431,6 +441,15 @@ router.post("/", createOrderLimiter, async (req, res) => {
       );
     } catch (e) {
       console.warn("notify_status update failed:", e.message);
+    }
+
+    // Доставка фото/макетів у сховище дизайнера (SFTP), якщо у замовленні є файли.
+    // VPS лишається копією. Якщо сховище не налаштоване або ПК офлайн — замовлення
+    // стає 'pending' і фонова черга достукається пізніше (напр. вранці о 9:00).
+    if (fileJobs.length > 0 || photoCount > 0 || orderSource === "designer") {
+      markOrderForDelivery(orderId)
+        .then(() => tryDeliverOrder(orderId))
+        .catch((e) => console.warn("photo delivery enqueue failed:", e.message));
     }
 
     // Фонова збірка ZIP-архіву книги (поза відповіддю клієнту) — щоб великі книги

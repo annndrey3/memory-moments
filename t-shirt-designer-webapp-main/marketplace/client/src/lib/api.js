@@ -247,6 +247,11 @@ export const api = {
     request(`/admin/settings/site-config/${section}`, { method: "PUT", body: JSON.stringify(data) }),
   testTelegram: () => request("/admin/settings/site-config/telegram/test", { method: "POST" }),
 
+  // Сховище фото клієнтів (SFTP)
+  getStorageConfig: () => request("/admin/settings/storage"),
+  saveStorageConfig: (data) => request("/admin/settings/storage", { method: "PUT", body: JSON.stringify(data) }),
+  testStorage: () => request("/admin/settings/storage/test", { method: "POST" }),
+
   // Storage cleanup
   cleanupPreview: (days = 30) => request(`/admin/cleanup?days=${days}`),
   cleanupRun: (days = 30) =>
