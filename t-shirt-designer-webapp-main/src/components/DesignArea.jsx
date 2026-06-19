@@ -255,6 +255,8 @@ const DesignArea = ({ manualSync }) => {
 
             {/* CANVAS + контекстне редагування */}
             <div className="flex-1 min-w-0 flex flex-col items-center gap-3">
+              {/* Панель тексту — під головними інструментами, над холстом */}
+              <TextEditPanel manualSync={manualSync} />
               <div
                 className="relative rounded-xl ring-1 ring-border/40 shadow-elevated overflow-hidden"
                 onDragOver={handleDragOver}
@@ -304,9 +306,6 @@ const DesignArea = ({ manualSync }) => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Плаваюча панель тексту — спливає одразу при виборі/додаванні тексту */}
-      <TextEditPanel manualSync={manualSync} />
     </div>
   );
 };

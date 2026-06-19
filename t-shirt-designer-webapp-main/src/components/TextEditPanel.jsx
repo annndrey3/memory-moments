@@ -84,7 +84,7 @@ const TextEditPanel = ({ manualSync }) => {
     "h-9 w-9 flex items-center justify-center rounded-lg border transition-colors shrink-0";
 
   return (
-    <div className="fixed left-1/2 bottom-6 -translate-x-1/2 z-50 w-[94vw] max-w-2xl rounded-2xl border border-border/60 bg-white/95 backdrop-blur shadow-elevated px-4 py-3 animate-fade-in-up">
+    <div className="w-full rounded-xl border border-violet-200 bg-violet-50/50 px-4 py-3 shadow-soft animate-fade-in-up">
       <div className="flex items-center gap-2 mb-2.5">
         <Type className="h-4 w-4 text-violet-500 shrink-0" />
         <p className="text-xs font-semibold text-foreground/80">Текст — пишіть одразу, оберіть шрифт і стиль</p>
