@@ -241,7 +241,7 @@ const DesignArea = ({ manualSync }) => {
           {/* ── Периметр: зліва — додати, в центрі — холст, справа — дії ── */}
           <div className="flex flex-col lg:flex-row lg:items-start gap-3">
             {/* ADD (ряд на мобільному / стовпчик зліва на ПК) */}
-            <div className="flex flex-row lg:flex-col gap-1.5 justify-center lg:justify-start">
+            <div className="flex flex-row lg:flex-col gap-1.5 justify-center lg:justify-start" data-tour="add">
               <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               <ToolBtn icon={ImagePlus} label="Фото" onClick={triggerFileInput} />
               <ToolBtn icon={Type} label="Текст" onClick={handleAddText} />

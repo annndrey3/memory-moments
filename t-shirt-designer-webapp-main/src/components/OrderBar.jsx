@@ -167,7 +167,7 @@ const OrderBar = () => {
   };
 
   return (
-    <div className="sticky bottom-0 z-30 glass border-t border-border/60 shadow-elevated">
+    <div className="sticky bottom-0 z-30 glass border-t border-border/60 shadow-elevated" data-tour="order">
       <div className="mx-auto max-w-7xl px-3 py-2 md:px-8 md:py-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-5">
         {/* Опції: колір, формат друку, кількість */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

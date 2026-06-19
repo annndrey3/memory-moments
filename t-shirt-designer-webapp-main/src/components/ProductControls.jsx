@@ -33,7 +33,7 @@ const ProductControls = () => {
   const paperType = useSelector((s) => s.tshirt.paperType);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" data-tour="product">
       <Select value={selectedType} onValueChange={(v) => dispatch(setSelectedType(v))}>
         <SelectTrigger className="h-9 w-[180px] rounded-lg bg-card border-border/70">
           <SelectValue placeholder="Оберіть товар" />

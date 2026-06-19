@@ -12,6 +12,7 @@ import { useCanvasTextureSync } from "./hooks/useCanvasTextureSync";
 import ProductPreview from "./components/ProductPreview";
 import OrderBar from "./components/OrderBar";
 import EmbedBridge from "./components/EmbedBridge";
+import DesignerTour from "./components/DesignerTour";
 import { PRODUCT_TYPES, isMugType } from "./constants/designConstants";
 import { Sparkles } from "lucide-react";
 
@@ -186,6 +187,7 @@ function App() {
           <OrderBar />
       <Toaster />
       <EmbedBridge />
+      <DesignerTour />
     </div>
   );
 }
