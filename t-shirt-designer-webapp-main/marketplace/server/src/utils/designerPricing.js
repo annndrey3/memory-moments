@@ -85,16 +85,22 @@ export function canvasPriceFromServices(services, sizeStr) {
   return m[key] != null ? m[key] : null;
 }
 
-// ── Slim book (фотокнига): база 10(1136)/15(1137) розворотів + доплата за розворот(1138). ──
-const SLIMBOOK_CODES = { s10: "1136", s15: "1137", extra: "1138" };
+// ── Фотокниги: база 10/15 + доплата за одиницю понад базу. Коди за типом. ──
+//  slim-book:  10→1136, 15→1137, дод.→1138 (розворотами)
+//  print-book: 10→1135, 15→1132, дод.→1133 (листами; 10 листів = 20 сторінок)
+export const BOOK_CODES = {
+  "slim-book": { s10: "1136", s15: "1137", extra: "1138" },
+  "print-book": { s10: "1135", s15: "1132", extra: "1133" },
+};
 
-// Матриця: { "20x20": { s10, s15, extra }, "21x30": {...}, "25x25": {...} }.
-export function buildSlimBookMatrix(services) {
+// Матриця для типу книги: { "20x20": { s10, s15, extra }, "21x30": {...}, ... }.
+export function buildBookMatrix(services, type) {
+  const codes = BOOK_CODES[type];
+  if (!codes) return {};
   const out = {};
   for (const r of services || []) {
     const code = String(r.code);
-    const bucket =
-      code === SLIMBOOK_CODES.s10 ? "s10" : code === SLIMBOOK_CODES.s15 ? "s15" : code === SLIMBOOK_CODES.extra ? "extra" : null;
+    const bucket = code === codes.s10 ? "s10" : code === codes.s15 ? "s15" : code === codes.extra ? "extra" : null;
     if (!bucket) continue;
     const fmt = norm(r.format);
     if (!fmt) continue;
@@ -103,11 +109,10 @@ export function buildSlimBookMatrix(services) {
   return out;
 }
 
-// Ціна Slim book: база (10 або 15 розворотів) за форматом + доплата за кожен
-// розворот понад базу (extra). null, якщо формату немає в прайсі.
-export function slimBookPriceFromServices(services, { format, spreads, extra }) {
-  const m = buildSlimBookMatrix(services);
-  const row = m[norm(format)];
+// Ціна книги: база (10 або 15) за форматом + доплата за кожну одиницю понад базу.
+// null, якщо типу/формату немає в прайсі.
+export function bookPriceFromServices(services, type, { format, spreads, extra }) {
+  const row = buildBookMatrix(services, type)[norm(format)];
   if (!row) return null;
   const base = Number(spreads) === 15 ? row.s15 : row.s10;
   if (base == null) return null;

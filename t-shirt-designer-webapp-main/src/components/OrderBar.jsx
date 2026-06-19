@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
 import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos } from "@/features/tshirtSlice";
-import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS } from "@/constants/designConstants";
+import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookType, bookUnit } from "@/constants/designConstants";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ const OrderBar = () => {
   const quantity = useSelector((state) => state.tshirt.quantity);
   const cartItems = useSelector((state) => state.tshirt.cartItems || []);
   const { addCurrentDesignToCart, hasDesign } = useAddToCart();
-  const { priceFor, tshirtPrice, canvasPrice, slimBookPrice } = usePricing();
+  const { priceFor, tshirtPrice, canvasPrice, bookPrice } = usePricing();
   const spreadInputRef = useRef(null);
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
@@ -64,7 +64,7 @@ const OrderBar = () => {
 
   const isTshirt = selectedType === "crew-neck";
   const isCanvas = selectedType === "canvas";
-  const isSlimBook = selectedType === "slim-book";
+  const isBook = isBookType(selectedType);
   const bothSides = counts.front > 0 && counts.back > 0;
 
   // Ціна: футболка — з прайсу (колір+формат+2 сторони), решта — з каталогу.
@@ -86,13 +86,13 @@ const OrderBar = () => {
       total = cp * quantity;
       secondNote = `Полотно ${canvasSize.replace("x", "×")} см`;
     }
-  } else if (isSlimBook) {
-    const sp = slimBookPrice({ format: slimBookFormat, spreads: slimBookSpreads, extra: slimBookExtra });
+  } else if (isBook) {
+    const sp = bookPrice({ type: selectedType, format: slimBookFormat, spreads: slimBookSpreads, extra: slimBookExtra });
     if (sp != null) {
       unit = sp;
       total = sp * quantity;
       const totalSpreads = Number(slimBookSpreads) + Number(slimBookExtra || 0);
-      secondNote = `${totalSpreads} розворотів · фото: ${slimBookPhotos.length}`;
+      secondNote = `${totalSpreads} ${bookUnit(selectedType)} · фото: ${slimBookPhotos.length}`;
     }
   } else {
     const p = priceFor(selectedType);
@@ -248,12 +248,12 @@ const OrderBar = () => {
           </div>
         )}
 
-        {/* Slim Book: кіл-ть розворотів (+дод.) та фото для внутрішніх сторінок */}
-        {isSlimBook && (
+        {/* Фотокнига: кіл-ть розворотів/листів (+дод.) та фото для внутрішніх сторінок */}
+        {isBook && (
           <>
             <div className="flex items-center gap-1.5">
               <span className="hidden sm:inline text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Розвороти
+                {selectedType === "print-book" ? "Листи" : "Розвороти"}
               </span>
               <div className="flex rounded-lg border border-border/60 overflow-hidden">
                 {SLIMBOOK_SPREADS.map((n) => (

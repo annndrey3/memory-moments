@@ -8,7 +8,7 @@ import { requirePermission, requireSuperadmin } from "../middleware/requirePermi
 import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
-import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, slimBookPriceFromServices } from "../utils/designerPricing.js";
+import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices } from "../utils/designerPricing.js";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "uploads";
 
@@ -246,9 +246,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
         } else if (item.product_type === "canvas") {
           // Полотно: ціна з прайсу за обраним розміром.
           unitPrice = canvasPriceFromServices(servicesRows, item.canvas_size);
-        } else if (item.product_type === "slim-book") {
-          // Slim book: база (10/15 розворотів) за форматом + доплата за розворот.
-          unitPrice = slimBookPriceFromServices(servicesRows, {
+        } else if (item.product_type === "slim-book" || item.product_type === "print-book") {
+          // Фотокниги: база (10/15) за форматом + доплата за одиницю понад базу.
+          unitPrice = bookPriceFromServices(servicesRows, item.product_type, {
             format: item.format || item.canvas_size,
             spreads: item.spreads,
             extra: item.extra_spreads,

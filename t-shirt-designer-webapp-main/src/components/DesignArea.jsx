@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import * as fabric from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
-import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView } from "../constants/designConstants";
+import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, isBookType } from "../constants/designConstants";
 import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
@@ -54,7 +54,7 @@ const DesignArea = ({ manualSync }) => {
     () =>
       selectedType === "canvas"
         ? buildCanvasView(canvasSize)
-        : selectedType === "slim-book"
+        : isBookType(selectedType)
         ? buildSlimBookView(slimBookFormat)
         : null,
     [selectedType, canvasSize, slimBookFormat]

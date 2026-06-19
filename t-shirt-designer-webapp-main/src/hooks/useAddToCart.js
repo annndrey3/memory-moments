@@ -4,7 +4,7 @@ import { useCanvas } from "@/hooks/useCanvas";
 import { useToast } from "@/hooks/use-toast";
 import { addToCart } from "@/features/tshirtSlice";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
-import { PRODUCT_TYPES, buildOptionsLabel } from "@/constants/designConstants";
+import { PRODUCT_TYPES, buildOptionsLabel, isBookType } from "@/constants/designConstants";
 
 // Спільна логіка «додати поточний дизайн у кошик» — використовується і в
 // сайдбарі (SaveDesign), і в нижній панелі замовлення (OrderBar), щоб обидва
@@ -117,7 +117,7 @@ export function useAddToCart() {
       slimBookFormat,
       slimBookSpreads,
       slimBookExtra,
-      innerPhotos: selectedType === "slim-book" ? slimBookPhotos : null,
+      innerPhotos: isBookType(selectedType) ? slimBookPhotos : null,
       variantLabel,
       quantity,
     }));

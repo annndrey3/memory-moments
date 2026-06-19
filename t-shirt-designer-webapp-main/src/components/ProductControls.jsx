@@ -15,6 +15,7 @@ import {
   canvasSizeLabel,
   SLIMBOOK_FORMATS,
   slimBookFormatLabel,
+  isBookType,
   productHasSize,
   productHasPaper,
 } from "../constants/designConstants";
@@ -85,7 +86,7 @@ const ProductControls = () => {
         </Select>
       )}
 
-      {selectedType === "slim-book" && (
+      {isBookType(selectedType) && (
         <Select value={slimBookFormat} onValueChange={(v) => dispatch(setSlimBookFormat(v))}>
           <SelectTrigger className="h-9 w-[150px] rounded-lg bg-card border-border/70">
             <SelectValue placeholder="Формат" />

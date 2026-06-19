@@ -338,6 +338,17 @@ export const PRODUCT_TYPES = {
       front: { label: "Обкладинка", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
     },
   },
+  // Print Book — та сама механіка, інші коди прайсу (1135/1132/1133), рахунок у листах.
+  "print-book": {
+    name: "Print Book (фотокнига)",
+    description: "Обкладинка + фото для сторінок",
+    previewMode: "flat",
+    previewShape: "square",
+    slimBook: true,
+    views: {
+      front: { label: "Обкладинка", path: RECTANGLE_PATHS.square, viewBox: "0 0 810 810", printZone: { x: 105, y: 105, width: 600, height: 600 } },
+    },
+  },
 };
 
 // Розміри полотна — беруться з прайсу (код 44 «Широкоформатний друк полотно+натяжка»).
@@ -383,6 +394,10 @@ export function buildSlimBookView(format) {
     printZone: { x, y, width: W, height: H },
   };
 }
+
+// Книжкові типи (slim/print) — спільний UI/стан; різниця лише в кодах і одиниці.
+export const isBookType = (type) => type === "slim-book" || type === "print-book";
+export const bookUnit = (type) => (type === "print-book" ? "листів" : "розворотів");
 
 export const TSHIRT_TYPES = PRODUCT_TYPES;
 
@@ -501,10 +516,10 @@ export function buildOptionsLabel({ productType, size, paperType, color, printSi
   const parts = [];
   if (productHasSize(productType) && size) parts.push(`Розмір: ${size}`);
   if (productType === "canvas" && canvasSize) parts.push(`Розмір: ${canvasSizeLabel(canvasSize)}`);
-  if (productType === "slim-book") {
+  if (isBookType(productType)) {
     const total = (Number(slimBookSpreads) || 10) + (Number(slimBookExtra) || 0);
     parts.push(`Формат: ${slimBookFormatLabel(slimBookFormat || "21x30")}`);
-    parts.push(`${total} розворотів`);
+    parts.push(`${total} ${bookUnit(productType)}`);
   }
   if (productType === "crew-neck" && printSize) {
     parts.push(`Друк: ${printSize === "A3" ? "А3" : "А4"}${bothSides ? " · 2 сторони" : ""}`);

@@ -27,9 +27,10 @@ export function usePricing() {
     return p != null ? Number(p) : null;
   };
 
-  // Ціна Slim Book: база (10/15 розворотів) за форматом + доплата за розворот понад базу.
-  const slimBookPrice = ({ format, spreads, extra }) => {
-    const row = data?.slimBook?.[format];
+  // Ціна фотокниги (slim/print) за типом: база (10/15) + доплата за одиницю понад базу.
+  const bookPrice = ({ type, format, spreads, extra }) => {
+    const matrix = type === "print-book" ? data?.printBook : data?.slimBook;
+    const row = matrix?.[format];
     if (!row) return null;
     const base = Number(spreads) === 15 ? row.s15 : row.s10;
     if (base == null) return null;
@@ -50,5 +51,5 @@ export function usePricing() {
     return { base: Number(base), second, total: Number(base) + second };
   };
 
-  return { priceFor, tshirtPrice, canvasPrice, slimBookPrice, loaded: data !== null };
+  return { priceFor, tshirtPrice, canvasPrice, bookPrice, loaded: data !== null };
 }
