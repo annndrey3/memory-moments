@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchDesignerPrices } from "@/utils/canvasSyncManager";
+import { isBookType } from "@/constants/designConstants";
 
 // Завантажує ціни конструктора один раз:
 //   types  — designer_type → {price, compare_at_price, name} (чашка, фото…)
@@ -51,5 +52,36 @@ export function usePricing() {
     return { base: Number(base), second, total: Number(base) + second };
   };
 
-  return { priceFor, tshirtPrice, canvasPrice, bookPrice, loaded: data !== null };
+  // Ціна вже доданої позиції кошика (одиниця, без кількості) — та сама логіка,
+  // що в OrderBar, але з полів позиції. Повертає число або null (ще не завантажено
+  // / немає коду в прайсі), null → у кошику покажемо «уточнимо при оформленні».
+  const cartItemPrice = (item) => {
+    if (!item) return null;
+    const type = item.productType;
+    if (type === "crew-neck") {
+      const bothSides = Boolean(item.printFront) && Boolean(item.printBack);
+      const tp = tshirtPrice({ color: item.color, printSize: item.printSize, bothSides });
+      return tp ? tp.total : null;
+    }
+    if (type === "canvas") return canvasPrice(item.canvasSize);
+    if (isBookType(type)) {
+      return bookPrice({ type, format: item.slimBookFormat, spreads: item.slimBookSpreads, extra: item.slimBookExtra });
+    }
+    const p = priceFor(type);
+    return p ? Number(p.price) : null;
+  };
+
+  // Стартова («від») ціна товару без дизайну — для плиток кросс-селлу в кошику.
+  const productStartingPrice = (type) => {
+    if (type === "crew-neck") {
+      const tp = tshirtPrice({ color: "#FFFFFF", printSize: "A4", bothSides: false });
+      return tp ? tp.base : null;
+    }
+    if (type === "canvas") return canvasPrice("30x40");
+    if (isBookType(type)) return bookPrice({ type, format: "21x30", spreads: 10, extra: 0 });
+    const p = priceFor(type);
+    return p ? Number(p.price) : null;
+  };
+
+  return { priceFor, tshirtPrice, canvasPrice, bookPrice, cartItemPrice, productStartingPrice, loaded: data !== null };
 }

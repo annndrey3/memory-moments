@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from "react-redux";
-import { ShoppingCart, Trash2, Plus, Minus, Store, GraduationCap } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, Store, GraduationCap, Coffee, Image as ImageIcon, Shirt, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,12 +11,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { toggleCart, removeFromCart, updateQuantity, clearCart } from "@/features/tshirtSlice";
+import { toggleCart, removeFromCart, updateQuantity, clearCart, setSelectedType } from "@/features/tshirtSlice";
+import { usePricing } from "@/hooks/usePricing";
 import { sendOrderToMarketplace } from "@/utils/canvasSyncManager";
 import { useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const MARKETPLACE_URL = import.meta.env.VITE_MARKETPLACE_URL || "http://localhost:5174";
+
+const formatPrice = (n) => Math.round(n).toLocaleString("uk-UA");
+
+// Кросс-селл «З цим замовляють»: товари-компаньйони. Тап по плитці перемикає
+// конструктор на цей товар (клієнт сам додає дизайн → коректний друк-файл) і
+// закриває кошик. Ціна — стартова «від» (залежить від дизайну/опцій).
+const CROSS_SELL = [
+  { type: "crew-neck", label: "Футболка", Icon: Shirt },
+  { type: "mug", label: "Чашка", Icon: Coffee },
+  { type: "photo-10x15", label: "Фото", Icon: ImageIcon },
+];
 
 // Відділення для самовивозу — ті самі, що в маркетплейс-чекауті.
 const PICKUP_BRANCHES = [
@@ -45,6 +57,26 @@ const Header = () => {
   const idemKeyRef = useRef(null);
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  const { cartItemPrice, productStartingPrice } = usePricing();
+  // Підсумок кошика: множимо ціну позиції на кількість. Якщо хоч у однієї позиції
+  // ціна невідома (немає коду в прайсі / ще не завантажено) — показуємо «від», бо
+  // фінальну суму уточнить менеджер при оформленні.
+  const cartTotal = cartItems.reduce((sum, item) => sum + (cartItemPrice(item) || 0) * item.quantity, 0);
+  const hasUnknownPrice = cartItems.some((item) => cartItemPrice(item) == null);
+
+  // Тап по плитці кросс-селлу — перемкнути конструктор на цей товар і закрити кошик
+  // (поведінка як у звичайному виборі товару: лише selectedType, дизайн на полотні
+  // лишається, клієнт додає/міняє його під новий товар).
+  const startCrossSell = (type, label) => {
+    dispatch(setSelectedType(type));
+    dispatch(toggleCart(false));
+    toast({
+      title: `${label}: додайте дизайн`,
+      description: "Завантажте фото або додайте текст, потім натисніть «Замовити!».",
+      duration: 3500,
+    });
+  };
 
   // Формуємо рядок доставки так само, як у маркетплейс-чекауті.
   const buildShippingAddress = () => {
@@ -168,7 +200,9 @@ const Header = () => {
             ) : (
               <ScrollArea className="h-full pr-4">
                 <div className="flex flex-col gap-3">
-                  {cartItems.map((item) => (
+                  {cartItems.map((item) => {
+                    const unit = cartItemPrice(item);
+                    return (
                     <div
                       key={item.id}
                       className="flex gap-4 border border-border/60 p-3 rounded-xl bg-card shadow-sm hover:shadow-soft transition-shadow"
@@ -197,28 +231,60 @@ const Header = () => {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg"
-                            onClick={() => dispatch(updateQuantity({ id: item.id, quantity: Math.max(1, item.quantity - 1) }))}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg"
-                            onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
+                        <div className="flex items-center justify-between gap-2 mt-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg"
+                              onClick={() => dispatch(updateQuantity({ id: item.id, quantity: Math.max(1, item.quantity - 1) }))}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg"
+                              onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <span className="text-sm font-bold text-foreground whitespace-nowrap">
+                            {unit != null ? `${formatPrice(unit * item.quantity)} ₴` : "—"}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
+                </div>
+                {/* Кросс-селл «З цим замовляють» — товари-компаньйони, тап → конструктор */}
+                <div className="mt-4 rounded-xl border border-border/60 bg-muted/40 p-3">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                    З цим замовляють
+                  </p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {CROSS_SELL.map(({ type, label, Icon }) => {
+                      const from = productStartingPrice(type);
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => startCrossSell(type, label)}
+                          className="flex flex-col items-center gap-1 rounded-lg border border-border/60 bg-card px-2 py-2.5 text-center transition-all hover:border-primary/40 hover:shadow-soft"
+                        >
+                          <Icon className="h-5 w-5 text-violet-600" />
+                          <span className="text-xs font-semibold leading-tight">{label}</span>
+                          {from != null && (
+                            <span className="text-[11px] text-muted-foreground">від {formatPrice(from)} ₴</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="mt-4 border-t border-border/60 pt-5">
                   <form id="cart-order-form" onSubmit={handleOrderSubmit} className="space-y-4">
@@ -295,6 +361,12 @@ const Header = () => {
 
           {cartItems.length > 0 && (
             <div className="shrink-0 border-t border-border/60 pt-3 mt-3">
+              <div className="flex items-baseline justify-between mb-3">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Разом{hasUnknownPrice ? " (від)" : ""}
+                </span>
+                <span className="text-xl font-extrabold text-foreground">{formatPrice(cartTotal)} ₴</span>
+              </div>
               <Button type="submit" form="cart-order-form" className="w-full rounded-xl h-11 shadow-glow" disabled={isSubmitting}>
                 {isSubmitting ? "Відправка..." : "Оформити замовлення"}
               </Button>

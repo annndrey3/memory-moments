@@ -156,6 +156,27 @@ try {
   const c2 = await cartCount(page);
   check(c2 === 1, `після повторного «Замовити!» все ще 1 позиція (фактично ${c2}) — без дублю`);
 
+  // 7) Підсумок і кросс-селл у відкритому кошику.
+  const cartTxt = await page.evaluate(() => {
+    const d = document.querySelector("[role=dialog]");
+    return d ? d.innerText.replace(/\s+/g, " ") : "";
+  });
+  check(/Разом/.test(cartTxt) && /900/.test(cartTxt), "у кошику є підсумок «Разом 900 ₴»");
+  check(/З цим замовляють/i.test(cartTxt), "є блок кросс-селлу «З цим замовляють»");
+  check(/Футболка/.test(cartTxt) && /Чашка/.test(cartTxt) && /Фото/.test(cartTxt),
+    "плитки кросс-селлу: Футболка / Чашка / Фото");
+  await page.screenshot({ path: `${OUT}/08-cart-crosssell.png` });
+
+  // 8) Тап по плитці «Чашка» → кошик закривається й конструктор перемикається на товар.
+  try {
+    await clickByText(page, "Чашка");
+    await page.waitForFunction(() => !document.querySelector("[role=dialog]"), { timeout: 6000 });
+  } catch (e) { issues.push("crosssell mug: " + e.message); }
+  await sleep(500);
+  const cartClosed = await page.evaluate(() => !document.querySelector("[role=dialog]"));
+  check(cartClosed, "після тапу по кросс-селлу кошик закрився (перемкнулись на товар)");
+  await page.screenshot({ path: `${OUT}/09-after-crosssell.png` });
+
   check(pageErrors.length === 0, `немає JS-помилок на сторінці (${pageErrors.length})`);
   if (pageErrors.length) pageErrors.forEach((e) => log("  JSERR", e));
 
