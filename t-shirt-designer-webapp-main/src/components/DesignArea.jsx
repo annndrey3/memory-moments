@@ -46,10 +46,23 @@ const DesignArea = ({ manualSync }) => {
   const selectedView = useSelector((state) => state.tshirt.selectedView);
   const canvasSize = useSelector((state) => state.tshirt.canvasSize);
   const slimBookFormat = useSelector((state) => state.tshirt.slimBookFormat);
+  const slimBookPhotos = useSelector((state) => state.tshirt.slimBookPhotos);
   const { activeCanvas, selectedObject, setSelectedObject } = useCanvas();
   const { addImageFile } = useAddImage();
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
-  const views = Object.entries(product.views);
+  // Для книги кожне завантажене фото — окрема редагована вкладка-розворот
+  // (поряд з обкладинками), яку можна правити всіма інструментами.
+  const views = useMemo(() => {
+    const base = Object.entries(product.views);
+    if (isBookType(selectedType)) {
+      const spreads = (slimBookPhotos || []).map((_, i) => [
+        `spread-${i}`,
+        { label: `Розворот ${i + 1}`, ...buildSlimBookView(slimBookFormat) },
+      ]);
+      return [...base, ...spreads];
+    }
+    return base;
+  }, [product, selectedType, slimBookPhotos, slimBookFormat]);
   // Полотно/Slim Book: зона друку залежить від обраного розміру/формату (пропорції).
   const dynamicView = useMemo(
     () =>
@@ -218,13 +231,13 @@ const DesignArea = ({ manualSync }) => {
         <div className="px-3 py-3 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center justify-between gap-3">
           <ProductControls />
           {views.length > 1 && (
-            <div className="flex gap-1.5 p-1 bg-white/70 rounded-xl">
+            <div className="flex gap-1.5 p-1 bg-white/70 rounded-xl max-w-full flex-nowrap overflow-x-auto">
               {views.map(([view, viewConfig]) => (
                 <button
                   key={view}
                   onClick={() => handleViewChange(view)}
                   className={cn(
-                    "rounded-lg h-8 px-4 text-xs font-medium transition-all",
+                    "rounded-lg h-8 px-4 text-xs font-medium transition-all shrink-0 whitespace-nowrap",
                     selectedView === view
                       ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-glow"
                       : "text-muted-foreground hover:text-foreground"
@@ -265,7 +278,11 @@ const DesignArea = ({ manualSync }) => {
               >
                 {views.map(([view, viewConfig]) => (
                   <div key={`${selectedType}-${view}`} className={view === selectedView ? "block" : "hidden"}>
-                    <ProductCanvas view={view} viewConfig={dynamicView || viewConfig} />
+                    <ProductCanvas
+                      view={view}
+                      viewConfig={dynamicView || viewConfig}
+                      seedImage={view.startsWith("spread-") ? slimBookPhotos[Number(view.slice(7))] : undefined}
+                    />
                   </div>
                 ))}
                 {!hasObjects && !dragOver && (

@@ -4,7 +4,7 @@ import { Minus, Plus, ShoppingCart, Images, X, BookOpen, Loader2 } from "lucide-
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
-import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos, removeSlimBookPhoto, reorderSlimBookPhotos } from "@/features/tshirtSlice";
+import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos } from "@/features/tshirtSlice";
 import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookType, bookUnit } from "@/constants/designConstants";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
@@ -24,7 +24,7 @@ const formatPrice = (n) => Math.round(n).toLocaleString("uk-UA");
 const OrderBar = () => {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { frontCanvas, backCanvas } = useCanvas();
+  const { frontCanvas, backCanvas, getCanvas } = useCanvas();
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const tshirtColor = useSelector((state) => state.tshirt.tshirtColor);
   const printSize = useSelector((state) => state.tshirt.printSize);
@@ -42,6 +42,7 @@ const OrderBar = () => {
   const [previewMin, setPreviewMin] = useState(false);
   const [coverImage, setCoverImage] = useState(null);
   const [backCoverImage, setBackCoverImage] = useState(null);
+  const [spreadPreviews, setSpreadPreviews] = useState([]); // відрендерені розвороти для прев'ю
   const [uploadProgress, setUploadProgress] = useState(null); // {done,total} під час завантаження фото розворотів
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
@@ -154,6 +155,14 @@ const OrderBar = () => {
   const openPreview = () => {
     setCoverImage(frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null);
     setBackCoverImage(backCanvas ? canvasSyncManager.getCanvasTexture(backCanvas) : null);
+    // Прев'ю показує ВІДРЕДАГОВАНІ розвороти: рендеримо кожен холст-розворот.
+    // Фолбек — вихідне завантажене фото, якщо холста немає.
+    setSpreadPreviews(
+      slimBookPhotos.map((photo, i) => {
+        const c = getCanvas(selectedType, `spread-${i}`);
+        return (c && canvasSyncManager.getCanvasTexture(c)) || photo;
+      })
+    );
     setPreviewMin(false);
     setPreviewOpen(true);
   };
@@ -414,9 +423,8 @@ const OrderBar = () => {
         onRestore={() => setPreviewMin(false)}
         coverImage={coverImage}
         backCoverImage={backCoverImage}
-        photos={slimBookPhotos}
-        onReorder={(from, to) => dispatch(reorderSlimBookPhotos({ from, to }))}
-        onRemove={(i) => dispatch(removeSlimBookPhoto(i))}
+        photos={spreadPreviews.length ? spreadPreviews : slimBookPhotos}
+        readOnly
         format={slimBookFormat}
         spreads={slimBookSpreads}
         extra={slimBookExtra}

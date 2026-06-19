@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CANVAS_CONFIG } from "@/constants/designConstants";
 import { useTshirtCanvas } from "@/hooks/useTshirtCanvas";
 
-const ProductCanvas = ({ view, viewConfig }) => {
+const ProductCanvas = ({ view, viewConfig, seedImage }) => {
   const canvasW = viewConfig.canvasSize?.width ?? CANVAS_CONFIG.width;
   const canvasH = viewConfig.canvasSize?.height ?? CANVAS_CONFIG.height;
   const isTemplate = Boolean(viewConfig.templateOverlay);
@@ -14,6 +14,7 @@ const ProductCanvas = ({ view, viewConfig }) => {
     view,
     canvasSize: viewConfig.canvasSize,
     templateOverlay: viewConfig.templateOverlay,
+    seedImage,
   });
 
   const containerRef = useRef(null);

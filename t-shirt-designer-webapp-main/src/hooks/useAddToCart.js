@@ -6,12 +6,34 @@ import { addToCart } from "@/features/tshirtSlice";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
 import { PRODUCT_TYPES, buildOptionsLabel, isBookType } from "@/constants/designConstants";
 
+// Перекодування друкарської текстури розвороту в JPEG (менший payload; розвороти
+// — це фото). Прозорі ділянки колажу заливаються білим (це сторінка книги).
+function pngToJpeg(dataUrl, quality = 0.9) {
+  return new Promise((resolve) => {
+    if (!dataUrl) return resolve(null);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = img.width; c.height = img.height;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0);
+        resolve(c.toDataURL("image/jpeg", quality));
+      } catch { resolve(dataUrl); }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 // Спільна логіка «додати поточний дизайн у кошик» — використовується і в
 // сайдбарі (SaveDesign), і в нижній панелі замовлення (OrderBar), щоб обидва
 // будували однакову позицію (мокап, друкарські файли, підпис опцій).
 export function useAddToCart() {
   const { toast } = useToast();
-  const { frontCanvas, backCanvas } = useCanvas();
+  const { frontCanvas, backCanvas, getCanvas } = useCanvas();
   const dispatch = useDispatch();
 
   const selectedType = useSelector((state) => state.tshirt.selectedType);
@@ -97,6 +119,19 @@ export function useAddToCart() {
       slimBookExtra,
     });
 
+    // Книга: рендеримо кожен розворот-холст у друкарську текстуру (відображає
+    // колаж/рамки/текст/маски). Фолбек — вихідне фото, якщо холста немає.
+    let innerPhotos = null;
+    if (isBookType(selectedType)) {
+      innerPhotos = [];
+      for (let i = 0; i < slimBookPhotos.length; i++) {
+        const c = getCanvas(selectedType, `spread-${i}`);
+        const png = c ? canvasSyncManager.getPrintTexture(c) : null;
+        const jpg = png ? await pngToJpeg(png) : null;
+        innerPhotos.push(jpg || slimBookPhotos[i]);
+      }
+    }
+
     dispatch(addToCart({
       id: Date.now().toString(36) + Math.random().toString(36).substring(2),
       productType: selectedType,
@@ -117,7 +152,7 @@ export function useAddToCart() {
       slimBookFormat,
       slimBookSpreads,
       slimBookExtra,
-      innerPhotos: isBookType(selectedType) ? slimBookPhotos : null,
+      innerPhotos,
       variantLabel,
       quantity,
     }));
@@ -128,7 +163,7 @@ export function useAddToCart() {
       duration: 3000,
     });
     return true;
-  }, [frontCanvas, backCanvas, selectedType, tshirtColor, size, printSize, canvasSize, slimBookFormat, slimBookSpreads, slimBookExtra, slimBookPhotos, paperType, quantity, designDirty, cartItems.length, dispatch, toast]);
+  }, [frontCanvas, backCanvas, getCanvas, selectedType, tshirtColor, size, printSize, canvasSize, slimBookFormat, slimBookSpreads, slimBookExtra, slimBookPhotos, paperType, quantity, designDirty, cartItems.length, dispatch, toast]);
 
   return { addCurrentDesignToCart, hasDesign };
 }

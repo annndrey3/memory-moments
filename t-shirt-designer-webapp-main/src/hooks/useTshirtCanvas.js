@@ -15,9 +15,12 @@ export const useTshirtCanvas = ({
   canvasSize,
   templateOverlay,
   onDesignUpdate,
+  seedImage,
 }) => {
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
+  const seededRef = useRef(false);   // фото розвороту засіяне (один раз)
+  const hadSavedRef = useRef(false); // на холсті вже були збережені обʼєкти
   const tshirtColor = useSelector((state) => state.tshirt.tshirtColor);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
   const selectedType = useSelector((state) => state.tshirt.selectedType);
@@ -99,6 +102,7 @@ export const useTshirtCanvas = ({
       view,
       selectedType
     );
+    hadSavedRef.current = Boolean(savedObjects && savedObjects.length);
     if (savedObjects) {
       savedObjects.forEach((obj) => addFabricObject(canvas, obj));
       canvas.renderAll();
@@ -214,7 +218,30 @@ export const useTshirtCanvas = ({
     canvas.clipPath = clipPath;
     canvas.printArea = printArea;
     canvas.renderAll();
-  }, [svgPath, viewBox, printZone, canvasSize?.width, canvasSize?.height]);
+
+    // Засів холста розвороту книги завантаженим фото — один раз, лише якщо холст
+    // порожній (немає збережених обʼєктів). Фото заповнює зону друку (cover),
+    // далі його можна рухати/масштабувати й накладати колаж/рамку/текст.
+    if (seedImage && !seededRef.current && !hadSavedRef.current && canvas.getObjects().length === 0) {
+      seededRef.current = true;
+      const imgEl = new window.Image();
+      imgEl.onload = () => {
+        const c = fabricCanvasRef.current;
+        if (!c || !c.printArea) return;
+        const pa = c.printArea;
+        const fImg = new fabric.Image(imgEl);
+        const s = Math.max(pa.width / fImg.width, pa.height / fImg.height); // cover
+        fImg.scale(s);
+        fImg.set({
+          left: pa.left + (pa.width - fImg.getScaledWidth()) / 2,
+          top: pa.top + (pa.height - fImg.getScaledHeight()) / 2,
+        });
+        c.add(fImg);
+        c.renderAll();
+      };
+      imgEl.src = seedImage;
+    }
+  }, [svgPath, viewBox, printZone, canvasSize?.width, canvasSize?.height, seedImage]);
 
   return { canvasRef, fabricCanvasRef, tshirtColor };
 };
