@@ -130,6 +130,25 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
         <canvas ref={canvasRef} width={canvasW} height={canvasH} />
       </div>
 
+      {/* ── Розворот: лінія згину по центру + підписи «Ліва»/«Права» (НАД холстом,
+           щоб було видно поверх фото). Це лише підказка — не обʼєкт fabric, тож у
+           друк-файл/мокап не потрапляє. ── */}
+      {viewConfig.spread && pz && (
+        <div className="absolute inset-0 z-20 pointer-events-none">
+          <svg viewBox={viewConfig.viewBox} className="w-full h-full">
+            <line
+              x1={pz.x + pz.width / 2} y1={pz.y}
+              x2={pz.x + pz.width / 2} y2={pz.y + pz.height}
+              stroke="#7c3aed" strokeWidth="2.5" strokeDasharray="8 7" opacity="0.7"
+            />
+            <text x={pz.x + pz.width / 4} y={pz.y + 30} textAnchor="middle"
+              fontSize="22" fontWeight="700" fill="#7c3aed" opacity="0.75">Ліва</text>
+            <text x={pz.x + (pz.width * 3) / 4} y={pz.y + 30} textAnchor="middle"
+              fontSize="22" fontWeight="700" fill="#7c3aed" opacity="0.75">Права</text>
+          </svg>
+        </div>
+      )}
+
       {/* ── Template formats: dashed print zone hint above canvas ── */}
       {isTemplate && pz && (
         <div className="absolute inset-0 z-20 pointer-events-none">

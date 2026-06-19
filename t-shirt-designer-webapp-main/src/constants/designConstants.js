@@ -397,6 +397,28 @@ export function buildSlimBookView(format) {
   };
 }
 
+// Розворот фотокниги = ДВІ сторінки поруч (ландшафт, пропорція 2w:h). Прапорець
+// spread:true каже ProductCanvas намалювати лінію згину по центру + підписи
+// «Ліва»/«Права». Зона друку охоплює обидві сторінки (друк-файл — на розворот).
+export function buildSpreadView(format) {
+  const [w, h] = String(format || "21x30").split("x").map(Number);
+  const ratio = w && h ? (2 * w) / h : 1.4;
+  const maxW = 770;
+  const maxH = 600;
+  let W = maxW;
+  let H = Math.round(W / ratio);
+  if (H > maxH) { H = maxH; W = Math.round(H * ratio); }
+  const x = Math.round((810 - W) / 2);
+  const y = Math.round((810 - H) / 2);
+  return {
+    label: "Розворот",
+    path: `M ${x} ${y} H ${x + W} V ${y + H} H ${x} Z`,
+    viewBox: "0 0 810 810",
+    printZone: { x, y, width: W, height: H },
+    spread: true,
+  };
+}
+
 // Книжкові типи (slim/print) — спільний UI/стан; різниця лише в кодах і одиниці.
 export const isBookType = (type) => type === "slim-book" || type === "print-book";
 export const bookUnit = (type) => (type === "print-book" ? "листів" : "розворотів");

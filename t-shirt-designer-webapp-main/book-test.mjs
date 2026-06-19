@@ -136,6 +136,7 @@ async function runBook(browser, type, label, unitWord, basePrice, s15Price) {
   try { await clickByText(page, "Розворот 1"); await sleep(700); } catch (e) { issues.push("open spread: " + e.message); }
   const t2 = await bodyText(page);
   check(/Фото/.test(t2) && /Текст/.test(t2), "на розвороті доступні інструменти (Фото/Текст)");
+  check(/Ліва/.test(t2) && /Права/.test(t2), "розворот двосторінковий: підписи «Ліва»/«Права»");
   await page.screenshot({ path: `${OUT}/04-spread-edit.png` });
 
   // 8) Передперегляд книги.

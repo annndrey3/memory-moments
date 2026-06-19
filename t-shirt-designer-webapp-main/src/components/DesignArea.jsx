@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import * as fabric from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
-import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, isBookType } from "../constants/designConstants";
+import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, buildSpreadView, isBookType } from "../constants/designConstants";
 import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
@@ -50,31 +50,28 @@ const DesignArea = ({ manualSync }) => {
   const { activeCanvas, selectedObject, setSelectedObject } = useCanvas();
   const { addImageFile } = useAddImage();
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
-  // Для книги кожне завантажене фото — окрема редагована вкладка-розворот
-  // (поряд з обкладинками), яку можна правити всіма інструментами.
+  // Кожен вид несе свою геометрію (пропорції зони друку), щоб ProductCanvas
+  // отримував стабільний viewConfig (без перестворення на кожен рендер):
+  //  • Полотно — усі види за обраним розміром;
+  //  • Книга — обкладинки портретні (сторінка), розвороти двосторінкові (ландшафт,
+  //    лінія згину + Ліва/Права); кожне фото розвороту = окрема редагована вкладка.
   const views = useMemo(() => {
     const base = Object.entries(product.views);
+    if (selectedType === "canvas") {
+      return base.map(([v, c]) => [v, { ...c, ...buildCanvasView(canvasSize) }]);
+    }
     if (isBookType(selectedType)) {
+      // label ПІСЛЯ геометрії: build*View повертає свій label, який інакше
+      // перетер би «Обкладинка (перед)»/«Розворот N».
+      const covers = base.map(([v, c]) => [v, { ...buildSlimBookView(slimBookFormat), label: c.label }]);
       const spreads = (slimBookPhotos || []).map((_, i) => [
         `spread-${i}`,
-        // label ПІСЛЯ спреду: buildSlimBookView повертає свій label:"Обкладинка",
-        // який інакше перетер би «Розворот N» (усі вкладки ставали «Обкладинка»).
-        { ...buildSlimBookView(slimBookFormat), label: `Розворот ${i + 1}` },
+        { ...buildSpreadView(slimBookFormat), label: `Розворот ${i + 1}` },
       ]);
-      return [...base, ...spreads];
+      return [...covers, ...spreads];
     }
     return base;
-  }, [product, selectedType, slimBookPhotos, slimBookFormat]);
-  // Полотно/Slim Book: зона друку залежить від обраного розміру/формату (пропорції).
-  const dynamicView = useMemo(
-    () =>
-      selectedType === "canvas"
-        ? buildCanvasView(canvasSize)
-        : isBookType(selectedType)
-        ? buildSlimBookView(slimBookFormat)
-        : null,
-    [selectedType, canvasSize, slimBookFormat]
-  );
+  }, [product, selectedType, slimBookPhotos, slimBookFormat, canvasSize]);
   const [dragOver, setDragOver] = useState(false);
   const [hasObjects, setHasObjects] = useState(false);
   const fileInputRef = useRef(null);
@@ -282,7 +279,7 @@ const DesignArea = ({ manualSync }) => {
                   <div key={`${selectedType}-${view}`} className={view === selectedView ? "block" : "hidden"}>
                     <ProductCanvas
                       view={view}
-                      viewConfig={dynamicView || viewConfig}
+                      viewConfig={viewConfig}
                       seedImage={view.startsWith("spread-") ? slimBookPhotos[Number(view.slice(7))] : undefined}
                     />
                   </div>
