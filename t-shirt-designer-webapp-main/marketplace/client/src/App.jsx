@@ -25,6 +25,7 @@ import PhotoPrintPage from "./pages/PhotoPrintPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminSlidesPage from "./pages/admin/AdminSlidesPage";
 import AdminBackgroundsPage from "./pages/admin/AdminBackgroundsPage";
+import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import AdminCustomersPage from "./pages/admin/AdminCustomersPage";
 import { ContactFloatingButton } from "./components/ContactFloatingButton";
 
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="categories" element={<AdminCategoriesPage />} />
           <Route path="slides" element={<AdminSlidesPage />} />
           <Route path="backgrounds" element={<AdminBackgroundsPage />} />
+          <Route path="notifications" element={<AdminNotificationsPage />} />
           <Route path="customers" element={<AdminCustomersPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="site" element={<AdminSiteConfigPage />} />

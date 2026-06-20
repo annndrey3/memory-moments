@@ -150,6 +150,13 @@ export const api = {
 
   updateOrderStatus: (id, status, reason) =>
     request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason }) }),
+
+  // Web-push (сповіщення власника)
+  getVapidKey: () => request("/push/vapid-public-key"),
+  pushStatus: () => request("/push/status"),
+  pushSubscribe: (subscription) => request("/push/subscribe", { method: "POST", body: JSON.stringify({ subscription }) }),
+  pushUnsubscribe: (endpoint) => request("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  pushTest: () => request("/push/test", { method: "POST" }),
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
   downloadBookArchive: async (id) => {
     const res = await fetch(`/api/orders/${id}/book-archive`, {

@@ -7,6 +7,7 @@ import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { sendOrderNotification } from "../utils/telegram.js";
 import { sendOrderConfirmation, sendOrderStatusEmail } from "../utils/email.js";
+import { sendPushToOwner } from "../utils/push.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
 import { streamBookArchive, buildBookArchiveToDisk, streamOrderPhotos } from "../utils/bookArchive.js";
@@ -470,6 +471,19 @@ router.post("/", createOrderLimiter, async (req, res) => {
       );
     } catch (e) {
       console.warn("notify_status update failed:", e.message);
+    }
+
+    // Web-push власнику (нове замовлення) — навіть коли адмінка/браузер закриті.
+    try {
+      const n = order.items?.length || 1;
+      await sendPushToOwner({
+        title: `🛒 Нове замовлення ${order.order_number}`,
+        body: `${order.customer_name || "Клієнт"} · ${Math.round(order.total)} ₴ · ${n} поз.`,
+        url: "/admin/orders",
+        tag: `order-${order.order_number}`,
+      });
+    } catch (e) {
+      console.warn("Push notify failed:", e.message);
     }
 
     // Доставка фото/макетів у сховище дизайнера (SFTP), якщо у замовленні є файли.
