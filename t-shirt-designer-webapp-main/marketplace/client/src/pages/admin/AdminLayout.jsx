@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, LogOut, Store, Palette, ShoppingBag, Tag, Settings, Layers, GalleryHorizontal, Users, Globe, Image as ImageIcon, Bell } from "lucide-react";
+import { LayoutDashboard, Package, LogOut, Store, Palette, ShoppingBag, Tag, Settings, Layers, GalleryHorizontal, Users, Globe, Image as ImageIcon, Bell, BookOpen } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui";
 import { PermissionsProvider, usePermissions } from "@/contexts/PermissionsContext";
@@ -21,6 +21,7 @@ function Sidebar({ onLogout }) {
     { to: "/admin/site",       icon: Globe,       label: "Сайт",         show: can("settings.system") },
     { to: "/admin/notifications", icon: Bell,      label: "Сповіщення",   show: true },
     { to: "/admin/settings",   icon: Settings,    label: "Налаштування", show: true },
+    { to: "/admin/guide",      icon: BookOpen,    label: "Посібник",     show: true },
     { to: "/",               icon: Store,       label: "Маркетплейс",   show: true },
   ];
 
