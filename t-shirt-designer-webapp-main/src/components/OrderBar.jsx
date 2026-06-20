@@ -67,6 +67,17 @@ const OrderBar = () => {
     return () => subs.forEach((fn) => fn());
   }, [frontCanvas, backCanvas]);
 
+  // «Дод. розвороти» (extra) повністю похідні від кількості фото понад базу (10/15):
+  // extra = max(0, фото − база). Раніше це був ручний «+» степпер → клієнт міг
+  // завантажити 20 фото, а заплатити за 10. Тепер ціна рахує кожне фото автоматично.
+  // Точне присвоєння (не лише підняття): при базі 15 та 12 фото extra=0, не лишок.
+  // Без зациклення: needed === extra → без повторного dispatch.
+  useEffect(() => {
+    if (!isBookType(selectedType)) return;
+    const needed = Math.max(0, slimBookPhotos.length - Number(slimBookSpreads));
+    if (needed !== Number(slimBookExtra || 0)) dispatch(setSlimBookExtra(needed));
+  }, [selectedType, slimBookPhotos.length, slimBookSpreads, slimBookExtra, dispatch]);
+
   // У режимі вбудовування (адмінка зберігає дизайн) панель замовлення не потрібна.
   if (isEmbed()) return null;
 
@@ -302,17 +313,14 @@ const OrderBar = () => {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg"
-                  onClick={() => dispatch(setSlimBookExtra(slimBookExtra - 1))} disabled={slimBookExtra <= 0}>
-                  <Minus className="h-3.5 w-3.5" />
-                </Button>
-                <span className="text-xs font-semibold tabular-nums w-9 text-center">+{slimBookExtra}</span>
-                <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg"
-                  onClick={() => dispatch(setSlimBookExtra(slimBookExtra + 1))}>
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+              {slimBookExtra > 0 && (
+                <span
+                  className="text-[11px] font-semibold tabular-nums text-violet-700 whitespace-nowrap"
+                  title="Додаткові розвороти понад базу — рахуються автоматично за кількістю фото"
+                >
+                  +{slimBookExtra} дод.
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1">

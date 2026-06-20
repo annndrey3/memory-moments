@@ -60,9 +60,13 @@ async function clickExact(page, text) {
 }
 
 // Кейс для одного типу книги. Повертає {label, issues[], passed, total}.
-async function runBook(browser, type, label, unitWord, basePrice, s15Price) {
+// extraUnit — ціна за один розворот понад базу 10 (для перевірки авто-доплати).
+async function runBook(browser, type, label, unitWord, basePrice, s15Price, extraUnit) {
   const OUT = `book-shots/${type}`;
   fs.mkdirSync(OUT, { recursive: true });
+  const PHOTOS = 12;               // > базу 10 → має додати 2 розвороти до ціни
+  const overBase = PHOTOS - 10;
+  const priceWithExtra = basePrice + overBase * extraUnit;
   const issues = [];
   let passed = 0, total = 0;
   const log = (...a) => console.log("•", ...a);
@@ -116,20 +120,22 @@ async function runBook(browser, type, label, unitWord, basePrice, s15Price) {
   if (cover) { await cover.uploadFile(IMG); await sleep(1500); }
   await page.screenshot({ path: `${OUT}/02-cover.png` });
 
-  // 6) Завантажуємо 2 фото розворотів (input з multiple — це «Фото розворотів»).
+  // 6) Завантажуємо PHOTOS (12) фото розворотів (input з multiple — «Фото розворотів»).
   const spreadInput = await page.evaluateHandle(() =>
     [...document.querySelectorAll('input[type=file]')].find((i) => i.multiple) || null);
   const spread = spreadInput.asElement();
   check(!!spread, "є input «Фото розворотів» (multiple)");
   if (spread) {
-    await spread.uploadFile(IMG, IMG);
-    // Чекаємо появу вкладки «Розворот 1» (асинхронне стиснення фото).
-    try { await page.waitForFunction(() => /Розворот 1/.test(document.body.innerText), { timeout: 12000 }); }
+    await spread.uploadFile(...Array(PHOTOS).fill(IMG));
+    // Чекаємо появу ОСТАННЬОЇ вкладки (всі фото стиснулись послідовно).
+    try { await page.waitForFunction((n) => new RegExp(`Розворот ${n}`).test(document.body.innerText), { timeout: 45000 }, PHOTOS); }
     catch (e) { issues.push("spread tabs: " + e.message); }
   }
-  await sleep(600);
+  await sleep(800);
   const t1 = await bodyText(page);
-  check(/Розворот 1/.test(t1) && /Розворот 2/.test(t1), "зʼявились редаговані вкладки «Розворот 1/2»");
+  check(/Розворот 1/.test(t1) && new RegExp(`Розворот ${PHOTOS}`).test(t1), `зʼявились редаговані вкладки «Розворот 1…${PHOTOS}»`);
+  // КЛЮЧОВЕ: ціна має врахувати кожне фото понад базу (авто-доплата за +2 розвороти).
+  check(hasPrice(t1, priceWithExtra), `ціна враховує дод. фото: ${PHOTOS} фото → ${priceWithExtra} ₴ (база ${basePrice} + ${overBase}×${extraUnit})`);
   await page.screenshot({ path: `${OUT}/03-spreads.png` });
 
   // 7) Перемикаємось на вкладку «Розворот 1» — має бути редагований холст + інструменти.
@@ -171,7 +177,7 @@ async function runBook(browser, type, label, unitWord, basePrice, s15Price) {
   const cartCount = await page.evaluate(() => document.querySelectorAll("[role=dialog] h4").length);
   check(cartCount === 1, `у кошику 1 позиція-книга (фактично ${cartCount})`);
   check(/фотокниг/i.test(cartTxt), "у кошику назва книги");
-  check(/Разом/.test(cartTxt) && hasPrice(cartTxt, basePrice), `у кошику підсумок = ${basePrice} ₴`);
+  check(/Разом/.test(cartTxt) && hasPrice(cartTxt, priceWithExtra), `у кошику підсумок з дод. фото = ${priceWithExtra} ₴`);
   await page.screenshot({ path: `${OUT}/06-cart.png` });
 
   check(pageErrors.length === 0, `немає JS-помилок (${pageErrors.length})`);
@@ -188,8 +194,8 @@ const browser = await puppeteer.launch({
 });
 const results = [];
 try {
-  results.push(await runBook(browser, "slim-book", "Slim Book", "розворотів", 950, 1250));
-  results.push(await runBook(browser, "print-book", "Print Book", "листів", 1100, 1450));
+  results.push(await runBook(browser, "slim-book", "Slim Book", "розворотів", 950, 1250, 60));
+  results.push(await runBook(browser, "print-book", "Print Book", "листів", 1100, 1450, 75));
 } catch (e) {
   console.error("FATAL", e);
 } finally {

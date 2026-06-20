@@ -262,10 +262,15 @@ router.post("/", createOrderLimiter, async (req, res) => {
           unitPrice = canvasPriceFromServices(servicesRows, item.canvas_size);
         } else if (item.product_type === "slim-book" || item.product_type === "print-book") {
           // Фотокниги: база (10/15) за форматом + доплата за одиницю понад базу.
+          // GUARD: рахуємо КОЖНЕ завантажене фото понад базу, навіть якщо клієнт
+          // прислав занижений extra_spreads (захист від недонарахування ціни).
+          const baseSpreads = Number(item.spreads) === 15 ? 15 : 10;
+          const photoN = Array.isArray(item.inner_photos) ? item.inner_photos.length : 0;
+          const effExtra = Math.max(Number(item.extra_spreads) || 0, photoN - baseSpreads);
           unitPrice = bookPriceFromServices(servicesRows, item.product_type, {
             format: item.format || item.canvas_size,
             spreads: item.spreads,
-            extra: item.extra_spreads,
+            extra: effExtra,
           });
         } else {
           // Решта позицій (чашка/фото/полароїд тощо) — з прайсу за мапою.
