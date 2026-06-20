@@ -30,6 +30,18 @@ function App() {
   // «скільки налито кипятку»: чим більше, тим вище піднявся прояв (знизу вгору).
   const isMagic = selectedType === "mug-magic";
   const [magicFill, setMagicFill] = useState(100);
+  // 3D-превʼю чашки на мобільному — згорнуте в акордеон (інакше друга панель під
+  // редактором дає вертикальний скрол). На десктопі (≥xl) показуємо завжди поруч.
+  const [isWide, setIsWide] = useState(false);
+  const [show3d, setShow3d] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1280px)");
+    const sync = () => setIsWide(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  const previewVisible = showPreview && (isWide || show3d);
   const frontCanvas = getCanvas(selectedType, "front");
   const backCanvas = getCanvas(selectedType, "back");
 
@@ -63,7 +75,18 @@ function App() {
               <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${showPreview ? "xl:grid-cols-2" : ""}`}>
                 {/* Preview panel — приховано для футболки (видно в редакторі) */}
                 {showPreview && (
-                <section className="order-2 animate-fade-in-up flex flex-col">
+                <section className="order-2 animate-fade-in-up flex flex-col gap-2">
+                  {/* Мобільний акордеон: за замовчуванням 3D згорнуто → редактор без скролу */}
+                  {!isWide && (
+                    <button
+                      type="button"
+                      onClick={() => setShow3d((o) => !o)}
+                      className="self-start rounded-xl border border-border/60 bg-card px-3 py-2 text-sm font-semibold text-foreground/80 shadow-sm hover:border-primary/30"
+                    >
+                      {show3d ? "Сховати 3D-перегляд ▲" : "Показати 3D-перегляд ▼"}
+                    </button>
+                  )}
+                  {previewVisible && (
                   <div className="flex flex-col flex-1 rounded-2xl border border-border/60 bg-card shadow-soft overflow-hidden transition-shadow hover:shadow-elevated">
                     <div className="px-4 py-2.5 border-b border-border/50 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50">
                       <h2 className="text-sm font-semibold text-foreground/80 tracking-wide uppercase">
@@ -172,6 +195,7 @@ function App() {
                       </div>
                     </div>
                   </div>
+                  )}
                 </section>
                 )}
 
