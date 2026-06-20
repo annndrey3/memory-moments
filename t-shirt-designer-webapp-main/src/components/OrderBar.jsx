@@ -44,6 +44,7 @@ const OrderBar = () => {
   const [backCoverImage, setBackCoverImage] = useState(null);
   const [spreadPreviews, setSpreadPreviews] = useState([]); // відрендерені розвороти для прев'ю
   const [uploadProgress, setUploadProgress] = useState(null); // {done,total} під час завантаження фото розворотів
+  const [adding, setAdding] = useState(null); // {done,total} під час підготовки позиції (рендер фото) перед кошиком
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
   // (друга сторона додає ціну з прайсу). Реактивно слухаємо обидва полотна.
@@ -191,9 +192,17 @@ const OrderBar = () => {
   };
 
   const handleOrder = async () => {
+    if (adding) return; // вже готуємо — не дублюємо
     if (hasDesign()) {
-      const res = await addCurrentDesignToCart(); // додавання відкриває кошик
-      if (res === "exists") dispatch(toggleCart(true)); // вже в кошику — просто відкрити
+      // Багато фото → рендер кожного може зайняти час. Показуємо прогрес підготовки,
+      // щоб кнопка не виглядала «завислою». Прогрес вивантаження на сервер — у кошику.
+      setAdding({ done: 0, total: isMulti ? Math.max(1, slimBookPhotos.length) : 1 });
+      try {
+        const res = await addCurrentDesignToCart((p) => setAdding(p)); // додавання відкриває кошик
+        if (res === "exists") dispatch(toggleCart(true)); // вже в кошику — просто відкрити
+      } finally {
+        setAdding(null);
+      }
     } else if (cartItems.length > 0) {
       dispatch(toggleCart(true));
     } else {
@@ -458,13 +467,24 @@ const OrderBar = () => {
           )}
         </div>
 
-          {/* Кнопка «Замовити!» — на мобільному займає весь залишок рядка (зручно пальцем) */}
+          {/* Кнопка «Замовити!» — на мобільному займає весь залишок рядка (зручно пальцем).
+              При підготовці позиції (рендер багатьох фото) показуємо прогрес, щоб не виглядало завислим. */}
           <Button
             onClick={handleOrder}
-            className="flex-1 lg:flex-none h-12 rounded-xl px-6 text-base font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white border-0 shadow-glow"
+            disabled={!!adding}
+            className="flex-1 lg:flex-none h-12 rounded-xl px-6 text-base font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white border-0 shadow-glow disabled:opacity-80"
           >
-            <ShoppingCart className="h-5 w-5" />
-            Замовити!
+            {adding ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                {adding.total > 1 ? `Готуємо ${adding.done}/${adding.total}…` : "Готуємо…"}
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="h-5 w-5" />
+                Замовити!
+              </>
+            )}
           </Button>
         </div>
       </div>

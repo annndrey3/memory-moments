@@ -58,7 +58,9 @@ export function useAddToCart() {
     return f + b > 0;
   }, [frontCanvas, backCanvas, selectedType, slimBookPhotos]);
 
-  const addCurrentDesignToCart = useCallback(async () => {
+  // onProgress({done,total}) — щоб UI показував підготовку (рендер 200 фото може
+  // зайняти час; без зворотного звʼязку виглядає як «зависання»).
+  const addCurrentDesignToCart = useCallback(async (onProgress) => {
     // Пачка фото: 1 позиція кошика = N фото (кожне — окрема відрендерена сторінка).
     // quantity=N → ціна (cartItemPrice × quantity) і сервер рахуються без окремих гілок.
     if (isMultiPhoto(selectedType)) {
@@ -68,12 +70,17 @@ export function useAddToCart() {
       }
       if (!designDirty && cartItems.length > 0) return "exists";
       const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
+      const total = slimBookPhotos.length;
       const photos = [];
-      for (let i = 0; i < slimBookPhotos.length; i++) {
+      onProgress?.({ done: 0, total });
+      for (let i = 0; i < total; i++) {
         const c = getCanvas(selectedType, `spread-${i}`);
         const png = c ? canvasSyncManager.getPrintTexture(c) : null;
         const jpg = png ? await pngToJpeg(png) : null;
         photos.push(jpg || slimBookPhotos[i]);
+        onProgress?.({ done: i + 1, total });
+        // Поступаємось потоку, щоб React встиг перемалювати прогрес (не «зависає»).
+        if (i % 2 === 1) await new Promise((r) => setTimeout(r, 0));
       }
       dispatch(addToCart({
         id: Date.now().toString(36) + Math.random().toString(36).substring(2),
@@ -155,11 +162,15 @@ export function useAddToCart() {
     let innerPhotos = null;
     if (isBookType(selectedType)) {
       innerPhotos = [];
-      for (let i = 0; i < slimBookPhotos.length; i++) {
+      const total = slimBookPhotos.length;
+      onProgress?.({ done: 0, total });
+      for (let i = 0; i < total; i++) {
         const c = getCanvas(selectedType, `spread-${i}`);
         const png = c ? canvasSyncManager.getPrintTexture(c) : null;
         const jpg = png ? await pngToJpeg(png) : null;
         innerPhotos.push(jpg || slimBookPhotos[i]);
+        onProgress?.({ done: i + 1, total });
+        if (i % 2 === 1) await new Promise((r) => setTimeout(r, 0));
       }
     }
 
