@@ -25,7 +25,7 @@ function buildDiscountRows(tiers) {
   });
 }
 
-const TERMS = [
+const TERMS_FALLBACK = [
   "Термін виготовлення книг — 5 робочих днів після затвердження макета.",
   "Термін виготовлення візиток — 4-5 робочих днів після затвердження макета.",
   "Термін виготовлення замовлень — 1-2 робочих дні після затвердження макета.",
@@ -80,7 +80,10 @@ function getCategoryMeta(name) {
 }
 
 export default function PricesPage() {
-  const { discounts } = useSiteConfig();
+  const { discounts, terms } = useSiteConfig();
+  const termsList = (terms?.items || []).filter((t) => String(t || "").trim()).length
+    ? terms.items.filter((t) => String(t || "").trim())
+    : TERMS_FALLBACK;
   const photoDiscountRows = buildDiscountRows(discounts?.photo);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -296,7 +299,7 @@ export default function PricesPage() {
                   <h2 className="font-semibold text-slate-900">Умови та терміни</h2>
                 </div>
                 <ul className="space-y-1.5 text-sm text-slate-600 list-disc pl-5">
-                  {TERMS.map((t, i) => (
+                  {termsList.map((t, i) => (
                     <li key={i}>{t}</li>
                   ))}
                 </ul>

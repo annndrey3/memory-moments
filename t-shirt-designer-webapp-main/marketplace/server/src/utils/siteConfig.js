@@ -55,6 +55,18 @@ export const SITE_DEFAULTS = {
     siteName: "Memory Moments",
     description: "Друк фото, сувеніри та конструктор кастомних товарів — Memory Moments.",
   },
+  // «Умови та терміни» — блок унизу сторінки цін. items: список рядків.
+  terms: {
+    items: [
+      "Термін виготовлення книг — 5 робочих днів після затвердження макета.",
+      "Термін виготовлення візиток — 4-5 робочих днів після затвердження макета.",
+      "Термін виготовлення замовлень — 1-2 робочих дні після затвердження макета.",
+      "Замовлення прийняті до 16:00 будуть готові наступного дня, після 16:00 — через день.",
+      "Сувенірна продукція та широкоформатний друк від 30×40, прийняті в пʼятницю після 15:00, будуть готові у вівторок.",
+      "Мінімальне замовлення — від 100 грн. Акційна ціна діє при замовленні від 40 фото.",
+      "Знижка на друк фото — за кількістю (див. таблицю «Система знижок» вище). Від 300 фото — безкоштовна доставка.",
+    ],
+  },
 };
 
 const KEY = {
@@ -63,10 +75,11 @@ const KEY = {
   discounts: "site_discounts",
   hero: "site_hero",
   seo: "site_seo",
+  terms: "site_terms",
   telegram: "telegram",
 };
 
-export const SITE_SECTIONS = ["contacts", "delivery", "discounts", "hero", "seo"];
+export const SITE_SECTIONS = ["contacts", "delivery", "discounts", "hero", "seo", "terms"];
 
 function parse(json) {
   try { return json ? JSON.parse(json) : null; } catch { return null; }
@@ -87,11 +100,11 @@ export async function setSection(name, value) {
 
 // Публічна конфігурація для вітрини/конструктора — без секретів.
 export async function getPublicSiteConfig() {
-  const [contacts, delivery, discounts, hero, seo] = await Promise.all([
+  const [contacts, delivery, discounts, hero, seo, terms] = await Promise.all([
     getSection("contacts"), getSection("delivery"), getSection("discounts"),
-    getSection("hero"), getSection("seo"),
+    getSection("hero"), getSection("seo"), getSection("terms"),
   ]);
-  return { contacts, delivery, discounts, hero, seo };
+  return { contacts, delivery, discounts, hero, seo, terms };
 }
 
 // Пороги знижки фотодруку — для серверного перерахунку ціни. Нормалізовано

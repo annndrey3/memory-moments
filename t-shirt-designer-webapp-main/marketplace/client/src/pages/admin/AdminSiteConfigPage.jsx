@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Loader2, Save, Plus, Trash2, Phone, MapPin, Truck, Percent, Megaphone, Clock,
+  Loader2, Save, Plus, Trash2, Phone, MapPin, Truck, Percent, Megaphone, Clock, FileText,
 } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -219,6 +219,30 @@ export default function AdminSiteConfigPage() {
             value={seo.description ?? ""} onChange={(e) => setField("seo", "description", e.target.value)} />
         </div>
         <p className="text-[11px] text-slate-400">Кнопка «Зберегти» збереже і банер, і SEO.</p>
+      </Section>
+
+      {/* ── Умови та терміни (блок унизу сторінки цін) ── */}
+      <Section title="Умови та терміни (на сторінці цін)" icon={FileText} saving={saving === "terms"} msg={msg.terms}
+        onSave={() => save("terms")}>
+        <p className="text-xs text-slate-500">Список умов унизу сторінки «Ціни». Кожен рядок — окремий пункт.</p>
+        <div className="space-y-2">
+          {((cfg.terms && cfg.terms.items) || []).map((t, i) => (
+            <div key={i} className="flex gap-2">
+              <textarea
+                className="flex-1 rounded-lg border border-slate-200 text-sm p-2 min-h-[44px]"
+                value={t}
+                placeholder="Текст умови…"
+                onChange={(e) => setList("terms", "items", i, e.target.value)}
+              />
+              <button className={ICON_BTN} onClick={() => removeItem("terms", "items", i)} title="Видалити">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={() => addItem("terms", "items", "")}>
+            <Plus className="h-4 w-4" /> Пункт
+          </Button>
+        </div>
       </Section>
 
       <p className="text-[11px] text-slate-400">
