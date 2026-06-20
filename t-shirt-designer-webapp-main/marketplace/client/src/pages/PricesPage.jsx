@@ -182,19 +182,23 @@ export default function PricesPage() {
           <div className="grid lg:grid-cols-[220px_1fr] gap-8">
             {/* Sticky category nav */}
             <aside className="hidden lg:block">
-              <div className="sticky top-24 space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+              {/* Висота обмежена вʼюпортом + внутрішній скрол, щоб усі категорії
+                  були доступні навіть коли їх більше, ніж влазить на екран. */}
+              <div className="sticky top-24 flex max-h-[calc(100vh-7rem)] flex-col">
+                <p className="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
                   Категорії
                 </p>
-                {visibleCategories.map((c, i) => (
-                  <a
-                    key={c.id}
-                    href={`#cat-${i}`}
-                    className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-violet-50 hover:text-violet-700 transition-all duration-200 hover:translate-x-1"
-                  >
-                    {c.name}
-                  </a>
-                ))}
+                <nav className="space-y-1 overflow-y-auto pr-1 -mr-1">
+                  {visibleCategories.map((c, i) => (
+                    <a
+                      key={c.id}
+                      href={`#cat-${i}`}
+                      className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-violet-50 hover:text-violet-700 transition-all duration-200 hover:translate-x-1"
+                    >
+                      {c.name}
+                    </a>
+                  ))}
+                </nav>
               </div>
             </aside>
 
