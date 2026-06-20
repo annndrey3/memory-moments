@@ -133,21 +133,39 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
       {/* ── Розворот: лінія згину по центру + підписи «Ліва»/«Права» (НАД холстом,
            щоб було видно поверх фото). Це лише підказка — не обʼєкт fabric, тож у
            друк-файл/мокап не потрапляє. ── */}
-      {viewConfig.spread && pz && (
-        <div className="absolute inset-0 z-20 pointer-events-none">
-          <svg viewBox={viewConfig.viewBox} className="w-full h-full">
-            <line
-              x1={pz.x + pz.width / 2} y1={pz.y}
-              x2={pz.x + pz.width / 2} y2={pz.y + pz.height}
-              stroke="#7c3aed" strokeWidth="2.5" strokeDasharray="8 7" opacity="0.7"
-            />
-            <text x={pz.x + pz.width / 4} y={pz.y + 30} textAnchor="middle"
-              fontSize="22" fontWeight="700" fill="#7c3aed" opacity="0.75">Ліва</text>
-            <text x={pz.x + (pz.width * 3) / 4} y={pz.y + 30} textAnchor="middle"
-              fontSize="22" fontWeight="700" fill="#7c3aed" opacity="0.75">Права</text>
-          </svg>
-        </div>
-      )}
+      {viewConfig.spread && pz && (() => {
+        const cx = pz.x + pz.width / 2;
+        const safe = viewConfig.safe || { edgeX: 0, edgeY: 0, seam: 0 };
+        return (
+          <div className="absolute inset-0 z-20 pointer-events-none">
+            <svg viewBox={viewConfig.viewBox} className="w-full h-full">
+              {/* Зона шва (корінець): смуга по центру розвороту, де не варто
+                  розміщувати важливе — там згин/палітурка. */}
+              {safe.seam > 0 && (
+                <rect x={cx - safe.seam} y={pz.y} width={safe.seam * 2} height={pz.height}
+                  fill="#ef4444" opacity="0.10" />
+              )}
+              {/* Лінія згину по центру */}
+              <line x1={cx} y1={pz.y} x2={cx} y2={pz.y + pz.height}
+                stroke="#7c3aed" strokeWidth="2.5" strokeDasharray="8 7" opacity="0.7" />
+              {/* Безпечні поля (0.5 см) — тримайте важливе всередині цієї рамки */}
+              {(safe.edgeX > 0 || safe.edgeY > 0) && (
+                <rect x={pz.x + safe.edgeX} y={pz.y + safe.edgeY}
+                  width={pz.width - safe.edgeX * 2} height={pz.height - safe.edgeY * 2}
+                  fill="none" stroke="#10b981" strokeWidth="2" strokeDasharray="6 6" opacity="0.7" />
+              )}
+              <text x={pz.x + pz.width / 4} y={pz.y + 30} textAnchor="middle"
+                fontSize="22" fontWeight="700" fill="#7c3aed" opacity="0.75">Ліва</text>
+              <text x={pz.x + (pz.width * 3) / 4} y={pz.y + 30} textAnchor="middle"
+                fontSize="22" fontWeight="700" fill="#7c3aed" opacity="0.75">Права</text>
+              {viewConfig.sizeLabel && (
+                <text x={cx} y={pz.y + pz.height - 12} textAnchor="middle"
+                  fontSize="15" fill="#475569" opacity="0.85">{viewConfig.sizeLabel}</text>
+              )}
+            </svg>
+          </div>
+        );
+      })()}
 
       {/* ── Template formats: dashed print zone hint above canvas ── */}
       {isTemplate && pz && (

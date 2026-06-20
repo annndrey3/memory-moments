@@ -148,6 +148,7 @@ async function runBook(browser, type, label, unitWord, basePrice, s15Price, extr
   // SVG-текст (Ліва/Права) не завжди потрапляє в innerText → читаємо textContent.
   const t2c = await page.evaluate(() => document.body.textContent);
   check(/Ліва/.test(t2c) && /Права/.test(t2c), "розворот двосторінковий: підписи «Ліва»/«Права»");
+  check(/300 dpi/.test(t2c), "на розвороті видно розмір/якість (300 dpi) + безпечні поля");
   await page.screenshot({ path: `${OUT}/04-spread-edit.png` });
 
   // 8) Передперегляд книги.

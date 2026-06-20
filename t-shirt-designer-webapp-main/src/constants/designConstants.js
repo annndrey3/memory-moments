@@ -410,12 +410,18 @@ export function buildSpreadView(format) {
   if (H > maxH) { H = maxH; W = Math.round(H * ratio); }
   const x = Math.round((810 - W) / 2);
   const y = Math.round((810 - H) / 2);
+  // Поля друку (як у студії / bookArchive): 0.5 см по краях, 1 см біля корінця (шов).
+  // Переводимо см → одиниці viewBox (розворот = 2w×h см на W×H одиниць).
+  const upcX = W / (2 * (w || 21));
+  const upcY = H / (h || 30);
   return {
     label: "Розворот",
     path: `M ${x} ${y} H ${x + W} V ${y + H} H ${x} Z`,
     viewBox: "0 0 810 810",
     printZone: { x, y, width: W, height: H },
     spread: true,
+    safe: { edgeX: Math.round(0.5 * upcX), edgeY: Math.round(0.5 * upcY), seam: Math.round(1 * upcX) },
+    sizeLabel: `${w}×${h} см · 300 dpi`,
   };
 }
 
