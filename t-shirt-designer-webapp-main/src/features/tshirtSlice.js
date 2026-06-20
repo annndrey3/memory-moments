@@ -138,6 +138,10 @@ export const tshirtSlice = createSlice({
     clearCart: (state) => {
       state.cartItems = [];
     },
+    // Відновлення кошика з localStorage (щоб не губився при переході в маркетплейс/оновленні).
+    hydrateCart: (state, action) => {
+      if (Array.isArray(action.payload)) state.cartItems = action.payload;
+    },
     toggleCart: (state, action) => {
       state.isCartOpen = action.payload !== undefined ? action.payload : !state.isCartOpen;
     },
@@ -165,6 +169,7 @@ export const {
   removeFromCart,
   updateQuantity,
   clearCart,
+  hydrateCart,
   toggleCart
 } = tshirtSlice.actions;
 

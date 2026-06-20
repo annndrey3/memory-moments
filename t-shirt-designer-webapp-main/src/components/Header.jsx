@@ -1,5 +1,5 @@
 import { useSelector, useDispatch } from "react-redux";
-import { ShoppingCart, Trash2, Plus, Minus, Store, GraduationCap, Coffee, Image as ImageIcon, Shirt, Sparkles } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, GraduationCap, Coffee, Image as ImageIcon, Shirt, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -159,16 +159,6 @@ const Header = () => {
           <GraduationCap className="h-5 w-5" />
           <span className="hidden sm:inline ml-1">Підказки</span>
         </Button>
-
-        <a href={MARKETPLACE_URL} target="_blank" rel="noopener noreferrer">
-          <Button variant="outline" size="lg" className="rounded-xl border-border/60 shadow-sm hover:border-primary/30 hidden sm:inline-flex">
-            <Store className="h-5 w-5" />
-            <span className="ml-1">Маркетплейс</span>
-          </Button>
-          <Button variant="outline" size="icon" className="rounded-xl sm:hidden">
-            <Store className="h-5 w-5" />
-          </Button>
-        </a>
 
       <Sheet open={isCartOpen} onOpenChange={(open) => dispatch(toggleCart(open))}>
         <SheetTrigger asChild>
