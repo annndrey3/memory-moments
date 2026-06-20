@@ -403,7 +403,7 @@ const DesignArea = ({ manualSync }) => {
                   (видно ескіз кожного розвороту; клік перемикає редагування). */}
               {(isBookType(selectedType) || isMultiPhoto(selectedType)) && views.length > 1 && (
                 <div
-                  className="w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
+                  className="mx-auto w-fit max-w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
                   style={{ touchAction: dragIdx != null ? "none" : "pan-x" }}
                   onPointerMove={onThumbsPointerMove}
                   onPointerUp={onThumbsPointerUp}
