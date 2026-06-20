@@ -1,4 +1,5 @@
 import { getStorageKey } from "./canvasStorageManager";
+import { toOrderItem } from "@/lib/sharedCart";
 import * as fabric from "fabric";
 
 const MARKETPLACE_API = import.meta.env.VITE_MARKETPLACE_API || "http://localhost:3001/api";
@@ -62,10 +63,9 @@ function postOrderJson(url, payload, { idempotencyKey, onProgress } = {}) {
 }
 
 export const sendOrderToMarketplace = async (cartItems, customerDetails, idempotencyKey = null, onProgress = null) => {
-  // ВАЖЛИВО: НЕ дублюємо base64 у окремих images/documents — для замовлень з
-  // багатьма фото (фотокнига) це подвоювало тіло й спричиняло 413. Усі фото йдуть
-  // ЛИШЕ в items[] (print_*/raw_*/inner_photos/design_preview*); прев'ю та
-  // друкарські файли для Telegram сервер збирає з цих же полів.
+  // Позиції спільного кошика вже самодостатні — кожна несе готовий payload для
+  // /api/orders (toOrderItem обробляє design / catalog / photo_print). Тож оформити
+  // можна і з конструктора, і з маркетплейсу. Усі фото — лише в items[] (без дубля).
   const payload = {
     source: "designer",
     customer: {
@@ -75,33 +75,7 @@ export const sendOrderToMarketplace = async (cartItems, customerDetails, idempot
       address: customerDetails.address || null,
       notes: customerDetails.comment || null,
     },
-    items: cartItems.map((item) => ({
-      product_name: item.productName,
-      product_type: item.productType,
-      color: item.color || null,
-      // Формат друку футболки (А4/А3) — сервер рахує ціну з прайсу за ним.
-      print_size: item.printSize || null,
-      // Розмір полотна (30x40…) — сервер рахує ціну полотна з прайсу за ним.
-      canvas_size: item.canvasSize || null,
-      // Slim Book: формат + кіл-ть розворотів → ціна з прайсу; inner_photos → диск.
-      format: item.slimBookFormat || null,
-      spreads: item.slimBookSpreads || null,
-      extra_spreads: item.slimBookExtra || null,
-      inner_photos: item.innerPhotos || null,
-      // Розмір/папір/колір одним підписом → сервер збереже як variant_label.
-      variant_label: item.variantLabel || null,
-      quantity: item.quantity,
-      // Сам макет: fabric JSON (front+back) + прев'ю — сервер збереже в позицію заказу.
-      design_data: JSON.stringify({ front: item.fabricFront || null, back: item.fabricBack || null }),
-      design_preview: item.designTextureFront || null,
-      // Прев'ю спини (мокап) — лише для Telegram-сповіщення; сервер не зберігає окремо.
-      design_preview_back: item.designTextureBack || null,
-      // Друкарські макети у повній роздільності — сервер збереже на диск для адмінки.
-      print_front: item.printFront || null,
-      print_back: item.printBack || null,
-      raw_front: item.rawDesignFront || null,
-      raw_back: item.rawDesignBack || null,
-    })),
+    items: cartItems.map(toOrderItem),
   };
 
   return postOrderJson(`${MARKETPLACE_API}/orders`, payload, { idempotencyKey, onProgress });

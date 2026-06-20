@@ -96,44 +96,24 @@ export const tshirtSlice = createSlice({
       state.quantity = Math.max(1, Number(action.payload) || 1);
     },
     addToCart: (state, action) => {
-      const { id, productType, productName, designTextureFront, designTextureBack, rawDesignFront, rawDesignBack, printFront, printBack, fabricFront, fabricBack, color, size, printSize, canvasSize, paperType, slimBookFormat, slimBookSpreads, slimBookExtra, innerPhotos, variantLabel, quantity } = action.payload;
-      state.cartItems.push({
-        id,
-        productType,
-        productName,
-        designTextureFront,
-        designTextureBack,
-        rawDesignFront,
-        rawDesignBack,
-        printFront, // друкарський макет (повна роздільність) — спереду
-        printBack, //  — ззаду
-        fabricFront,
-        fabricBack,
-        color,
-        size,
-        printSize, // формат друку футболки (А4/А3) — для ціни з прайсу
-        canvasSize, // розмір полотна — для ціни з прайсу
-        paperType,
-        slimBookFormat, // формат Slim Book — для ціни
-        slimBookSpreads, // база розворотів (10/15)
-        slimBookExtra, // дод. розвороти понад базу
-        innerPhotos, // фото для розворотів (data URL) — студія розкладає
-        variantLabel, // готовий підпис опцій (розмір/папір/колір) для кошика й замовлення
-        quantity: quantity || 1,
-      });
+      // Позиція вже самодостатня (спільна схема кошика — див. sharedCart.js):
+      // несе поля для показу + готовий payload для замовлення. Зберігаємо як є.
+      const item = { ...action.payload, quantity: action.payload.quantity || 1 };
+      if (!item.key) item.key = Date.now().toString(36) + Math.random().toString(36).slice(2);
+      state.cartItems.push(item);
       state.isCartOpen = true;
       state.designDirty = false; // поточний дизайн зафіксовано в кошику
       state.slimBookPhotos = []; // фото перенесено в позицію — очищаємо буфер
     },
     removeFromCart: (state, action) => {
-      state.cartItems = state.cartItems.filter(item => item.id !== action.payload);
+      const k = action.payload;
+      state.cartItems = state.cartItems.filter((i) => (i.key ?? i.id) !== k);
     },
     updateQuantity: (state, action) => {
-      const { id, quantity } = action.payload;
-      const item = state.cartItems.find(item => item.id === id);
-      if (item) {
-        item.quantity = quantity;
-      }
+      const { key, id, quantity } = action.payload;
+      const k = key ?? id;
+      const item = state.cartItems.find((i) => (i.key ?? i.id) === k);
+      if (item) item.quantity = quantity;
     },
     clearCart: (state) => {
       state.cartItems = [];

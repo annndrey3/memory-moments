@@ -9,7 +9,7 @@ import { useSeo } from "@/lib/seo";
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { items, updateQty, removeItem, subtotal, discount, discountPct, photoCount, total } = useCart();
+  const { items, loaded, updateQty, removeItem, subtotal, discount, discountPct, photoCount, total } = useCart();
   useSeo({ title: "Кошик" });
 
   return (
@@ -29,7 +29,9 @@ export default function CartPage() {
           Кошик
         </h1>
 
-        {items.length === 0 ? (
+        {!loaded ? (
+          <div className="py-16 text-center text-slate-400">Завантаження…</div>
+        ) : items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center animate-fade-in-up">
             <p className="text-slate-500 mb-4">Ваш кошик порожній</p>
             <Link to="/">
@@ -57,12 +59,16 @@ export default function CartPage() {
                   </div>
 
                   <div className="flex flex-1 flex-col">
-                    <Link
-                      to={`/product/${item.slug}`}
-                      className="font-semibold text-slate-900 hover:text-violet-700"
-                    >
-                      {item.name}
-                    </Link>
+                    {item.slug ? (
+                      <Link
+                        to={`/product/${item.slug}`}
+                        className="font-semibold text-slate-900 hover:text-violet-700"
+                      >
+                        {item.name}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold text-slate-900">{item.name}</span>
+                    )}
                     {item.variant_label && (
                       <p className="text-sm text-slate-500">{item.variant_label}</p>
                     )}

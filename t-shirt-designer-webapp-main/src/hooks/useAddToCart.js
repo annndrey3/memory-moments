@@ -4,7 +4,10 @@ import { useCanvas } from "@/hooks/useCanvas";
 import { useToast } from "@/hooks/use-toast";
 import { addToCart } from "@/features/tshirtSlice";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
+import { usePricing } from "@/hooks/usePricing";
 import { PRODUCT_TYPES, buildOptionsLabel, isBookType, isMultiPhoto } from "@/constants/designConstants";
+
+const genKey = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 // Перекодування друкарської текстури розвороту в JPEG (менший payload; розвороти
 // — це фото). Прозорі ділянки колажу заливаються білим (це сторінка книги).
@@ -34,6 +37,7 @@ function pngToJpeg(dataUrl, quality = 0.9) {
 export function useAddToCart() {
   const { toast } = useToast();
   const { frontCanvas, backCanvas, getCanvas } = useCanvas();
+  const { priceFor, tshirtPrice, canvasPrice, bookPrice } = usePricing();
   const dispatch = useDispatch();
 
   const selectedType = useSelector((state) => state.tshirt.selectedType);
@@ -83,14 +87,18 @@ export function useAddToCart() {
         if (i % 2 === 1) await new Promise((r) => setTimeout(r, 0));
       }
       dispatch(addToCart({
-        id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-        productType: selectedType,
-        productName: product.name,
-        designTextureFront: photos[0] || null, // прев'ю в кошику — перше фото
-        innerPhotos: photos,
-        paperType,
-        variantLabel: buildOptionsLabel({ productType: selectedType, paperType }),
+        key: genKey(),
+        type: "design",
+        name: product.name,
+        image: photos[0] || null, // прев'ю в кошику — перше фото
+        unit_price: priceFor(selectedType)?.price ?? null,
+        variant_label: buildOptionsLabel({ productType: selectedType, paperType }),
         quantity: photos.length,
+        is_photo_pack: true,
+        // order payload
+        product_type: selectedType,
+        inner_photos: photos,
+        design_preview: photos[0] || null,
       }));
       toast({ title: "Додано до кошика", description: `${product.name} × ${photos.length} успішно додано.`, duration: 3000 });
       return true;
@@ -174,29 +182,38 @@ export function useAddToCart() {
       }
     }
 
+    // Ціна одиниці (для показу в кошику; сервер усе одно перерахує з прайсу).
+    let unitPrice = null;
+    if (selectedType === "crew-neck") { const tp = tshirtPrice({ color: tshirtColor, printSize, bothSides }); unitPrice = tp ? tp.total : null; }
+    else if (selectedType === "canvas") unitPrice = canvasPrice(canvasSize);
+    else if (isBookType(selectedType)) unitPrice = bookPrice({ type: selectedType, format: slimBookFormat, spreads: slimBookSpreads, extra: slimBookExtra });
+    else unitPrice = priceFor(selectedType)?.price ?? null;
+
     dispatch(addToCart({
-      id: Date.now().toString(36) + Math.random().toString(36).substring(2),
-      productType: selectedType,
-      productName: product.name,
-      designTextureFront,
-      designTextureBack,
-      rawDesignFront,
-      rawDesignBack,
-      printFront,
-      printBack,
-      fabricFront,
-      fabricBack,
-      color: tshirtColor,
-      size,
-      printSize,
-      canvasSize,
-      paperType,
-      slimBookFormat,
-      slimBookSpreads,
-      slimBookExtra,
-      innerPhotos,
-      variantLabel,
+      key: genKey(),
+      type: "design",
+      name: product.name,
+      image: designTextureFront,
+      unit_price: unitPrice,
+      variant_label: variantLabel,
       quantity,
+      is_photo_pack: false,
+      // order payload
+      product_type: selectedType,
+      color: tshirtColor,
+      print_size: printSize,
+      canvas_size: canvasSize,
+      format: slimBookFormat,
+      spreads: slimBookSpreads,
+      extra_spreads: slimBookExtra,
+      inner_photos: innerPhotos,
+      design_data: JSON.stringify({ front: fabricFront, back: fabricBack }),
+      design_preview: designTextureFront,
+      design_preview_back: designTextureBack,
+      print_front: printFront,
+      print_back: printBack,
+      raw_front: rawDesignFront,
+      raw_back: rawDesignBack,
     }));
 
     toast({
@@ -205,7 +222,7 @@ export function useAddToCart() {
       duration: 3000,
     });
     return true;
-  }, [frontCanvas, backCanvas, getCanvas, selectedType, tshirtColor, size, printSize, canvasSize, slimBookFormat, slimBookSpreads, slimBookExtra, slimBookPhotos, paperType, quantity, designDirty, cartItems.length, dispatch, toast]);
+  }, [frontCanvas, backCanvas, getCanvas, selectedType, tshirtColor, size, printSize, canvasSize, slimBookFormat, slimBookSpreads, slimBookExtra, slimBookPhotos, paperType, quantity, designDirty, cartItems.length, dispatch, toast, priceFor, tshirtPrice, canvasPrice, bookPrice]);
 
   return { addCurrentDesignToCart, hasDesign };
 }

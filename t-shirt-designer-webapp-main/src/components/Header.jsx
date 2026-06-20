@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { toggleCart, removeFromCart, updateQuantity, clearCart, setSelectedType } from "@/features/tshirtSlice";
 import { usePricing } from "@/hooks/usePricing";
-import { isMultiPhoto } from "@/constants/designConstants";
+import { photoUnits } from "@/lib/sharedCart";
 import { sendOrderToMarketplace } from "@/utils/canvasSyncManager";
 import { useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,19 +60,17 @@ const Header = () => {
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  const { cartItemPrice, productStartingPrice, photoDiscountPct } = usePricing();
-  // Підсумок кошика: множимо ціну позиції на кількість. Якщо хоч у однієї позиції
-  // ціна невідома (немає коду в прайсі / ще не завантажено) — показуємо «від», бо
-  // фінальну суму уточнить менеджер при оформленні.
-  const grossTotal = cartItems.reduce((sum, item) => sum + (cartItemPrice(item) || 0) * item.quantity, 0);
-  // Знижка за кількістю фото (та сама, що на сайті) — на позиції-пачки фото.
-  const photoItems = cartItems.filter((i) => isMultiPhoto(i.productType));
-  const photoCount = photoItems.reduce((s, i) => s + (i.innerPhotos?.length || i.quantity || 0), 0);
-  const photoSubtotal = photoItems.reduce((s, i) => s + (cartItemPrice(i) || 0) * i.quantity, 0);
+  const { productStartingPrice, photoDiscountPct } = usePricing();
+  // Підсумок спільного кошика: ціна кожної позиції вже збережена (unit_price).
+  // Якщо в якоїсь немає — показуємо «(від)», бо суму уточнить менеджер.
+  const grossTotal = cartItems.reduce((sum, item) => sum + (item.unit_price || 0) * item.quantity, 0);
+  // Знижка за кількістю фото (та сама, що на сайті) — на фото-позиції (photoUnits).
+  const photoCount = cartItems.reduce((s, i) => s + photoUnits(i), 0);
+  const photoSubtotal = cartItems.reduce((s, i) => s + (photoUnits(i) > 0 ? (i.unit_price || 0) * i.quantity : 0), 0);
   const cartDiscountPct = photoDiscountPct(photoCount);
   const cartDiscount = Math.round((photoSubtotal * cartDiscountPct) / 100);
   const cartTotal = Math.max(0, grossTotal - cartDiscount);
-  const hasUnknownPrice = cartItems.some((item) => cartItemPrice(item) == null);
+  const hasUnknownPrice = cartItems.some((item) => item.unit_price == null);
 
   // Тап по плитці кросс-селлу — перемкнути конструктор на цей товар і закрити кошик
   // (поведінка як у звичайному виборі товару: лише selectedType, дизайн на полотні
@@ -204,15 +202,17 @@ const Header = () => {
               <ScrollArea className="h-full pr-4">
                 <div className="flex flex-col gap-3">
                   {cartItems.map((item) => {
-                    const unit = cartItemPrice(item);
+                    const unit = item.unit_price;
+                    const lk = item.key ?? item.id;
+                    const thumb = item.image || item.designTextureFront;
                     return (
                     <div
-                      key={item.id}
+                      key={lk}
                       className="flex gap-4 border border-border/60 p-3 rounded-xl bg-card shadow-sm hover:shadow-soft transition-shadow"
                     >
                       <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0 ring-1 ring-border/50">
-                        {item.designTextureFront ? (
-                          <img src={item.designTextureFront} alt="design" className="w-full h-full object-cover" />
+                        {thumb ? (
+                          <img src={thumb} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Без макета</div>
                         )}
@@ -220,16 +220,16 @@ const Header = () => {
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
-                            <h4 className="font-semibold text-sm line-clamp-2">{item.productName}</h4>
-                            {item.variantLabel && (
-                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.variantLabel}</p>
+                            <h4 className="font-semibold text-sm line-clamp-2">{item.name || item.productName}</h4>
+                            {(item.variant_label || item.variantLabel) && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.variant_label || item.variantLabel}</p>
                             )}
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 shrink-0 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => dispatch(removeFromCart(item.id))}
+                            onClick={() => dispatch(removeFromCart(lk))}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -240,7 +240,7 @@ const Header = () => {
                               variant="outline"
                               size="icon"
                               className="h-7 w-7 rounded-lg"
-                              onClick={() => dispatch(updateQuantity({ id: item.id, quantity: Math.max(1, item.quantity - 1) }))}
+                              onClick={() => dispatch(updateQuantity({ key: lk, quantity: Math.max(1, item.quantity - 1) }))}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
@@ -249,7 +249,7 @@ const Header = () => {
                               variant="outline"
                               size="icon"
                               className="h-7 w-7 rounded-lg"
-                              onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
+                              onClick={() => dispatch(updateQuantity({ key: lk, quantity: item.quantity + 1 }))}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>

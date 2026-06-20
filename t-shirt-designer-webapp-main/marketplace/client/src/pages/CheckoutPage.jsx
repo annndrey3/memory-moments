@@ -6,13 +6,14 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button, Input, Label, Textarea } from "@/components/ui";
 import { formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart";
+import { toOrderItem } from "@/lib/sharedCart";
 import { api } from "@/lib/api";
 import { useSeo } from "@/lib/seo";
 import { useSiteConfig } from "@/lib/siteConfig";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const { items, subtotal, discount, discountPct, photoCount, total, clear } = useCart();
+  const { items, loaded, subtotal, discount, discountPct, photoCount, total, clear } = useCart();
   const { delivery } = useSiteConfig();
   const methods = (delivery.methods || []).filter((m) => m.enabled);
   const pickupBranches = delivery.pickupBranches || [];
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
   const [pickupBranch, setPickupBranch] = useState("");
   const [novaPoshtaAddress, setNovaPoshtaAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [placed, setPlaced] = useState(false); // замовлення оформлено → не редіректити на /cart після clear()
   const [error, setError] = useState(null);
   // Стабільний ключ ідемпотентності на спробу оформлення (переживає ретраї).
   const idemKeyRef = useRef(null);
@@ -32,7 +34,9 @@ export default function CheckoutPage() {
   const sel = methods.find((m) => m.id === deliveryType) || methods[0] || null;
   const effectiveBranch = pickupBranch || pickupBranches[0] || "";
 
-  if (items.length === 0) {
+  // Кошик вантажиться асинхронно (спільний IndexedDB) — не редіректимо, поки не
+  // завантажився; і не після успішного оформлення (placed), коли clear() спорожнив кошик.
+  if (loaded && items.length === 0 && !placed) {
     return <Navigate to="/cart" replace />;
   }
 
@@ -67,25 +71,12 @@ export default function CheckoutPage() {
           address: buildShippingAddress(),
           notes: form.notes.trim() || null,
         },
-        items: items.map((i) => {
-          if (i.type === "photo_print") {
-            return {
-              type: "photo_print",
-              photo_size: i.photo_size,
-              photo_coating: i.photo_coating,
-              photo_url: i.photo_url,
-              quantity: i.quantity,
-            };
-          }
-          return {
-            product_id: i.product_id,
-            variant_id: i.variant_id || null,
-            design_id: i.design_id || null,
-            quantity: i.quantity,
-          };
-        }),
+        // Кожна позиція вже несе готовий payload (toOrderItem обробляє
+        // catalog / photo_print / design — кастомні товари з конструктора теж).
+        items: items.map(toOrderItem),
       }, idemKeyRef.current);
       idemKeyRef.current = null; // успіх — наступне замовлення отримає новий ключ
+      setPlaced(true);
       clear();
       navigate(`/order/${order.order_number}`);
     } catch (err) {

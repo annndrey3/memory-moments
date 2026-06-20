@@ -1,11 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
 import tshirtReducer, { hydrateCart } from "../features/tshirtSlice";
-import { loadCart, saveCart } from "./cartStorage";
+import { readCart as loadCart, writeCart as saveCart } from "./sharedCart";
 // import canvasReducer from "../features/canvasSlice";
 
-// Кошик конструктора зберігається в IndexedDB (cartStorage) — він може містити
-// великі зображення (мокапи, друк-файли, пачки фото), для яких localStorage
-// замалий. Завдяки цьому кошик не губиться при переході в маркетплейс/оновленні.
+// СПІЛЬНИЙ кошик конструктора + маркетплейсу (IndexedDB "mm_shop", спільний на
+// одному домені). Тримає великі зображення; не губиться при переході/оновленні
+// і видимий у маркетплейсі (й навпаки).
 export const store = configureStore({
   reducer: {
     tshirt: tshirtReducer,
