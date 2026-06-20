@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, ChevronDown, ChevronRight, Package, Trash2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronRight, Package, Trash2, CheckCircle2, Ban, X } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
@@ -24,6 +24,10 @@ export default function AdminOrdersPage() {
   const [expanded, setExpanded] = useState(null);
   const [detail, setDetail] = useState({});
   const [updating, setUpdating] = useState(null);
+  const [selected, setSelected] = useState(() => new Set()); // id-и для масових дій
+  const [bulk, setBulk] = useState(null); // {done,total,label} під час масової дії
+  const [reasonModal, setReasonModal] = useState(null); // {ids:[...]} — причина скасування
+  const [reasonText, setReasonText] = useState("");
 
   const loadOrders = () => {
     setLoading(true);
@@ -37,6 +41,47 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(loadOrders, [filter]);
+  // Скидаємо вибір при зміні фільтра — інакше можна діяти на невидимі замовлення.
+  useEffect(() => setSelected(new Set()), [filter]);
+
+  const toggleSelect = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const allSelected = orders.length > 0 && orders.every((o) => selected.has(o.id));
+  const toggleSelectAll = () =>
+    setSelected(allSelected ? new Set() : new Set(orders.map((o) => o.id)));
+
+  // Масова дія: послідовно (щоб не перевантажити сервер) з прогресом, потім перезавантаження.
+  const runBulk = async (ids, label, fn) => {
+    setBulk({ done: 0, total: ids.length, label });
+    let failed = 0;
+    for (let i = 0; i < ids.length; i++) {
+      try { await fn(ids[i]); } catch (e) { failed++; console.warn("bulk", label, ids[i], e?.message); }
+      setBulk({ done: i + 1, total: ids.length, label });
+    }
+    setBulk(null);
+    setSelected(new Set());
+    loadOrders();
+    if (failed) alert(`${label}: ${failed} з ${ids.length} не вдалося.`);
+  };
+
+  const bulkComplete = () =>
+    runBulk([...selected], "Позначаю виконаними", (id) => api.updateOrderStatus(id, "completed"));
+  const bulkDelete = () => {
+    if (!confirm(`Видалити ${selected.size} замовлень? Це незворотньо. Листи клієнтам НЕ надсилаються.`)) return;
+    runBulk([...selected], "Видаляю", (id) => api.deleteOrder(id));
+  };
+  // Скасування (масове чи одиничне) завжди через модалку причини.
+  const askCancel = (ids) => { setReasonText(""); setReasonModal({ ids }); };
+  const confirmCancel = async () => {
+    const ids = reasonModal.ids;
+    const reason = reasonText.trim();
+    setReasonModal(null);
+    await runBulk(ids, "Скасовую", (id) => api.updateOrderStatus(id, "cancelled", reason));
+  };
 
   const toggleExpand = async (order) => {
     if (expanded === order.id) {
@@ -147,6 +192,8 @@ export default function AdminOrdersPage() {
   };
 
   const changeStatus = async (orderId, status) => {
+    // Скасування — через модалку причини (вона піде клієнту в листі).
+    if (status === "cancelled") { askCancel([orderId]); return; }
     setUpdating(orderId);
     try {
       const updated = await api.updateOrderStatus(orderId, status);
@@ -178,6 +225,42 @@ export default function AdminOrdersPage() {
         </select>
       </div>
 
+      {/* Панель масових дій — зʼявляється коли щось вибрано */}
+      {!loading && orders.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+            {selected.size > 0 ? `Вибрано: ${selected.size}` : "Вибрати всі"}
+          </label>
+          {selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 sm:ml-2">
+              <button onClick={bulkComplete} disabled={!!bulk}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+                <CheckCircle2 className="h-4 w-4" /> Виконано
+              </button>
+              <button onClick={() => askCancel([...selected])} disabled={!!bulk}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50">
+                <Ban className="h-4 w-4" /> Скасувати
+              </button>
+              {isSuperadmin && (
+                <button onClick={bulkDelete} disabled={!!bulk}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">
+                  <Trash2 className="h-4 w-4" /> Видалити
+                </button>
+              )}
+              <button onClick={() => setSelected(new Set())} disabled={!!bulk}
+                className="text-xs text-slate-400 hover:text-slate-600">Зняти вибір</button>
+            </div>
+          )}
+          {bulk && (
+            <span className="ml-auto flex items-center gap-2 text-xs font-medium text-violet-700">
+              <Loader2 className="h-4 w-4 animate-spin" /> {bulk.label} {bulk.done}/{bulk.total}…
+            </span>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20 text-slate-400">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -193,9 +276,17 @@ export default function AdminOrdersPage() {
             const meta = statusMeta(order.status);
             const full = detail[order.id];
             const isOpen = expanded === order.id;
+            const isSel = selected.has(order.id);
             return (
-              <div key={order.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <div className="flex items-center gap-4 p-4">
+              <div key={order.id} className={`rounded-xl border bg-white overflow-hidden ${isSel ? "border-violet-300 ring-1 ring-violet-200" : "border-slate-200"}`}>
+                <div className="flex items-center gap-3 p-4">
+                  <input
+                    type="checkbox"
+                    checked={isSel}
+                    onChange={() => toggleSelect(order.id)}
+                    className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 shrink-0"
+                    title="Вибрати для масової дії"
+                  />
                   <button
                     onClick={() => toggleExpand(order)}
                     className="text-slate-400 hover:text-violet-600"
@@ -426,6 +517,9 @@ export default function AdminOrdersPage() {
                             {full.notes && (
                               <div><dt className="inline text-slate-400">Коментар: </dt>{full.notes}</div>
                             )}
+                            {full.cancel_reason && (
+                              <div className="text-red-600"><dt className="inline text-red-400">Причина скасування: </dt>{full.cancel_reason}</div>
+                            )}
                           </dl>
                         </div>
                       </div>
@@ -436,6 +530,43 @@ export default function AdminOrdersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Модалка причини скасування (одиничне і масове). Причина йде клієнту в листі. */}
+      {reasonModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setReasonModal(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-slate-900">
+                Скасувати {reasonModal.ids.length > 1 ? `${reasonModal.ids.length} замовлень` : "замовлення"}
+              </h3>
+              <button onClick={() => setReasonModal(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-2">
+              Вкажіть причину — вона піде клієнту в листі (необовʼязково).
+            </p>
+            <textarea
+              value={reasonText}
+              onChange={(e) => setReasonText(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="Напр.: немає товару в наявності, клієнт скасував…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setReasonModal(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                Назад
+              </button>
+              <button onClick={confirmCancel}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+                <Ban className="h-4 w-4" /> Скасувати замовлення
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

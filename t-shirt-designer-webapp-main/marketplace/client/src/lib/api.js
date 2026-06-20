@@ -148,8 +148,8 @@ export const api = {
 
   getOrder: (id) => request(`/orders/${id}`),
 
-  updateOrderStatus: (id, status) =>
-    request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  updateOrderStatus: (id, status, reason) =>
+    request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason }) }),
   deleteOrder: (id) => request(`/orders/${id}`, { method: "DELETE" }),
   downloadBookArchive: async (id) => {
     const res = await fetch(`/api/orders/${id}/book-archive`, {
