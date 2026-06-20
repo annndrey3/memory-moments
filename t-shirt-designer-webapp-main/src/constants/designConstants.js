@@ -398,7 +398,7 @@ export function buildSlimBookView(format) {
     // даємо менший бюджет висоти, щоб усе вмістилось без вертикального скролу
     // навіть на малих екранах (360×800). На десктопі (vhBudgetWide) — більше.
     vhBudget: 28,
-    vhBudgetWide: 54,
+    chromeWide: 360, // десктоп: книга має ще карусель розворотів + вищий ордербар
   };
 }
 
@@ -427,9 +427,9 @@ export function buildSpreadView(format) {
     spread: true,
     safe: { edgeX: Math.round(0.5 * upcX), edgeY: Math.round(0.5 * upcY), seam: Math.round(1 * upcX) },
     sizeLabel: `${w}×${h} см · 300 dpi`,
-    // Десктоп: розвороту (ландшафт) даємо більший бюджет — широкий екран дозволяє.
+    // Десктоп: полотно заповнює висоту; chrome більший — є карусель розворотів.
     vhBudget: 34,
-    vhBudgetWide: 60,
+    chromeWide: 360,
   };
 }
 

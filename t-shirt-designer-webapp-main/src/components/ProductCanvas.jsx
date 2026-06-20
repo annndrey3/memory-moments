@@ -26,7 +26,9 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
   const [isWide, setIsWide] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(min-width: 1280px) and (min-height: 800px)");
+    // Десктоп = широкий екран. Висоту НЕ гейтимо: розмір рахуємо від доступної
+    // висоти (calc нижче), тож скролу не буде навіть на низькому вікні.
+    const mq = window.matchMedia("(min-width: 1280px)");
     const apply = () => setIsWide(mq.matches);
     apply();
     mq.addEventListener?.("change", apply);
@@ -43,12 +45,15 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
     return () => ro.disconnect();
   }, [canvasW]);
 
-  // Висотний бюджет: на десктопі полотно більше для ВСІХ товарів. Вид може задати
-  // власний vhBudgetWide (книги), інакше беремо базовий × 1.6. px-стелю теж піднімаємо.
-  const baseBudget = viewConfig.vhBudget ?? 34;
-  const wideBudget = isWide ? (viewConfig.vhBudgetWide ?? Math.round(baseBudget * 1.6)) : 0;
-  const vhBudget = wideBudget || baseBudget;
-  const pxCap = wideBudget ? 620 : 450;
+  // Розмір полотна. Десктоп (isWide): полотно ЗАПОВНЮЄ доступну висоту дисплея —
+  // екран мінус шапка/панель опцій/нижній ордербар (≈ chrome). Так макет великий і
+  // чіткий на весь екран, без вертикального скролу. Мобільний — попередня формула
+  // з vh-бюджетом (налаштована, щоб усе вміщалось на малих екранах).
+  const ratio = canvasW / canvasH;
+  const chrome = viewConfig.chromeWide ?? 280; // книги задають більший (є карусель розворотів)
+  const widthCss = isWide
+    ? `min(820px, 88vw, calc((100vh - ${chrome}px) * ${ratio.toFixed(3)}))`
+    : `min(450px, 84vw, ${((viewConfig.vhBudget ?? 34) * ratio).toFixed(1)}vh)`;
 
   const pz = viewConfig.printZone;
 
@@ -66,7 +71,7 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
       className="relative mx-auto overflow-hidden"
       // Розмір залежить і від ширини, і від ВИСОТИ екрана (vh) — щоб редактор
       // вміщався без прокрутки. Width = min(макс, 84vw, висотний бюджет × пропорція).
-      style={{ width: `min(${pxCap}px, 84vw, ${(vhBudget * (canvasW / canvasH)).toFixed(1)}vh)`, aspectRatio: `${canvasW} / ${canvasH}` }}
+      style={{ width: widthCss, aspectRatio: `${canvasW} / ${canvasH}` }}
     >
       {/* ── Non-template formats: SVG shape outline below canvas ── */}
       {!isTemplate && (
