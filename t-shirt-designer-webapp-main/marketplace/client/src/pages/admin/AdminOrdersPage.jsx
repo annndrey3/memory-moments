@@ -343,6 +343,9 @@ export default function AdminOrdersPage() {
                       </div>
                     ) : (
                       <>
+                        {full.photo_delivery_status && (
+                          <div className="mb-2"><DeliveryBadge status={full.photo_delivery_status} /></div>
+                        )}
                         <div className="mb-3 flex flex-wrap items-center gap-2">
                           <button
                             onClick={() => printOrder(full)}
@@ -571,4 +574,15 @@ export default function AdminOrdersPage() {
       )}
     </div>
   );
+}
+
+// Статус доставки фото на ПК (SFTP). 'fallback' = ПК офлайн, лінк надіслано в Telegram.
+function DeliveryBadge({ status }) {
+  const map = {
+    sent: ["bg-emerald-50 text-emerald-700", "✅ Фото доставлено на ПК"],
+    pending: ["bg-amber-50 text-amber-700", "⏳ Фото в черзі на доставку на ПК"],
+    fallback: ["bg-sky-50 text-sky-700", "📤 ПК офлайн — посилання надіслано в Telegram"],
+  };
+  const [cls, label] = map[status] || ["bg-slate-100 text-slate-500", status];
+  return <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>{label}</span>;
 }

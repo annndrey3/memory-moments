@@ -3,6 +3,8 @@ import path from "path";
 import { createRequire } from "module";
 import { query } from "../config/db.js";
 import { getStorageConfig } from "./siteConfig.js";
+import { sendFallbackPhotoLink } from "./telegram.js";
+import { photoToken } from "./downloadToken.js";
 
 // Доставка фото/макетів замовлення у сховище дизайнера через SFTP. VPS лишається
 // джерелом істини (файли вже на сервері); сюди ми їх ЛИШЕ копіюємо. Якщо ПК
@@ -72,6 +74,31 @@ export async function deliverOrderFiles(order) {
   }
 }
 
+// ПК офлайн: один раз шлемо власнику захищене посилання на ZIP з нашого сервера.
+// Повертає true, якщо лінк надіслано (щоб не дублювати на кожному повторі).
+async function sendOfflineFallback(orderId) {
+  try {
+    const files = await collectOrderFiles(orderId);
+    if (!files.length) return false; // нема файлів — нема чого слати
+    const base = (process.env.PUBLIC_URL || "").replace(/\/+$/, "");
+    if (!base) { console.warn("fallback link skipped: PUBLIC_URL not set"); return false; }
+    const [order] = await query(
+      "SELECT order_number, customer_name FROM orders WHERE id = :id",
+      { id: orderId }
+    );
+    const link = `${base}/api/orders/${orderId}/photos-download?token=${photoToken(orderId)}`;
+    return await sendFallbackPhotoLink({
+      orderNumber: order?.order_number,
+      customerName: order?.customer_name,
+      count: files.length,
+      link,
+    });
+  } catch (e) {
+    console.warn("fallback link failed:", e.message);
+    return false;
+  }
+}
+
 // Спроба доставки з оновленням статусу замовлення.
 export async function tryDeliverOrder(orderId) {
   try {
@@ -88,10 +115,21 @@ export async function tryDeliverOrder(orderId) {
     // not-configured → лишаємо 'pending', доставимо коли налаштують сховище.
     return false;
   } catch (e) {
-    await query(
-      "UPDATE orders SET photo_delivery_status = 'pending', photo_delivery_attempts = COALESCE(photo_delivery_attempts,0) + 1 WHERE id = :id",
-      { id: orderId }
-    ).catch(() => {});
+    // SFTP недоступний (ПК офлайн). Якщо лінк ще не слали (статус не 'fallback') —
+    // шлемо власнику захищене посилання раз, далі мовчки повторюємо SFTP.
+    const [cur] = await query("SELECT photo_delivery_status FROM orders WHERE id = :id", { id: orderId }).catch(() => [{}]);
+    if (cur?.photo_delivery_status !== "fallback") {
+      const sent = await sendOfflineFallback(orderId);
+      await query(
+        "UPDATE orders SET photo_delivery_status = :st, photo_delivery_attempts = COALESCE(photo_delivery_attempts,0) + 1 WHERE id = :id",
+        { st: sent ? "fallback" : "pending", id: orderId }
+      ).catch(() => {});
+    } else {
+      await query(
+        "UPDATE orders SET photo_delivery_attempts = COALESCE(photo_delivery_attempts,0) + 1 WHERE id = :id",
+        { id: orderId }
+      ).catch(() => {});
+    }
     console.warn(`photo delivery: order ${orderId} failed:`, e.message);
     return false;
   }
@@ -100,7 +138,7 @@ export async function tryDeliverOrder(orderId) {
 // Позначити замовлення на доставку (викликається при створенні, якщо є файли).
 export async function markOrderForDelivery(orderId) {
   await query(
-    "UPDATE orders SET photo_delivery_status = 'pending' WHERE id = :id AND (photo_delivery_status IS NULL OR photo_delivery_status <> 'sent')",
+    "UPDATE orders SET photo_delivery_status = 'pending' WHERE id = :id AND (photo_delivery_status IS NULL OR photo_delivery_status NOT IN ('sent','fallback'))",
     { id: orderId }
   ).catch(() => {});
 }
@@ -115,8 +153,9 @@ export function startPhotoDeliveryWorker() {
     try {
       const cfg = await getStorageConfig();
       if (!cfg.enabled) return;
+      // 'fallback' теж добираємо — лінк уже надіслано, але фото мають лягти й на ПК.
       const pending = await query(
-        "SELECT id FROM orders WHERE photo_delivery_status = 'pending' ORDER BY id ASC LIMIT 20"
+        "SELECT id FROM orders WHERE photo_delivery_status IN ('pending','fallback') ORDER BY id ASC LIMIT 20"
       );
       for (const o of pending) {
         await tryDeliverOrder(o.id); // послідовно — не навантажуємо канал

@@ -130,6 +130,20 @@ export async function sendOrderNotification(order, images = [], documents = [], 
   return true;
 }
 
+// Фолбек, коли ПК (SFTP) офлайн: надсилаємо власнику ЗАХИЩЕНЕ посилання на ZIP
+// фото з НАШОГО сервера, щоб не чекати на компʼютер і не вантажити адмінку.
+export async function sendFallbackPhotoLink({ orderNumber, customerName, count, link }) {
+  const { token, chatId } = await getTelegramConfig();
+  if (!token || !chatId) return false;
+  let t = "⚠️ <b>ПК офлайн — фото ще не доставлено на компʼютер</b>\n\n";
+  t += `Замовлення <code>${esc(orderNumber)}</code>`;
+  if (customerName) t += ` · ${esc(customerName)}`;
+  t += `\n\n📥 <b>Завантажити фото${count ? ` (${count} файлів)` : ""}:</b>\n${esc(link)}\n\n`;
+  t += "Коли ПК увімкнеться — фото доставляться на нього автоматично.";
+  await tgCall("sendMessage", { chat_id: chatId, text: t, parse_mode: "HTML", disable_web_page_preview: true }, false, token);
+  return true;
+}
+
 // Тестове повідомлення — для кнопки перевірки налаштувань в адмінці.
 export async function sendTelegramTest() {
   const { token, chatId } = await getTelegramConfig();
