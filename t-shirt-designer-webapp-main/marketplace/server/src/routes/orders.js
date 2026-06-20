@@ -6,7 +6,7 @@ import { query, transaction } from "../config/db.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission, requireSuperadmin } from "../middleware/requirePermission.js";
 import { sendOrderNotification } from "../utils/telegram.js";
-import { sendOrderConfirmation } from "../utils/email.js";
+import { sendOrderConfirmation, sendOrderStatusEmail } from "../utils/email.js";
 import { upsertCustomerFromContact } from "../utils/customers.js";
 import { tshirtPriceFromServices, canvasPriceFromServices, servicePriceFor, bookPriceFromServices, photoDiscountPct } from "../utils/designerPricing.js";
 import { streamBookArchive, buildBookArchiveToDisk, streamOrderPhotos } from "../utils/bookArchive.js";
@@ -415,9 +415,14 @@ router.post("/", createOrderLimiter, async (req, res) => {
 
     const order = await getOrderWithItems(orderId);
 
-    // Друкарські файли пишемо ПІСЛЯ коміту (async, без блокування event-loop
-    // синхронним writeFileSync). Помилка запису не валить уже збережене
-    // замовлення — лише логується (файл відновлюваний/некритичний для прев'ю).
+    // Відповідаємо клієнту ОДРАЗУ після збереження в БД. Запис файлів на диск,
+    // Telegram/email та SFTP винесені ЗА відповідь — інакше замовлення з багатьма
+    // фото (200 шт ≈ десятки МБ) тримало б HTTP-зʼєднання на час запису всіх
+    // файлів (клієнт «висить» на 100%, а сервер зайнятий і гальмує адмінку).
+    res.status(201).json(order);
+
+    // Друкарські файли пишемо ПІСЛЯ відповіді (best-effort). Робимо це ПЕРШИМ
+    // побічним ефектом, бо SFTP-доставка та ZIP-архів читають їх з диска.
     for (const job of fileJobs) {
       try {
         const base64 = job.dataUrl.replace(/^data:image\/\w+;base64,/, "");
@@ -426,11 +431,6 @@ router.post("/", createOrderLimiter, async (req, res) => {
         console.error(`order ${order.order_number}: write ${job.filename} failed:`, e.message);
       }
     }
-
-    // Відповідаємо клієнту ОДРАЗУ після збереження. Зовнішні сповіщення
-    // (Telegram/email) винесені за критичний шлях: повільний/недоступний TG не
-    // тримає чекаут і не провокує дублі через таймаут проксі.
-    res.status(201).json(order);
 
     // Best-effort побічні ефекти — поза відповіддю клієнту (помилки лише логуємо).
     try {
@@ -495,6 +495,12 @@ router.post("/", createOrderLimiter, async (req, res) => {
         });
     }
   } catch (err) {
+    // Відповідь могла вже піти (помилка у побічному ефекті після res.json) —
+    // тоді просто логуємо, без повторної відправки заголовків.
+    if (res.headersSent) {
+      console.error("Order post-response error:", err?.message);
+      return;
+    }
     // Гонка ідемпотентності: паралельний запит із тим самим ключем уже створив
     // замовлення (unique-індекс відхилив наш INSERT) — повертаємо існуюче.
     if (idempotencyKey && (err.code === "ER_DUP_ENTRY" || err.code === "23505")) {
@@ -635,18 +641,23 @@ router.get("/:id/photos-archive", authMiddleware, requirePermission("orders.view
 router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), async (req, res) => {
   try {
     const { status } = req.body;
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
     if (!ORDER_STATUSES.includes(status)) {
       return res.status(400).json({ error: `Недопустимий статус. Дозволені: ${ORDER_STATUSES.join(", ")}` });
     }
     const existing = await query("SELECT id, status FROM orders WHERE id = :id", { id: req.params.id });
     if (!existing.length) return res.status(404).json({ error: "Order not found" });
 
-    const wasCancelled = existing[0].status === "cancelled";
+    const prevStatus = existing[0].status;
+    const wasCancelled = prevStatus === "cancelled";
     const willCancel = status === "cancelled";
     const items = await query(
       "SELECT product_id, variant_id, quantity, product_name, variant_label FROM order_items WHERE order_id = :id",
       { id: req.params.id }
     );
+
+    // Причину пишемо лише при скасуванні; при іншому статусі — очищаємо.
+    const cancelReason = willCancel ? (reason || null) : null;
 
     // Корекція складу + зміна статусу — атомарно в одній транзакції.
     await transaction(async (tx) => {
@@ -658,12 +669,20 @@ router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), 
         for (const it of items) await holdStock(tx, it);
       }
       await tx.run(
-        "UPDATE orders SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
-        { status, id: req.params.id }
+        "UPDATE orders SET status = :status, cancel_reason = :reason, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
+        { status, reason: cancelReason, id: req.params.id }
       );
     });
 
     const order = await getOrderWithItems(req.params.id);
+
+    // Лист клієнту про зміну статусу (fire-and-forget; видалення листів не шле).
+    // Шлемо лише коли статус справді змінився, щоб не дублювати при повторному виборі.
+    if (status !== prevStatus) {
+      sendOrderStatusEmail(order, status, cancelReason).catch((e) =>
+        console.warn(`Status email (${status}) failed for ${order.order_number}:`, e.message)
+      );
+    }
     res.json(order);
   } catch (err) {
     if (err.status === 409) {
