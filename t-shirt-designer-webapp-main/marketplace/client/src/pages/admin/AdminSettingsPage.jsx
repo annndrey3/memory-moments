@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Loader2, Save, Lock, CheckCircle, AlertCircle,
   Eye, EyeOff, Trash2, UserPlus, Users, Mail, ShieldCheck, ChevronDown, ChevronUp,
-  HardDrive, Database, Download, Upload, Send,
+  HardDrive, Database, Download, Upload, Send, Plug, MessageCircle,
 } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -773,6 +773,164 @@ function CleanupSection() {
   );
 }
 
+// ─── Telegram section ─────────────────────────────────────────────────────────
+function TelegramSection() {
+  const [tg, setTg] = useState(null);
+  const [token, setToken] = useState(""); // новий токен (порожнє = не міняти)
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    api.getSiteConfigAdmin()
+      .then((c) => setTg(c.telegram))
+      .catch((e) => setStatus({ type: "error", msg: e.message }))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const save = async () => {
+    setSaving(true); setStatus(null);
+    try {
+      await api.saveSiteConfigSection("telegram", { chatId: tg.chatId, botToken: token });
+      setToken("");
+      const c = await api.getSiteConfigAdmin();
+      setTg(c.telegram);
+      setStatus({ type: "success", msg: "Збережено" });
+    } catch (e) { setStatus({ type: "error", msg: e.message }); }
+    finally { setSaving(false); }
+  };
+
+  const test = async () => {
+    setTesting(true); setStatus(null);
+    try { await api.testTelegram(); setStatus({ type: "success", msg: "Тест надіслано в чат" }); }
+    catch (e) { setStatus({ type: "error", msg: e.message }); }
+    finally { setTesting(false); }
+  };
+
+  if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>;
+  if (!tg) return null;
+
+  return (
+    <div className="space-y-3 max-w-sm">
+      <p className="text-xs text-slate-500">
+        Сповіщення про нові замовлення вам у Telegram. Джерело зараз:{" "}
+        <b>{tg.source === "db" ? "налаштування" : tg.source === "env" ? ".env сервера" : "не налаштовано"}</b>.
+        {tg.hasToken && <> Токен: <code>{tg.tokenMasked}</code></>}
+      </p>
+      <div className="space-y-1.5">
+        <Label>Chat ID</Label>
+        <Input value={tg.chatId ?? ""} onChange={(e) => setTg((s) => ({ ...s, chatId: e.target.value }))} placeholder="напр. 123456789" />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Bot Token (порожнім — не міняти)</Label>
+        <Input value={token} onChange={(e) => setToken(e.target.value)} placeholder={tg.hasToken ? "•••••• (збережено)" : "123456:ABC…"} />
+      </div>
+      <StatusMsg {...(status || {})} />
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={save} disabled={saving} className="rounded-lg">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Зберегти
+        </Button>
+        <Button variant="outline" onClick={test} disabled={testing} className="rounded-lg">
+          {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Надіслати тест
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Сховище фото (SFTP) section ───────────────────────────────────────────────
+function StorageSection() {
+  const [st, setSt] = useState(null);
+  const [pass, setPass] = useState(""); // новий пароль (порожнє = не міняти)
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    api.getStorageConfig()
+      .then(setSt)
+      .catch((e) => setStatus({ type: "error", msg: e.message }))
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, []);
+
+  const setF = (k, v) => setSt((s) => ({ ...s, [k]: v }));
+
+  const save = async () => {
+    setSaving(true); setStatus(null);
+    try {
+      await api.saveStorageConfig({ ...st, password: pass });
+      setPass("");
+      setSt(await api.getStorageConfig());
+      setStatus({ type: "success", msg: "Збережено" });
+    } catch (e) { setStatus({ type: "error", msg: e.message }); }
+    finally { setSaving(false); }
+  };
+
+  const test = async () => {
+    setTesting(true); setStatus(null);
+    try { await api.testStorage(); setStatus({ type: "success", msg: "З'єднання успішне" }); }
+    catch (e) { setStatus({ type: "error", msg: e.message }); }
+    finally { setTesting(false); }
+  };
+
+  if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>;
+  if (!st) return null;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        Фото й макети замовлень автоматично доставляються на ваш ПК/сервер по SFTP. На VPS лишається копія;
+        якщо ПК офлайн — система повторює спроби, доки він не з'явиться, і шле вам посилання в Telegram.
+      </p>
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input type="checkbox" checked={!!st.enabled} onChange={(e) => setF("enabled", e.target.checked)}
+          className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+        Увімкнути доставку у сховище
+      </label>
+      <div className="grid sm:grid-cols-2 gap-3 max-w-lg">
+        <div className="space-y-1.5">
+          <Label>Адреса (host / IP)</Label>
+          <Input value={st.host ?? ""} onChange={(e) => setF("host", e.target.value)} placeholder="напр. 31.42.0.1 або home.ddns.net" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Порт</Label>
+          <Input type="number" value={st.port ?? ""} onChange={(e) => setF("port", e.target.value)} placeholder="22" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Користувач</Label>
+          <Input value={st.username ?? ""} onChange={(e) => setF("username", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Пароль (порожнім — не міняти)</Label>
+          <Input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder={st.hasPassword ? "•••••••• (збережено)" : ""} />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Папка призначення на ПК</Label>
+          <Input value={st.remotePath ?? ""} onChange={(e) => setF("remotePath", e.target.value)} placeholder="/Orders" />
+        </div>
+      </div>
+      <StatusMsg {...(status || {})} />
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={save} disabled={saving} className="rounded-lg">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Зберегти
+        </Button>
+        <Button variant="outline" onClick={test} disabled={testing} className="rounded-lg">
+          {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />} Перевірити з'єднання
+        </Button>
+      </div>
+      <p className="text-[11px] text-slate-400">
+        На ПК має працювати SFTP-сервер, а на роутері — проброс порту (або DDNS), щоб VPS міг достукатись.
+      </p>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminSettingsPage() {
   const { role } = usePermissions();
@@ -802,6 +960,18 @@ export default function AdminSettingsPage() {
       {isSuperadmin && (
         <SectionCard icon={Send} title="Email / SMTP">
           <SmtpSection />
+        </SectionCard>
+      )}
+
+      {isSuperadmin && (
+        <SectionCard icon={MessageCircle} title="Telegram-сповіщення">
+          <TelegramSection />
+        </SectionCard>
+      )}
+
+      {isSuperadmin && (
+        <SectionCard icon={HardDrive} title="Сховище фото клієнтів (SFTP)">
+          <StorageSection />
         </SectionCard>
       )}
 
