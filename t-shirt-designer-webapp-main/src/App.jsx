@@ -58,7 +58,7 @@ function App() {
             <Header />
           </header>
 
-          <main className="flex-1 px-4 py-3 pb-24 md:px-8 md:py-4">
+          <main className="flex-1 px-3 py-2 md:px-8 md:py-3">
             <div className="mx-auto max-w-none">
               <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${showPreview ? "xl:grid-cols-2" : ""}`}>
                 {/* Preview panel — приховано для футболки (видно в редакторі) */}

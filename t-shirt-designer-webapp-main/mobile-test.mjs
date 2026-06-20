@@ -94,6 +94,9 @@ try {
   check(hasOrderBtn, "OrderBar «Замовити!» видно на екрані");
   const overflowX = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check(overflowX <= 2, `немає горизонтального переповнення (overflowX=${overflowX}px)`);
+  // Редактор футболки має вміщатись у мобільний екран БЕЗ вертикального скролу.
+  const overflowY = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+  check(overflowY <= 4, `немає вертикального скролу на мобільному (overflowY=${overflowY}px)`);
 
   // 1.5) Інструменти видно одразу (без гамбургера): Фото / Текст / Лінія.
   const txt0 = await page.evaluate(() => document.body.innerText);
@@ -179,12 +182,13 @@ try {
 
   // 9) Управління шарами — ізольовано, на свіжій навігації (чистий стан Radix),
   //    щоб попап гарантовано відкрився; цей блок останній і нічого далі не ламає.
-  //    Додаємо текст → вибраний об'єкт → «Шари» активна → попап з 4 діями z-порядку
-  //    → reorder «На задній план» не падає (метод fabric v6 існує).
+  //    Додаємо ЛІНІЮ (одразу вибрана, БЕЗ режиму редагування — на відміну від тексту,
+  //    який входить у редагування й клік по «Шари» зняв би виділення) → «Шари»
+  //    активна → попап з 4 діями z-порядку → reorder «На задній план» не падає.
   await page.goto(URL, { waitUntil: "networkidle2", timeout: 30000 });
   await page.evaluate(() => { try { localStorage.setItem("mm_designer_tour_v1", "1"); } catch {} });
   await sleep(1000);
-  try { await clickByText(page, "Текст"); await sleep(800); } catch (e) { issues.push("layers text: " + e.message); }
+  try { await clickByText(page, "Лінія"); await sleep(800); } catch (e) { issues.push("layers line: " + e.message); }
   const layersHandle = await page.evaluateHandle(() =>
     [...document.querySelectorAll("button")].find((b) => b.title === "Шари (порядок)") || null);
   const layersBtn = layersHandle.asElement();

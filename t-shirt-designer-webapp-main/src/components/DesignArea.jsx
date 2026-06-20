@@ -227,7 +227,7 @@ const DesignArea = ({ manualSync }) => {
     <div className="flex flex-col items-center w-full">
       <Card className="w-full border-border/60 shadow-soft rounded-2xl overflow-hidden">
         {/* ── Верх: товар + опції + сторони ── */}
-        <div className="px-3 py-3 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center justify-between gap-3">
+        <div className="px-3 py-2 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center justify-between gap-2">
           <ProductControls />
           {/* Книга має навігацію мініатюрами-каруселлю ПІД холстом — тут текстові
               вкладки не показуємо (для решти товарів лишаються тут зверху). */}
@@ -251,9 +251,9 @@ const DesignArea = ({ manualSync }) => {
           )}
         </div>
 
-        <CardContent className="p-3 md:p-5 bg-gradient-to-b from-card to-muted/20">
+        <CardContent className="p-2 md:p-5 bg-gradient-to-b from-card to-muted/20">
           {/* ── Периметр: зліва — додати, в центрі — холст, справа — дії ── */}
-          <div className="flex flex-col lg:flex-row lg:items-start gap-3">
+          <div className="flex flex-col lg:flex-row lg:items-start gap-2 lg:gap-3">
             {/* ADD (ряд на мобільному / стовпчик зліва на ПК). На мобільному —
                 горизонтальна тач-прокрутка, щоб усі інструменти були доступні. */}
             <div className="flex flex-row lg:flex-col flex-nowrap gap-1.5 justify-start overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 [-webkit-overflow-scrolling:touch]" data-tour="add">
@@ -268,7 +268,7 @@ const DesignArea = ({ manualSync }) => {
             </div>
 
             {/* CANVAS + контекстне редагування */}
-            <div className="flex-1 min-w-0 flex flex-col items-center gap-3">
+            <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
               {/* Панель тексту — під головними інструментами, над холстом */}
               <TextEditPanel manualSync={manualSync} />
               <div
@@ -313,7 +313,7 @@ const DesignArea = ({ manualSync }) => {
               {/* Книга: карусель мініатюр обкладинок/розворотів — навігація ПІД холстом
                   (видно ескіз кожного розвороту; клік перемикає редагування). */}
               {isBookType(selectedType) && views.length > 1 && (
-                <div className="w-full flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                <div className="w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
                   {views.map(([view, viewConfig]) => {
                     const spreadIdx = view.startsWith("spread-") ? Number(view.slice(7)) : -1;
                     const thumb = spreadIdx >= 0 ? slimBookPhotos[spreadIdx] : null;
@@ -325,20 +325,20 @@ const DesignArea = ({ manualSync }) => {
                         onClick={() => handleViewChange(view)}
                         title={viewConfig.label}
                         className={cn(
-                          "shrink-0 w-[68px] rounded-lg border-2 overflow-hidden bg-card transition-all",
+                          "shrink-0 w-12 rounded-md border-2 overflow-hidden bg-card transition-all",
                           active
                             ? "border-primary ring-2 ring-primary/30 shadow-glow"
                             : "border-border/60 hover:border-primary/40"
                         )}
                       >
-                        <div className="h-[52px] w-full bg-muted flex items-center justify-center overflow-hidden">
+                        <div className="h-9 w-full bg-muted flex items-center justify-center overflow-hidden">
                           {thumb ? (
                             <img src={thumb} alt={viewConfig.label} className="h-full w-full object-cover" />
                           ) : (
-                            <ImagePlus className="h-5 w-5 text-muted-foreground/50" />
+                            <ImagePlus className="h-4 w-4 text-muted-foreground/50" />
                           )}
                         </div>
-                        <div className="text-[9px] font-medium leading-tight py-0.5 px-0.5 truncate text-center">
+                        <div className="text-[8px] font-medium leading-none py-0.5 px-0.5 truncate text-center">
                           {viewConfig.label}
                         </div>
                       </button>
