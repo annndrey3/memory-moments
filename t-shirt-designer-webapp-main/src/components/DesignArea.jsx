@@ -331,7 +331,7 @@ const DesignArea = ({ manualSync }) => {
                             : "border-border/60 hover:border-primary/40"
                         )}
                       >
-                        <div className="h-9 w-full bg-muted flex items-center justify-center overflow-hidden">
+                        <div className="h-8 w-full bg-muted flex items-center justify-center overflow-hidden">
                           {thumb ? (
                             <img src={thumb} alt={viewConfig.label} className="h-full w-full object-cover" />
                           ) : (
