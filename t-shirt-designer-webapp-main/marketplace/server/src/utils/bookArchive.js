@@ -54,7 +54,8 @@ export async function buildBookZip(order) {
       try { d = JSON.parse(it.design_data || "{}"); } catch { /* */ }
       return { it, d };
     })
-    .filter(({ d }) => Array.isArray(d.innerPhotos) && d.innerPhotos.length);
+    // d.book є ЛИШЕ у справжніх фотокниг; пачка фото теж має innerPhotos, але без book.
+    .filter(({ d }) => Array.isArray(d.innerPhotos) && d.innerPhotos.length && d.book);
 
   if (!books.length) return { buffer: null, hasBook: false };
 

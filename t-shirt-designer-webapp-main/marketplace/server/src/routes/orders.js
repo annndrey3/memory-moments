@@ -321,7 +321,10 @@ router.post("/", createOrderLimiter, async (req, res) => {
             if (u) innerPhotoUrls.push(u);
           });
         }
-        if (innerPhotoUrls.length) hasBookItem = true;
+        // inner_photos несуть і книги (розвороти), і пачка фото (multi-photo). ZIP-архів
+        // книги збираємо ЛИШЕ для справжніх книг (інакше пачку фото оброблятимемо як книгу).
+        const isBookPhotos = item.product_type === "slim-book" || item.product_type === "print-book";
+        if (innerPhotoUrls.length && isBookPhotos) hasBookItem = true;
 
         // Вкладення для Telegram — з тих самих base64, що прийшли в items[]
         // (без дубля в тілі запиту). Прев'ю → images; друк + розвороти → documents.
@@ -331,7 +334,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
         if (isData(item.print_front)) tgDocuments.push({ data: item.print_front, caption: `🖨 ${productName} — Спереду (друк)` });
         if (isData(item.print_back)) tgDocuments.push({ data: item.print_back, caption: `🖨 ${productName} — Ззаду (друк)` });
         if (Array.isArray(item.inner_photos)) {
-          item.inner_photos.forEach((d, i) => { if (isData(d)) tgDocuments.push({ data: d, caption: `📖 ${productName} — розворот ${i + 1}` }); });
+          const unitWord = isBookPhotos ? "розворот" : "фото";
+          item.inner_photos.forEach((d, i) => { if (isData(d)) tgDocuments.push({ data: d, caption: `📖 ${productName} — ${unitWord} ${i + 1}` }); });
         }
         innerPhotoCount += innerPhotoUrls.length;
 

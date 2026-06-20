@@ -4,7 +4,7 @@ import { useCanvas } from "@/hooks/useCanvas";
 import { useToast } from "@/hooks/use-toast";
 import { addToCart } from "@/features/tshirtSlice";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
-import { PRODUCT_TYPES, buildOptionsLabel, isBookType } from "@/constants/designConstants";
+import { PRODUCT_TYPES, buildOptionsLabel, isBookType, isMultiPhoto } from "@/constants/designConstants";
 
 // Перекодування друкарської текстури розвороту в JPEG (менший payload; розвороти
 // — це фото). Прозорі ділянки колажу заливаються білим (це сторінка книги).
@@ -50,14 +50,45 @@ export function useAddToCart() {
   const designDirty = useSelector((state) => state.tshirt.designDirty);
   const cartItems = useSelector((state) => state.tshirt.cartItems);
 
-  // Чи є взагалі що замовляти (хоч один об'єкт на полотні front/back).
+  // Чи є взагалі що замовляти. Пачка фото — є завантажені фото; решта — об'єкти front/back.
   const hasDesign = useCallback(() => {
+    if (isMultiPhoto(selectedType)) return (slimBookPhotos?.length || 0) > 0;
     const f = frontCanvas?.getObjects?.().length || 0;
     const b = backCanvas?.getObjects?.().length || 0;
     return f + b > 0;
-  }, [frontCanvas, backCanvas]);
+  }, [frontCanvas, backCanvas, selectedType, slimBookPhotos]);
 
   const addCurrentDesignToCart = useCallback(async () => {
+    // Пачка фото: 1 позиція кошика = N фото (кожне — окрема відрендерена сторінка).
+    // quantity=N → ціна (cartItemPrice × quantity) і сервер рахуються без окремих гілок.
+    if (isMultiPhoto(selectedType)) {
+      if (!slimBookPhotos.length) {
+        toast({ variant: "destructive", title: "Немає фото", description: "Завантажте фото для друку.", duration: 3000 });
+        return false;
+      }
+      if (!designDirty && cartItems.length > 0) return "exists";
+      const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
+      const photos = [];
+      for (let i = 0; i < slimBookPhotos.length; i++) {
+        const c = getCanvas(selectedType, `spread-${i}`);
+        const png = c ? canvasSyncManager.getPrintTexture(c) : null;
+        const jpg = png ? await pngToJpeg(png) : null;
+        photos.push(jpg || slimBookPhotos[i]);
+      }
+      dispatch(addToCart({
+        id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+        productType: selectedType,
+        productName: product.name,
+        designTextureFront: photos[0] || null, // прев'ю в кошику — перше фото
+        innerPhotos: photos,
+        paperType,
+        variantLabel: buildOptionsLabel({ productType: selectedType, paperType }),
+        quantity: photos.length,
+      }));
+      toast({ title: "Додано до кошика", description: `${product.name} × ${photos.length} успішно додано.`, duration: 3000 });
+      return true;
+    }
+
     if (!frontCanvas && !backCanvas) {
       toast({
         variant: "destructive",

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import * as fabric from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
-import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, buildSpreadView, isBookType } from "../constants/designConstants";
+import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, buildSpreadView, isBookType, isMultiPhoto } from "../constants/designConstants";
 import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
@@ -13,7 +13,7 @@ import CollageDropdownBtn from "./CollageDropdownBtn";
 import ObjectControls from "./ObjectControls";
 import FillDropdownBtn from "./FillDropdownBtn";
 import PropertiesBtn from "./PropertiesBtn";
-import { setSelectedView, reorderSlimBookPhotos } from "../features/tshirtSlice";
+import { setSelectedView, reorderSlimBookPhotos, addSlimBookPhotos } from "../features/tshirtSlice";
 import { useCanvas } from "@/hooks/useCanvas";
 import { useAddImage } from "@/hooks/useAddImage";
 import canvasStorageManager from "@/utils/canvasStorageManager";
@@ -69,6 +69,12 @@ const DesignArea = ({ manualSync }) => {
         { ...buildSpreadView(slimBookFormat), label: `Розворот ${i + 1}` },
       ]);
       return [...covers, ...spreads];
+    }
+    // Пачка фото: кожне завантажене фото — окрема редагована сторінка (spread-N)
+    // з геометрією обраного фото-формату (переисп. інфраструктуру розворотів).
+    if (isMultiPhoto(selectedType) && (slimBookPhotos?.length || 0) > 0) {
+      const front = product.views.front;
+      return (slimBookPhotos || []).map((_, i) => [`spread-${i}`, { ...front, label: `Фото ${i + 1}` }]);
     }
     return base;
   }, [product, selectedType, slimBookPhotos, slimBookFormat, canvasSize]);
@@ -128,10 +134,41 @@ const DesignArea = ({ manualSync }) => {
 
   const triggerFileInput = () => fileInputRef.current?.click();
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) addImageFile(file);
+  // Стиснення фото для пачки (як у OrderBar): даунскейл 2400px, JPEG 0.88.
+  const compressPhoto = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX = 2400;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL("image/jpeg", 0.88));
+        };
+        img.onerror = () => resolve(null);
+        img.src = reader.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
     e.target.value = "";
+    if (!files.length) return;
+    // Пачка фото: усі завантажені фото йдуть у батч (кожне = окрема сторінка).
+    if (isMultiPhoto(selectedType)) {
+      for (const f of files) {
+        const url = await compressPhoto(f);
+        if (url) dispatch(addSlimBookPhotos([url]));
+      }
+      return;
+    }
+    addImageFile(files[0]); // решта товарів — одне фото на активний холст
   };
 
   const handleAddText = () => {
@@ -278,9 +315,9 @@ const DesignArea = ({ manualSync }) => {
         {/* ── Верх: товар + опції + сторони ── */}
         <div className="px-3 py-2 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center justify-between gap-2">
           <ProductControls />
-          {/* Книга має навігацію мініатюрами-каруселлю ПІД холстом — тут текстові
-              вкладки не показуємо (для решти товарів лишаються тут зверху). */}
-          {views.length > 1 && !isBookType(selectedType) && (
+          {/* Книга та пачка фото мають навігацію мініатюрами-каруселлю ПІД холстом
+              — тут текстові вкладки не показуємо (для решти товарів лишаються зверху). */}
+          {views.length > 1 && !isBookType(selectedType) && !isMultiPhoto(selectedType) && (
             <div className="flex gap-1.5 p-1 bg-white/70 rounded-xl max-w-full flex-nowrap overflow-x-auto">
               {views.map(([view, viewConfig]) => (
                 <button
@@ -306,7 +343,7 @@ const DesignArea = ({ manualSync }) => {
             {/* ADD (ряд на мобільному / стовпчик зліва на ПК). На мобільному —
                 горизонтальна тач-прокрутка, щоб усі інструменти були доступні. */}
             <div className="flex flex-row lg:flex-col flex-nowrap gap-1.5 justify-start overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 [-webkit-overflow-scrolling:touch]" data-tour="add">
-              <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+              <input type="file" accept="image/*" multiple={isMultiPhoto(selectedType)} ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               <ToolBtn icon={ImagePlus} label="Фото" onClick={triggerFileInput} />
               <ToolBtn icon={Type} label="Текст" onClick={handleAddText} />
               <ToolBtn icon={Slash} label="Лінія" onClick={handleAddLine} />
@@ -361,7 +398,7 @@ const DesignArea = ({ manualSync }) => {
 
               {/* Книга: карусель мініатюр обкладинок/розворотів — навігація ПІД холстом
                   (видно ескіз кожного розвороту; клік перемикає редагування). */}
-              {isBookType(selectedType) && views.length > 1 && (
+              {(isBookType(selectedType) || isMultiPhoto(selectedType)) && views.length > 1 && (
                 <div
                   className="w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
                   style={{ touchAction: dragIdx != null ? "none" : "pan-x" }}

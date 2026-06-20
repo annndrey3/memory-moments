@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
 import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos } from "@/features/tshirtSlice";
-import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookType, bookUnit } from "@/constants/designConstants";
+import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookType, bookUnit, isMultiPhoto } from "@/constants/designConstants";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,7 @@ const OrderBar = () => {
   const isTshirt = selectedType === "crew-neck";
   const isCanvas = selectedType === "canvas";
   const isBook = isBookType(selectedType);
+  const isMulti = isMultiPhoto(selectedType); // фото-формат: друк пачки фото
   const bothSides = counts.front > 0 && counts.back > 0;
 
   // Ціна: футболка — з прайсу (колір+формат+2 сторони), решта — з каталогу.
@@ -112,6 +113,17 @@ const OrderBar = () => {
       total = sp * quantity;
       const totalSpreads = Number(slimBookSpreads) + Number(slimBookExtra || 0);
       secondNote = `${totalSpreads} ${bookUnit(selectedType)} · фото: ${slimBookPhotos.length}`;
+    }
+  } else if (isMulti) {
+    // Пачка фото: ціна = (к-ть завантажених фото) × ціна формату.
+    const p = priceFor(selectedType);
+    if (p) {
+      const n = Math.max(1, slimBookPhotos.length);
+      unit = p.price;
+      total = p.price * n;
+      secondNote = slimBookPhotos.length > 0
+        ? `${slimBookPhotos.length} фото × ${formatPrice(p.price)} ₴`
+        : "завантажте фото для друку";
     }
   } else {
     const p = priceFor(selectedType);
@@ -358,7 +370,40 @@ const OrderBar = () => {
           </>
         )}
 
-        {/* Кількість */}
+        {/* Пачка фото: завантажити багато фото — кожне = окрема редагована сторінка */}
+        {isMulti && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadPhotos} className="hidden" />
+              <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5"
+                disabled={!!uploadProgress}
+                onClick={() => spreadInputRef.current?.click()}>
+                {uploadProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
+                <span className="text-xs font-semibold">
+                  {uploadProgress ? `Завантаження ${uploadProgress.done}/${uploadProgress.total}` : "Багато фото"}
+                </span>
+              </Button>
+              {!uploadProgress && slimBookPhotos.length > 0 && (
+                <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
+                  {slimBookPhotos.length}
+                  <button type="button" title="Очистити" onClick={() => dispatch(clearSlimBookPhotos())}
+                    className="text-muted-foreground hover:text-destructive">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+            </div>
+            {uploadProgress && (
+              <div className="h-1.5 w-full rounded-full bg-violet-100 overflow-hidden">
+                <div className="h-full rounded-full bg-violet-500 transition-all duration-200"
+                  style={{ width: `${Math.round((uploadProgress.done / Math.max(1, uploadProgress.total)) * 100)}%` }} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Кількість — для пачки фото ховаємо (к-ть = число завантажених фото) */}
+        {!isMulti && (
         <div className="flex items-center gap-1.5">
           <Button
             variant="outline"
@@ -379,6 +424,7 @@ const OrderBar = () => {
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
+        )}
         </div>
 
         {/* Ціна + кнопка замовлення (на мобільному — окремий рядок на всю ширину) */}

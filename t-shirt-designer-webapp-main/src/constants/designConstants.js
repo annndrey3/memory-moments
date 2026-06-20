@@ -604,6 +604,10 @@ export const productHasSize = (type) => type === "crew-neck";
 // Тип паперу — для пласких фотоформатів, але НЕ для полотна (друк по полотну).
 export const productHasPaper = (type) =>
   PRODUCT_TYPES[type]?.previewMode === "flat" && type !== "canvas";
+// Фото-формати, де друкують ПАЧКУ фото (кожне — окрема редагована сторінка):
+// пласкі фото (фото/полароїд/instax/чохол), але НЕ полотно і НЕ книги.
+export const isMultiPhoto = (type) =>
+  productHasPaper(type) && !isBookType(type);
 export const paperLabel = (value) =>
   PAPER_TYPES.find((p) => p.value === value)?.label || value;
 const colorName = (hex) => (hex ? COLOR_NAMES[hex.toUpperCase?.()] || hex : null);

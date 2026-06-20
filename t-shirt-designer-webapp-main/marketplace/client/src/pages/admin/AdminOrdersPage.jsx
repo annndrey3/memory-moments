@@ -88,7 +88,8 @@ export default function AdminOrdersPage() {
 
   const hasBook = (full) =>
     full?.items?.some((it) => {
-      try { return Array.isArray(JSON.parse(it.design_data || "{}").innerPhotos); } catch { return false; }
+      // d.book є лише у фотокниг; пачка фото має innerPhotos, але не book.
+      try { return !!JSON.parse(it.design_data || "{}").book; } catch { return false; }
     });
 
   // Чи є у замовленні хоч один файл на диску (для кнопки «Скачати всі фото»).
