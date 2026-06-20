@@ -104,7 +104,7 @@ export default function AdminSiteConfigPage() {
         <div className="space-y-2">
           <Label className={LBL}>Філії (показуються у футері)</Label>
           {(contacts.branches || []).map((b, i) => (
-            <div key={i} className="flex gap-2">
+            <div key={i} className="flex flex-col sm:flex-row gap-2">
               <Input placeholder="Адреса" value={b.address}
                 onChange={(e) => setList("contacts", "branches", i, { address: e.target.value })} />
               <Input placeholder="Посилання на карту" value={b.mapsUrl}
@@ -122,7 +122,7 @@ export default function AdminSiteConfigPage() {
         <div className="space-y-2">
           <Label className={LBL}><Clock className="inline h-3 w-3 mr-1" />Години роботи</Label>
           {(contacts.hours || []).map((h, i) => (
-            <div key={i} className="flex gap-2">
+            <div key={i} className="flex flex-col sm:flex-row gap-2">
               <Input placeholder="Пн–Пт" value={h.days}
                 onChange={(e) => setList("contacts", "hours", i, { days: e.target.value })} />
               <Input placeholder="09:00–19:00" value={h.time}
@@ -168,7 +168,7 @@ export default function AdminSiteConfigPage() {
         <div className="space-y-2">
           <Label className={LBL}>Відділення для самовивозу</Label>
           {(delivery.pickupBranches || []).map((addr, i) => (
-            <div key={i} className="flex gap-2">
+            <div key={i} className="flex flex-col sm:flex-row gap-2">
               <Input placeholder="Адреса відділення" value={addr}
                 onChange={(e) => setList("delivery", "pickupBranches", i, e.target.value)} />
               <button className={ICON_BTN} onClick={() => removeItem("delivery", "pickupBranches", i)} title="Видалити">
@@ -227,7 +227,7 @@ export default function AdminSiteConfigPage() {
         <p className="text-xs text-slate-500">Список умов унизу сторінки «Ціни». Кожен рядок — окремий пункт.</p>
         <div className="space-y-2">
           {((cfg.terms && cfg.terms.items) || []).map((t, i) => (
-            <div key={i} className="flex gap-2">
+            <div key={i} className="flex flex-col sm:flex-row gap-2">
               <textarea
                 className="flex-1 rounded-lg border border-slate-200 text-sm p-2 min-h-[44px]"
                 value={t}
