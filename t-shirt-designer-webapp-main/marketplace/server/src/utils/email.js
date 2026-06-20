@@ -45,6 +45,19 @@ async function createTransporter() {
 
 function buildOrderEmailHtml(order) {
   const { order_number, customer_name, customer_email, customer_phone, shipping_address, notes, total, items = [] } = order;
+  // Знижка зберігається на замовленні (orders.discount) — показуємо розбивку
+  // «Підсумок / Знижка / До сплати» лише коли знижка справді є.
+  const discount = Number(order.discount) || 0;
+  const subtotal = Number(order.subtotal ?? Number(total) + discount);
+  const discountRows = discount > 0 ? `
+                  <tr>
+                    <td colspan="2" style="padding:10px 12px;font-size:14px;color:#64748b;">Підсумок</td>
+                    <td style="padding:10px 12px;font-size:14px;color:#1e293b;text-align:right;white-space:nowrap;">${formatPrice(subtotal)}</td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="padding:10px 12px;font-size:14px;color:#16a34a;font-weight:600;">Знижка</td>
+                    <td style="padding:10px 12px;font-size:14px;color:#16a34a;font-weight:600;text-align:right;white-space:nowrap;">−${formatPrice(discount)}</td>
+                  </tr>` : "";
 
   const itemRows = items
     .map(
@@ -120,6 +133,7 @@ function buildOrderEmailHtml(order) {
                   ${itemRows}
                 </tbody>
                 <tfoot>
+                  ${discountRows}
                   <tr style="background:#f8fafc;">
                     <td colspan="2" style="padding:12px;font-size:14px;font-weight:700;color:#1e293b;">До сплати</td>
                     <td style="padding:12px;font-size:16px;font-weight:700;color:#7c3aed;text-align:right;">${formatPrice(total)}</td>

@@ -158,6 +158,14 @@ export default function AdminOrdersPage() {
   const printOrder = (full) => {
     const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const abs = (u) => (u && u.startsWith("/") ? window.location.origin + u : u);
+    // Знижка на замовленні → у накладній окремим рядком (Підсумок / Знижка / До сплати).
+    const discount = Number(full.discount) || 0;
+    const subtotal = Number(full.subtotal ?? Number(full.total) + discount);
+    const totalsHtml = discount > 0
+      ? `<div class="t" style="font-weight:normal;font-size:13px">Підсумок: ${formatPrice(subtotal)}</div>
+         <div class="t" style="font-weight:normal;font-size:13px;color:#15803d">Знижка: −${formatPrice(discount)}</div>
+         <div class="t">До сплати: ${formatPrice(full.total)}</div>`
+      : `<div class="t">Разом: ${formatPrice(full.total)}</div>`;
     const rows = (full.items || []).map((it) => {
       const prev = it.design_preview ? `<img src="${esc(abs(it.design_preview))}" />` : "";
       return `<tr><td class="p">${prev}</td><td>${esc(it.product_name)}${it.variant_label ? `<div class="m">${esc(it.variant_label)}</div>` : ""}</td><td class="n">${it.quantity}</td><td class="n">${formatPrice(it.line_total)}</td></tr>`;
@@ -173,7 +181,7 @@ export default function AdminOrdersPage() {
       <div class="h"><div><h1>Замовлення ${esc(full.order_number)}</h1><div class="m">${esc(full.created_at?.slice(0, 16) || "")} · ${full.source === "designer" ? "Конструктор" : "Сайт"} · ${esc(statusMeta(full.status).label)}</div></div><div class="m">Memory Moments</div></div>
       <div class="c"><b>${esc(full.customer_name || "")}</b><br>${full.customer_phone ? esc(full.customer_phone) + "<br>" : ""}${full.customer_email ? esc(full.customer_email) + "<br>" : ""}${full.shipping_address ? "Доставка: " + esc(full.shipping_address) + "<br>" : ""}${full.notes ? "Коментар: " + esc(full.notes) : ""}</div>
       <table><thead><tr><th></th><th>Товар</th><th class="n">К-сть</th><th class="n">Сума</th></tr></thead><tbody>${rows}</tbody></table>
-      <div class="t">Разом: ${formatPrice(full.total)}${full.discount ? ` (знижка ${formatPrice(full.discount)})` : ""}</div>
+      ${totalsHtml}
       <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script>
     </body></html>`;
     const w = window.open("", "_blank");
@@ -327,6 +335,12 @@ export default function AdminOrdersPage() {
                         <Badge variant={order.source === "designer" ? "default" : "muted"}>
                           {order.source === "designer" ? "Конструктор" : "Сайт"}
                         </Badge>
+                        {/* Позначка «зі знижкою» — щоб такі замовлення було видно у списку одразу. */}
+                        {Number(order.discount) > 0 && (
+                          <span className="rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 ring-1 ring-emerald-200 whitespace-nowrap">
+                            Знижка −{formatPrice(order.discount)}
+                          </span>
+                        )}
                         {/* ціна — на мобільному праворуч у верхньому рядку */}
                         <p className="ml-auto font-bold text-slate-900 whitespace-nowrap sm:hidden">{formatPrice(order.total)}</p>
                       </div>
@@ -535,10 +549,27 @@ export default function AdminOrdersPage() {
                                 })()}
                               </div>
                             ))}
-                            <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
-                              <span>Разом</span>
-                              <span>{formatPrice(full.total)}</span>
-                            </div>
+                            {Number(full.discount) > 0 ? (
+                              <div className="border-t border-slate-200 pt-1.5 space-y-1">
+                                <div className="flex justify-between text-slate-500">
+                                  <span>Підсумок</span>
+                                  <span>{formatPrice(full.subtotal ?? Number(full.total) + Number(full.discount))}</span>
+                                </div>
+                                <div className="flex justify-between text-emerald-600 font-medium">
+                                  <span>Знижка</span>
+                                  <span>−{formatPrice(full.discount)}</span>
+                                </div>
+                                <div className="flex justify-between font-semibold text-slate-900">
+                                  <span>До сплати</span>
+                                  <span>{formatPrice(full.total)}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold text-slate-900">
+                                <span>Разом</span>
+                                <span>{formatPrice(full.total)}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div>
