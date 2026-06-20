@@ -304,60 +304,70 @@ export default function AdminOrdersPage() {
             const isSel = selected.has(order.id);
             return (
               <div key={order.id} className={`rounded-xl border bg-white overflow-hidden ${isSel ? "border-violet-300 ring-1 ring-violet-200" : "border-slate-200"}`}>
-                <div className="flex items-center gap-3 p-4">
+                <div className="flex items-start gap-2.5 p-3 sm:p-4 sm:items-center">
                   <input
                     type="checkbox"
                     checked={isSel}
                     onChange={() => toggleSelect(order.id)}
-                    className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 shrink-0"
+                    className="h-4 w-4 mt-1 sm:mt-0 rounded border-slate-300 text-violet-600 focus:ring-violet-500 shrink-0"
                     title="Вибрати для масової дії"
                   />
                   <button
                     onClick={() => toggleExpand(order)}
-                    className="text-slate-400 hover:text-violet-600"
+                    className="text-slate-400 hover:text-violet-600 shrink-0 mt-0.5 sm:mt-0"
                   >
                     {isOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-slate-900">{order.order_number}</p>
-                      <Badge variant={order.source === "designer" ? "default" : "muted"}>
-                        {order.source === "designer" ? "Конструктор" : "Сайт"}
-                      </Badge>
+
+                  {/* Контент: стек на мобільному, рядок на десктопі */}
+                  <div className="flex-1 min-w-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900">{order.order_number}</p>
+                        <Badge variant={order.source === "designer" ? "default" : "muted"}>
+                          {order.source === "designer" ? "Конструктор" : "Сайт"}
+                        </Badge>
+                        {/* ціна — на мобільному праворуч у верхньому рядку */}
+                        <p className="ml-auto font-bold text-slate-900 whitespace-nowrap sm:hidden">{formatPrice(order.total)}</p>
+                      </div>
+                      <p className="text-sm text-slate-500 truncate">
+                        {order.customer_name}
+                        {order.customer_email ? ` · ${order.customer_email}` : ""}
+                        {order.customer_phone ? ` · ${order.customer_phone}` : ""}
+                      </p>
                     </div>
-                    <p className="text-sm text-slate-500 truncate">
-                      {order.customer_name}
-                      {order.customer_email ? ` · ${order.customer_email}` : ""}
-                      {order.customer_phone ? ` · ${order.customer_phone}` : ""}
-                    </p>
+
+                    <div className="hidden lg:block text-sm text-slate-400 shrink-0">
+                      {order.item_count ?? order.items?.length ?? 0} поз.
+                    </div>
+                    <div className="shrink-0 sm:text-right">
+                      <p className="hidden sm:block font-bold text-slate-900">{formatPrice(order.total)}</p>
+                      <p className="text-xs text-slate-400">{order.created_at?.slice(0, 16)}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant={meta.variant}>{meta.label}</Badge>
+                      <select
+                        value={order.status}
+                        disabled={updating === order.id}
+                        onChange={(e) => changeStatus(order.id, e.target.value)}
+                        className="flex-1 sm:flex-none min-w-[130px] px-2 py-1.5 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      >
+                        {STATUSES.map((s) => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
+                      {isSuperadmin && (
+                        <button
+                          onClick={() => handleDelete(order)}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                          title="Видалити замовлення"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="hidden sm:block text-sm text-slate-400">
-                    {order.item_count ?? order.items?.length ?? 0} поз.
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-slate-900">{formatPrice(order.total)}</p>
-                    <p className="text-xs text-slate-400">{order.created_at?.slice(0, 16)}</p>
-                  </div>
-                  <Badge variant={meta.variant}>{meta.label}</Badge>
-                  <select
-                    value={order.status}
-                    disabled={updating === order.id}
-                    onChange={(e) => changeStatus(order.id, e.target.value)}
-                    className="px-2 py-1.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  >
-                    {STATUSES.map((s) => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                  {isSuperadmin && (
-                    <button
-                      onClick={() => handleDelete(order)}
-                      className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                      title="Видалити замовлення"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
 
                 {isOpen && (
