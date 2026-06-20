@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Lock, Gift } from "lucide-react";
+import { Lock } from "lucide-react";
 import { Button, Input, Label } from "@/components/ui";
 import { api } from "@/lib/api";
 
@@ -30,11 +30,12 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-mesh flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-glow mb-4">
-            <Gift className="h-7 w-7 text-white" />
-          </div>
+          <img
+            src="/logo-hashtag.png"
+            alt="Memory Moments"
+            className="mx-auto mb-4 h-12 w-auto max-w-[260px] object-contain"
+          />
           <h1 className="text-2xl font-bold text-slate-900">Адмін-панель</h1>
-          <p className="text-slate-500 mt-1">Memory Moments Marketplace</p>
         </div>
 
         <form

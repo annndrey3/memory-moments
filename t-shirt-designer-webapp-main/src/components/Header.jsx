@@ -133,13 +133,15 @@ const Header = () => {
   return (
     <div className="w-full flex justify-between items-center gap-4 px-4 py-3 md:px-8 md:py-4">
       <div className="flex items-center gap-3 min-w-0">
-        {/* Фірмовий логотип. BASE_URL = "/designer/" у проді — інакше лого шукається
-            в корені домену (маркетплейс) і не вантажиться. */}
-        <img
-          src={`${import.meta.env.BASE_URL}logo-brand.png`}
-          alt="Memory Moments"
-          className="h-12 md:h-14 w-auto object-contain"
-        />
+        {/* Фірмовий логотип → на головну маркетплейсу. BASE_URL = "/designer/" у проді
+            — інакше лого шукається в корені домену (маркетплейс) і не вантажиться. */}
+        <a href={MARKETPLACE_URL} title="На головну" className="shrink-0 transition-transform hover:scale-105">
+          <img
+            src={`${import.meta.env.BASE_URL}logo-brand.png`}
+            alt="Memory Moments"
+            className="h-12 md:h-14 w-auto object-contain"
+          />
+        </a>
         <p className="hidden lg:block max-w-xs text-xs md:text-sm text-muted-foreground leading-snug">
           Створіть унікальний дизайн для футболки, чашки чи фотоформату
         </p>
