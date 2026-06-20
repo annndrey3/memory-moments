@@ -25,9 +25,9 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-8">
         <Link to="/" className="flex items-center min-w-0">
           <img
-            src="/hashtag-black.png"
+            src="/logo-brand.png"
             alt="Memory Moments"
-            className="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105"
+            className="h-12 w-auto object-contain transition-transform duration-300 hover:scale-105"
           />
         </Link>
 

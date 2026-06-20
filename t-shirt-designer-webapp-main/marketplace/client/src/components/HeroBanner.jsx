@@ -70,9 +70,9 @@ export function HeroBanner({ categories = [], onCategorySelect }) {
           style={{ backgroundImage: "url(/bg.jpg)", backgroundSize: "cover", backgroundPosition: "center" }}
         >
           <img
-            src="/hero-logo.png"
+            src="/logo-brand.png"
             alt="Memory Moments"
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain p-6 md:p-12"
           />
         </div>
 
