@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Loader2, ChevronDown, ChevronRight, Package, Trash2, CheckCircle2, Ban, X } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, formatDateTime } from "@/lib/utils";
 import { usePermissions } from "@/contexts/PermissionsContext";
 
 const STATUSES = [
@@ -178,7 +178,7 @@ export default function AdminOrdersPage() {
       td.n,th.n{text-align:right;white-space:nowrap}td.p{width:64px}td.p img{width:56px;height:72px;object-fit:cover;border:1px solid #ccc}
       .t{margin-top:12px;text-align:right;font-size:15px;font-weight:bold}@media print{button{display:none}}
     </style></head><body>
-      <div class="h"><div><h1>Замовлення ${esc(full.order_number)}</h1><div class="m">${esc(full.created_at?.slice(0, 16) || "")} · ${full.source === "designer" ? "Конструктор" : "Сайт"} · ${esc(statusMeta(full.status).label)}</div></div><div class="m">Memory Moments</div></div>
+      <div class="h"><div><h1>Замовлення ${esc(full.order_number)}</h1><div class="m">${esc(formatDateTime(full.created_at))} · ${full.source === "designer" ? "Конструктор" : "Сайт"} · ${esc(statusMeta(full.status).label)}</div></div><div class="m">Memory Moments</div></div>
       <div class="c"><b>${esc(full.customer_name || "")}</b><br>${full.customer_phone ? esc(full.customer_phone) + "<br>" : ""}${full.customer_email ? esc(full.customer_email) + "<br>" : ""}${full.shipping_address ? "Доставка: " + esc(full.shipping_address) + "<br>" : ""}${full.notes ? "Коментар: " + esc(full.notes) : ""}</div>
       <table><thead><tr><th></th><th>Товар</th><th class="n">К-сть</th><th class="n">Сума</th></tr></thead><tbody>${rows}</tbody></table>
       ${totalsHtml}
@@ -356,7 +356,7 @@ export default function AdminOrdersPage() {
                     </div>
                     <div className="shrink-0 sm:text-right">
                       <p className="hidden sm:block font-bold text-slate-900">{formatPrice(order.total)}</p>
-                      <p className="text-xs text-slate-400">{order.created_at?.slice(0, 16)}</p>
+                      <p className="text-xs text-slate-400">{formatDateTime(order.created_at)}</p>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
