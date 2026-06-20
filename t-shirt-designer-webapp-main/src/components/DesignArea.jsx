@@ -12,6 +12,7 @@ import FrameDropdownBtn from "./FrameDropdownBtn";
 import CollageDropdownBtn from "./CollageDropdownBtn";
 import ObjectControls from "./ObjectControls";
 import FillDropdownBtn from "./FillDropdownBtn";
+import BackgroundDropdownBtn from "./BackgroundDropdownBtn";
 import PropertiesBtn from "./PropertiesBtn";
 import { setSelectedView, reorderSlimBookPhotos, addSlimBookPhotos } from "../features/tshirtSlice";
 import { useCanvas } from "@/hooks/useCanvas";
@@ -351,6 +352,8 @@ const DesignArea = ({ manualSync }) => {
               <CollageDropdownBtn manualSync={manualSync} />
               <FrameDropdownBtn manualSync={manualSync} />
               <FillDropdownBtn manualSync={manualSync} />
+              {/* Готові фони — для альбомів (на весь формат, нижній шар) */}
+              {isBookType(selectedType) && <BackgroundDropdownBtn manualSync={manualSync} />}
             </div>
 
             {/* CANVAS + контекстне редагування */}

@@ -18,6 +18,17 @@ export const fetchDesignerPrices = async () => {
   }
 };
 
+// Готові фони для альбомів (керуються з адмінки): [{ id, image_url, name }].
+export const fetchBackgrounds = async () => {
+  try {
+    const res = await fetch(`${MARKETPLACE_API}/backgrounds`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
 // Надсилає замовлення з конструктора у маркетплейс-API.
 // Сервер зберігає його в адмінці ТА надсилає сповіщення в Telegram
 // (токен бота — лише на сервері). Прев'ю макетів передаємо в полі images.

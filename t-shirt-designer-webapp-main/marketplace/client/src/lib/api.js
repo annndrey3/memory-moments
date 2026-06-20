@@ -72,6 +72,13 @@ export const api = {
   deleteSlide: (id) => request(`/slides/${id}`, { method: "DELETE" }),
   seedSlidesFromCategories: () => request("/slides/seed-from-categories", { method: "POST" }),
 
+  // Готові фони для альбомів (керуються з адмінки)
+  getBackgrounds: () => request("/backgrounds"),
+  getBackgroundsAdmin: () => request("/backgrounds/admin/all"),
+  createBackground: (data) => request("/backgrounds", { method: "POST", body: JSON.stringify(data) }),
+  updateBackground: (id, data) => request(`/backgrounds/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteBackground: (id) => request(`/backgrounds/${id}`, { method: "DELETE" }),
+
   getProducts: (params = {}) => {
     const qs = buildQuery(params);
     return request(`/products?${qs}`);
