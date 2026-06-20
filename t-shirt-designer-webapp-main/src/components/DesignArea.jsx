@@ -358,8 +358,10 @@ const DesignArea = ({ manualSync }) => {
 
             {/* CANVAS + контекстне редагування */}
             <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
-              {/* Панель тексту — під головними інструментами, над холстом */}
-              <TextEditPanel manualSync={manualSync} />
+              {/* Холст + ПЛАВАЮЧА панель тексту. Панель — оверлей над верхом холста
+                  (absolute), а не елемент у потоці: інакше її поява/зникнення при
+                  виборі/знятті шару штовхала холст і весь макет «стрибав» вгору-вниз. */}
+              <div className="relative w-full flex flex-col items-center">
               <div
                 className="relative rounded-xl ring-1 ring-border/40 shadow-elevated overflow-hidden"
                 onDragOver={handleDragOver}
@@ -397,6 +399,14 @@ const DesignArea = ({ manualSync }) => {
                     <p className="text-sm font-semibold text-violet-700">Відпустіть фото тут</p>
                   </div>
                 )}
+              </div>
+                {/* Оверлей текстової панелі: коли тексту не вибрано — TextEditPanel
+                    повертає null, і pointer-events-none пропускає кліки на холст. */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
+                  <div className="pointer-events-auto w-full">
+                    <TextEditPanel manualSync={manualSync} />
+                  </div>
+                </div>
               </div>
 
               {/* Книга: карусель мініатюр обкладинок/розворотів — навігація ПІД холстом
