@@ -37,8 +37,21 @@ const CollageDropdownBtn = ({ manualSync }) => {
     };
 
   // Клік по порожній комірці → вибір файлу для саме цієї комірки.
+  // GLITCH-FIX: OS-діалог вибору файлу перехоплює mouseup → fabric лишається в
+  // стані «кнопку затиснуто» (залипле виділення/перетягування). Тому коли вікно
+  // знову отримує фокус (діалог закрито — і при виборі, і при «Скасувати»),
+  // примусово завершуємо будь-яку завислу взаємодію fabric.
   useEffect(() => {
     if (!activeCanvas) return;
+    const heal = () => {
+      try {
+        activeCanvas._currentTransform = null;
+        activeCanvas._groupSelector = null;
+        activeCanvas._isClick = false;
+        activeCanvas.setCursor?.("default");
+        activeCanvas.requestRenderAll();
+      } catch { /* internals можуть змінитися — не критично */ }
+    };
     const onDown = (opt) => {
       const tgt = opt.target;
       if (!tgt || tgt.mmRole !== "slot") return;
@@ -48,6 +61,7 @@ const CollageDropdownBtn = ({ manualSync }) => {
         placeholder: tgt,
       };
       fileInputRef.current?.click();
+      window.addEventListener("focus", heal, { once: true });
     };
     activeCanvas.on("mouse:down", onDown);
     return () => activeCanvas.off("mouse:down", onDown);
