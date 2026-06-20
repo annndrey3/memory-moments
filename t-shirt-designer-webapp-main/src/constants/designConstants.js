@@ -396,8 +396,9 @@ export function buildSlimBookView(format) {
     printZone: { x, y, width: W, height: H },
     // Книга має ще каруселі + вищу панель замовлення → обкладинці (найвищий вид)
     // даємо менший бюджет висоти, щоб усе вмістилось без вертикального скролу
-    // навіть на малих екранах (360×800).
+    // навіть на малих екранах (360×800). На десктопі (vhBudgetWide) — більше.
     vhBudget: 28,
+    vhBudgetWide: 54,
   };
 }
 
@@ -426,6 +427,9 @@ export function buildSpreadView(format) {
     spread: true,
     safe: { edgeX: Math.round(0.5 * upcX), edgeY: Math.round(0.5 * upcY), seam: Math.round(1 * upcX) },
     sizeLabel: `${w}×${h} см · 300 dpi`,
+    // Десктоп: розвороту (ландшафт) даємо більший бюджет — широкий екран дозволяє.
+    vhBudget: 34,
+    vhBudgetWide: 60,
   };
 }
 

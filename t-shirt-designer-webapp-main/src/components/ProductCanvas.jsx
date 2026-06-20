@@ -20,6 +20,19 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
 
+  // На великих екранах (десктоп) даємо полотну більший бюджет — там вистачає
+  // вертикального місця. Мобільна/планшетна верстка не змінюється. Аналогічно
+  // до isWide для 3D-прев'ю чашки.
+  const [isWide, setIsWide] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(min-width: 1280px) and (min-height: 800px)");
+    const apply = () => setIsWide(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -29,6 +42,12 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
     ro.observe(el);
     return () => ro.disconnect();
   }, [canvasW]);
+
+  // Висотний бюджет: на десктопі — vhBudgetWide (якщо вид його задає), інакше
+  // звичайний vhBudget. px-стелю теж піднімаємо, але лише коли є wide-бюджет.
+  const wideBudget = isWide && viewConfig.vhBudgetWide;
+  const vhBudget = wideBudget ? viewConfig.vhBudgetWide : (viewConfig.vhBudget ?? 34);
+  const pxCap = wideBudget ? 620 : 450;
 
   const pz = viewConfig.printZone;
 
@@ -46,7 +65,7 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
       className="relative mx-auto overflow-hidden"
       // Розмір залежить і від ширини, і від ВИСОТИ екрана (vh) — щоб редактор
       // вміщався без прокрутки. Width = min(макс, 84vw, висотний бюджет × пропорція).
-      style={{ width: `min(450px, 84vw, ${((viewConfig.vhBudget ?? 34) * (canvasW / canvasH)).toFixed(1)}vh)`, aspectRatio: `${canvasW} / ${canvasH}` }}
+      style={{ width: `min(${pxCap}px, 84vw, ${(vhBudget * (canvasW / canvasH)).toFixed(1)}vh)`, aspectRatio: `${canvasW} / ${canvasH}` }}
     >
       {/* ── Non-template formats: SVG shape outline below canvas ── */}
       {!isTemplate && (
