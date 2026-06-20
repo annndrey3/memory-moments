@@ -1,7 +1,13 @@
 # ER-модель маркетплейсу Memory Moments
 
 **База даних:** SQLite (dev, `marketplace/server/marketplace.db`) / **PostgreSQL** (prod, `DATABASE_URL`)  
-**Шар:** `src/config/db.js` — єдиний `query()`/`transaction()` для обох рушіїв (джерело істини схеми).
+**Шар:** `src/config/db.js` — єдиний `query()`/`transaction()` для обох рушіїв (джерело істини схеми).  
+**Останнє оновлення:** 2026-06-20
+
+> Схема + ідемпотентні міграції застосовуються автоматично на старті сервера
+> (`ADD COLUMN IF NOT EXISTS` на Postgres, `PRAGMA table_info` + `ALTER TABLE` на SQLite),
+> тож запуск проти наявної БД сам себе доліковує до актуальної схеми.
+> Усі `created_at`/`updated_at` зберігаються в **UTC** (`CURRENT_TIMESTAMP`).
 
 ---
 
@@ -126,8 +132,10 @@ erDiagram
         real    subtotal
         real    discount        "знижка фотодруку"
         real    total           "subtotal - discount"
-        text    idempotency_key "захист від дублів"
+        text    idempotency_key "захист від дублів (частковий UNIQUE idx)"
         text    notify_status   "pending | sent | failed"
+        text    tracking_number "ТТН Нова Пошта (при «Відправлено»)"
+        text    cancel_reason   "причина скасування"
         text    archive_url     "ZIP фотокниги"
         text    archive_status  "pending | ready | failed"
         text    photo_delivery_status   "pending | sent — SFTP-доставка фото"
@@ -200,6 +208,26 @@ erDiagram
         text    phone
         text    notes
         text    source  "manual | marketplace | designer | import"
+        datetime created_at
+        datetime updated_at
+    }
+
+    backgrounds {
+        int     id          PK
+        text    image_url
+        text    name
+        int     sort_order
+        int     is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    push_subscriptions {
+        int     id          PK
+        text    endpoint    UK
+        text    p256dh      "ключ шифрування"
+        text    auth        "auth-секрет"
+        datetime created_at
     }
 ```
 
@@ -216,12 +244,14 @@ erDiagram
 | **product_images** | Галерея зображень товару (кілька на товар, `is_primary`) |
 | **product_variants** | Варіанти товару (розмір/колір) з власним `price_modifier` і залишком |
 | **product_audit_logs** | Журнал змін товарів адміністраторами |
-| **orders** | Замовлення клієнтів; `source` — з сайту або з конструктора |
+| **orders** | Замовлення клієнтів; `source` — з сайту або з конструктора. Життєвий цикл: `idempotency_key` (захист від дублів, частковий UNIQUE), `notify_status` (web-push власнику), `tracking_number` (ТТН Нова Пошта), `cancel_reason`, `archive_url`/`archive_status` (ZIP фотокниги), `photo_delivery_*` (SFTP-доставка фото у сховище) |
 | **order_items** | Позиції замовлення; `product_name` — snapshot, щоб не залежати від змін |
 | **service_categories** | Категорії прайс-листа |
 | **services** | Послуги прайс-листа (`code`+`format`→ціна; коди звʼязані з конструктором) |
-| **settings** | Key-value: лічильники номерів (`order_seq_*`), SMTP, налаштування сайту (`site_contacts`/`site_delivery`/`site_discounts`/`site_hero`/`site_seo`), Telegram (`telegram`), SFTP-сховище фото (`sftp_storage`). Дефолти конфігу — у коді |
+| **settings** | Key-value: лічильники номерів (`order_seq_*`), SMTP, налаштування сайту (`site_contacts`/`site_delivery`/`site_discounts`/`site_hero`/`site_seo`), Telegram (`telegram`), SFTP-сховище фото (`sftp_storage`), авто-згенеровані VAPID-ключі Web-Push (`push_vapid_public`/`push_vapid_private`). Дефолти конфігу — у коді |
 | **slides** | Слайди банера маркетплейсу (адмін-керовані) |
+| **backgrounds** | Готові фони для фотоальбомів (адмін-керовані: завантаження/сортування/активність) |
+| **push_subscriptions** | Web-Push підписки власника (по одній на пристрій); `endpoint` UK, `p256dh`/`auth` — ключі шифрування |
 | **customers** | CRM: автозахоплення клієнтів із замовлень (за email/телефоном) |
 
 ---

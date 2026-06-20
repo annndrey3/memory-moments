@@ -2,6 +2,8 @@
 
 Модуль каталогу, кошика та адмін-панелі. Працює разом з конструктором дизайну (корінь проекту).
 
+> **Оновлено:** 2026-06-20 · **Статус:** production-ready (готовий до здачі).
+
 ## Структура
 
 ```
@@ -15,11 +17,13 @@ marketplace/
 │
 ├── server/               # Express API (порт 3001)
 │   └── src/
-│       ├── routes/       # auth, products, categories, orders, upload, cleanup …
+│       ├── routes/       # auth, products, categories, orders, upload, cleanup,
+│       │                 #   push (web-push власнику), backgrounds (фони альбомів) …
 │       ├── middleware/   # auth.js, requirePermission.js
 │       ├── config/       # db.js (SQLite dev / PostgreSQL prod)
 │       ├── utils/        # designerPricing, bookArchive (jimp+jszip), telegram, email,
-│       │                 #   siteConfig (дефолти конфігу сайту), photoDelivery (SFTP) …
+│       │                 #   siteConfig (дефолти конфігу сайту), photoDelivery (SFTP),
+│       │                 #   push (web-push, VAPID), downloadToken (підписані лінки) …
 │       └── scripts/      # seed-admin, cleanUploads.js
 │
 └── database/
@@ -81,8 +85,16 @@ ADMIN_PASSWORD=admin123
 TG_BOT_TOKEN=
 TG_CHAT_ID=
 
-# Базовий URL для посилання на скачування у Telegram при замовленні з >3 фото (опційно)
+# Базовий URL сайту. Використовується для посилань у Telegram-сповіщеннях:
+#   • при замовленні з >3 фото — лінк замість десятків вкладень;
+#   • SFTP-офлайн фолбек — підписане посилання на скачування фото з нашого сервера
+#     (`/api/orders/:id/photos-download?token=…`), коли ПК дизайнера недоступний.
+# Без PUBLIC_URL ці посилання не формуються (опційно, але потрібне у проді).
 PUBLIC_URL=
+
+# Тема (subject) для web-push власнику (опційно; дефолт mailto:admin@memory-moments.online).
+# VAPID-ключі НЕ в .env — генеруються автоматично й зберігаються в таблиці settings.
+PUSH_SUBJECT=
 ```
 
 > Сервер **не запуститься** якщо `JWT_SECRET` відсутній або коротший за 32 символи.
@@ -115,12 +127,14 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `products` | Товари (`designer_type` → прив'язка до конструктора) |
 | `product_images` | Зображення товарів (кілька на товар, `is_primary`) |
 | `product_variants` | Варіанти (розмір, колір, price_modifier) |
-| `orders` | Замовлення (+ колонки `discount`, `idempotency_key`, `notify_status`, `archive_url`/`archive_status`, `photo_delivery_status`/`photo_delivery_at`/`photo_delivery_attempts`) |
+| `orders` | Замовлення (+ колонки `subtotal`, `discount`, `idempotency_key`, `notify_status`, `cancel_reason`, `tracking_number` (ТТН Нової Пошти), `archive_url`/`archive_status`, `photo_delivery_status`/`photo_delivery_at`/`photo_delivery_attempts`) |
 | `order_items` | Позиції (`design_data` JSON: fabric-макет, URL print-файлів, `innerPhotos` книги, `book`-мета) |
 | `designs` | Збережені дизайни з конструктора |
 | `service_categories` / `services` | Прайс-лист (`code`+`format`→ціна; коди звʼязані з конструктором) |
-| `settings` | Налаштування key/value + лічильники номерів замовлень + конфіг сайту (ключі `site_contacts`, `site_delivery`, `site_discounts`, `site_hero`, `site_seo`, `telegram`, `sftp_storage`) |
+| `settings` | Налаштування key/value + лічильники номерів замовлень + конфіг сайту (ключі `site_contacts`, `site_delivery`, `site_discounts`, `site_hero`, `site_seo`, `telegram`, `sftp_storage`) + авто-VAPID-ключі web-push (`push_vapid_public` / `push_vapid_private`) |
 | `slides` | Слайди банера маркетплейсу (адмін) |
+| `backgrounds` | Готові фони для альбомів/фотокниг (адмін; конструктор тягне активні через публічний `GET /api/backgrounds`) |
+| `push_subscriptions` | Підписки браузерів власника на web-push (`endpoint`, `p256dh`, `auth`) |
 | `customers` | CRM: автозахоплення клієнтів із замовлень |
 | `product_audit_logs` | Журнал змін товарів |
 
@@ -152,10 +166,17 @@ print-book   → Print Book (фотокнига: листи + фото)
 ### Можливості
 
 **Замовлення** (`/admin/orders`)
-- Перегляд усіх замовлень зі статусами
+- Перегляд усіх замовлень зі статусами; знижка показана **бейджем** у списку
 - Зміна статусу: pending → paid → shipped → completed / cancelled
+- **Масові дії** (чекбокси + «вибрати всі»): позначити виконаними, скасувати, видалити пачкою
+- При **скасуванні** — модалка з **причиною** (`cancel_reason`); причина йде клієнту в листі
+- При статусі **«Відправлено»** — модалка для **номера ТТН** (Нова Пошта); номер + кнопка «Відстежити» йдуть клієнту в листі
+- Лист клієнту **на кожну зміну статусу** (тільки якщо статус справді змінився; видалення листів не шле)
 - Для замовлень конструктора: скачування PNG макетів (Спереду / Ззаду)
+- Кнопка **«Скачати всі фото (ZIP)»** — усі файли замовлення з диска (`/api/orders/:id/photos-archive`)
 - Для фотокниг: кнопка **«Завантажити архів книги (ZIP)»** (обкладинки + готові друкарські сторінки)
+- **Друк накладної** (`window.print`): деталі + прев'ю дизайнів, окремими рядками Підсумок / Знижка / До сплати
+- Кнопка **«Повторити сповіщення»** (`/api/orders/:id/notify`) — переслати замовлення власнику в Telegram (напр. після `notify_status='failed'`)
 - Видалення замовлення (тільки superadmin) — автоматично чистить print-файли та архів
 
 **Товари** (`/admin/products`)
@@ -170,6 +191,14 @@ print-book   → Print Book (фотокнига: листи + фото)
 **Дизайни** (`/admin/designs`) — збережені роботи з конструктора
 
 **Прайс** (`/admin/services`) — послуги та ціни; Excel-імпорт/експорт прайсу (`/api/admin/data`)
+
+**Слайди** (`/admin/slides`) — слайди банера маркетплейсу (додати/редагувати/видалити, завантаження зображень)
+
+**Фони** (`/admin/backgrounds`) — готові фони для альбомів/фотокниг; активні тягне конструктор через `GET /api/backgrounds`
+
+**Сповіщення** (`/admin/notifications`) — куди слати сповіщення про нові замовлення:
+- **Web-push на цей пристрій** (per-device): увімкнути/вимкнути + «надіслати тест»; підписки браузерів зберігаються в `push_subscriptions`, VAPID-ключі авто-генеруються (`settings`)
+- Показ стану інших каналів: Telegram (chat id) та Email-підтвердження (SMTP)
 
 **Налаштування** (`/admin/settings`)
 - Зміна email / пароля
@@ -215,8 +244,10 @@ POST   /api/auth/login             { email, password } → { token }
 POST   /api/orders                 Оформлення (ціни на сервері; заголовок Idempotency-Key)
 GET    /api/orders/track/:number   Статус замовлення для клієнта (без PII)
 GET    /api/services               Прайс-лист
+GET    /api/backgrounds            Активні фони альбомів (для конструктора)
 POST   /api/photos                 Завантаження фото клієнта (rate-limited)
 GET    /api/site-config            Конфіг сайту (контакти/доставка/знижки/банер/SEO; БЕЗ секретів)
+GET    /api/orders/:id/photos-download?token=…   ZIP фото за підписаним токеном (SFTP-офлайн фолбек, Telegram)
 ```
 
 ### Адмін (Authorization: Bearer <token>)
@@ -234,10 +265,21 @@ DELETE /api/categories/:id
 
 GET    /api/orders                 ?status=&page=    список
 GET    /api/orders/:id             деталі
-PATCH  /api/orders/:id/status      { status }        (з коррекцією складу)
-POST   /api/orders/:id/notify      повторне Telegram-сповіщення
-GET    /api/orders/:id/book-archive  ZIP фотокниги (обкладинки + друкарські сторінки)
+PATCH  /api/orders/:id/status      { status, reason?, tracking? }  (корекція складу; reason при cancel, tracking/ТТН при shipped → лист клієнту)
+POST   /api/orders/:id/notify      повторне Telegram-сповіщення власнику
+GET    /api/orders/:id/book-archive   ZIP фотокниги (обкладинки + друкарські сторінки)
+GET    /api/orders/:id/photos-archive ZIP усіх файлів замовлення («Скачати всі фото»)
 DELETE /api/orders/:id             (тільки superadmin)
+
+# Web-push власнику (всі вимагають Bearer)
+GET    /api/push/vapid-public-key  Публічний VAPID-ключ для підписки браузера
+GET    /api/push/status            Кількість активних підписок
+POST   /api/push/subscribe         Зберегти підписку пристрою
+POST   /api/push/unsubscribe       { endpoint }  Видалити підписку
+POST   /api/push/test              Надіслати тестовий пуш
+
+GET    /api/backgrounds/admin/all              усі фони
+POST/PUT/DELETE /api/backgrounds[/:id]         фони альбомів
 
 POST   /api/upload                 multipart/form-data → { url }
 GET/POST /api/admin/data/export|import/:kind   Excel (товари/прайс/категорії/клієнти)
@@ -292,11 +334,15 @@ node src/scripts/cleanUploads.js --days=30
   недоступне (ПК дизайнера вимкнений уночі), замовлення лишається `pending` і доставляється, щойно
   адреса стане доступною. Статус — у колонках `orders.photo_delivery_status` / `photo_delivery_at`
   / `photo_delivery_attempts`.
+- **SFTP-офлайн фолбек:** коли ПК недоступний, власнику в Telegram надсилається **підписане посилання**
+  на завантаження ZIP з нашого сервера — `GET /api/orders/:id/photos-download?token=…` (HMAC від
+  `JWT_SECRET`, без логіну, без навантаження адмінки). Лінк формується лише якщо заданий `PUBLIC_URL`.
 - Якщо у замовленні **більше 3 фото**, Telegram-сповіщення надсилає лише посилання на скачування
   (адміну) замість вкладення усіх файлів; повна якість лишається на сервері/у сховищі.
 
-Реалізація: `server/src/utils/photoDelivery.js`, `server/src/utils/siteConfig.js`.
-Залежність: `ssh2-sftp-client`. Налаштування зберігається в `settings` (ключ `sftp_storage`).
+Реалізація: `server/src/utils/photoDelivery.js`, `server/src/utils/siteConfig.js`,
+`server/src/utils/downloadToken.js`. Залежність: `ssh2-sftp-client`. Налаштування зберігається
+в `settings` (ключ `sftp_storage`).
 
 ---
 

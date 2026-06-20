@@ -1,11 +1,17 @@
 # Memory Moments — Платформа персоналізованої продукції
 
+> **Оновлено:** 2026-06-20 · **Статус:** production-ready (готовий до передачі).
+
 Монорепозиторій, що містить два самостійні застосунки:
 
 | Застосунок | Шлях | Порт | Призначення |
 |---|---|---|---|
 | **Конструктор** | `/` (корінь) | `5174` | 2D/3D редактор дизайну |
 | **Маркетплейс** | `marketplace/` | `5173` (client) · `3001` (API) | Каталог, кошик, адмінка |
+
+> **Спільний кошик:** конструктор і маркетплейс на одному домені користуються ОДНИМ кошиком
+> (IndexedDB `mm_shop`, ідентичний `lib/sharedCart.js` в обох застосунках) — позиція, додана в
+> конструкторі, видно в маркетплейсі й навпаки, і переживає навігацію між ними.
 
 ---
 
@@ -16,12 +22,14 @@ memory-moments/
 ├── src/                        # Конструктор (Vite + React)
 │   ├── components/             # DesignArea, Header, ToolsSidebar, MugModel, ProductCanvas,
 │   │                           #   FrameDropdownBtn, CollageDropdownBtn, TextEditPanel,
+│   │                           #   LayersDropdownBtn, BackgroundDropdownBtn,
 │   │                           #   FontOptions, DesignerTour …
 │   ├── hooks/                  # useTshirtCanvas, useCanvas, useAddImage, useCanvasTextureSync
 │   ├── features/               # Redux slices (tshirtSlice)
-│   ├── constants/              # designConstants.js (типи товарів, printZone, FONT_OPTIONS/FONT_GROUPS),
-│   │                           #   frames.js (20 рамок), collageLayouts.js (9 шаблонів)
-│   └── utils/                  # canvasStorageManager, canvasSyncManager
+│   ├── constants/              # designConstants.js (типи товарів, printZone, isMultiPhoto/isBookType,
+│   │                           #   FONT_OPTIONS/FONT_GROUPS), frames.js (20 рамок), collageLayouts.js (9 шаблонів)
+│   ├── lib/                    # sharedCart.js (спільний кошик IndexedDB — ІДЕНТИЧНИЙ маркетплейсному)
+│   └── utils/                  # canvasStorageManager, canvasSyncManager, layerLock.js (активний-шар-only)
 │
 ├── marketplace/
 │   ├── client/                 # SPA (Vite + React Router)
@@ -29,14 +37,17 @@ memory-moments/
 │   │       ├── pages/          # MarketplacePage, ProductDetailPage, CheckoutPage …
 │   │       ├── pages/admin/    # AdminOrdersPage, AdminProductsPage, AdminSiteConfigPage …
 │   │       ├── components/     # SiteHeader, SiteFooter, HeroBanner, ContactFloatingButton …
-│   │       └── lib/            # api.js, cart.jsx, contacts.js, utils.js
+│   │       └── lib/            # api.js, cart.jsx, contacts.js, utils.js,
+│   │       │                   #   sharedCart.js (спільний кошик — ІДЕНТИЧНИЙ конструкторному)
 │   │
 │   ├── server/                 # Express + SQLite API
 │   │   └── src/
-│   │       ├── routes/         # auth, products, categories, orders, upload, cleanup …
+│   │       ├── routes/         # auth, products, categories, orders, upload, cleanup,
+│   │       │                   #   backgrounds (фони альбомів), push (web-push) …
 │   │       ├── middleware/     # auth.js, requirePermission.js
 │   │       ├── config/         # db.js (better-sqlite3, foreign_keys ON)
-│   │       ├── utils/          # siteConfig.js (дефолти конфігу сайту), photoDelivery.js (SFTP)
+│   │       ├── utils/          # siteConfig.js (дефолти конфігу сайту), photoDelivery.js (SFTP),
+│   │       │                   #   push.js (web-push/VAPID), downloadToken.js (токен-лінк на ZIP)
 │   │       └── scripts/        # cleanUploads.js, seed-admin
 │   │
 │   └── database/               # ER-MODEL.md, schema.sql
@@ -58,6 +69,8 @@ memory-moments/
 - **Redux Toolkit** — UI-стан (колір, вибраний вид)
 - **React Context** — стан canvas між компонентами
 - **localStorage** — автозбереження дизайну між сесіями
+- **IndexedDB** (`mm_shop`) — спільний з маркетплейсом кошик (`lib/sharedCart.js`); великі
+  base64-позиції (мокапи, друк-файли, пачки фото) не вміщаються в localStorage
 
 ### Маркетплейс
 - **React 18** + **React Router 7** + **Vite 6**
@@ -142,8 +155,8 @@ ADMIN_PASSWORD=admin123
 TG_BOT_TOKEN=
 TG_CHAT_ID=
 
-# Базовий URL для посилання на скачування у Telegram-повідомленні
-# при замовленні з >3 фото (опційно), напр. https://memory-moments.online
+# Базовий URL для токен-захищеного посилання на скачування у Telegram
+# (велике замовлення / фолбек при офлайн-SFTP), напр. https://memory-moments.online
 PUBLIC_URL=
 ```
 
@@ -173,8 +186,10 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `GET` | `/api/products` | Каталог (пагінація, фільтр, пошук) |
 | `GET` | `/api/products/slug/:slug` | Картка товару |
 | `POST` | `/api/auth/login` | Вхід адміна → JWT |
-| `POST` | `/api/orders` | Оформлення замовлення |
-| `GET` | `/api/orders/:number` | Статус замовлення (для клієнта) |
+| `POST` | `/api/orders` | Оформлення замовлення (типи `catalog` / `photo_print` / `design`; зберігає `subtotal`+`discount`) |
+| `GET` | `/api/orders/track/:number` | Статус замовлення (для клієнта) |
+| `GET` | `/api/orders/:id/photos-download?token=…` | Токен-захищене скачування ZIP фото (лінк із Telegram, коли SFTP офлайн) |
+| `GET` | `/api/backgrounds` | Активні фони альбомів для конструктора |
 | `GET` | `/api/site-config` | Конфіг сайту (контакти/доставка/знижки/банер/SEO; **без секретів**) |
 
 ### Адмін ендпоінти (JWT required)
@@ -186,12 +201,21 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `PUT` | `/api/products/:id` | `products.manage` | Оновити товар |
 | `DELETE` | `/api/products/:id` | `products.manage` | Видалити (захист: designer_type не видаляється) |
 | `GET/PUT` | `/api/categories/admin/all` | — | Управління категоріями |
-| `GET` | `/api/orders/admin` | `orders.view` | Усі замовлення |
-| `PATCH` | `/api/orders/:id/status` | `orders.manage` | Змінити статус |
+| `GET` | `/api/orders` | `orders.view` | Усі замовлення (зі знижкою/підсумком) |
+| `GET` | `/api/orders/:id/photos-archive` | `orders.view` | ZIP усіх файлів замовлення (принти/прев'ю/фото) |
+| `GET` | `/api/orders/:id/book-archive` | `orders.view` | ZIP фотокниги (обкладинки + розвороти) |
+| `PATCH` | `/api/orders/:id/status` | `orders.manage` | Змінити статус (+`reason` при скасуванні, +`tracking` ТТН при «shipped») |
+| `POST` | `/api/orders/:id/notify` | `orders.manage` | Повторно надіслати клієнту лист зі статусом |
 | `DELETE` | `/api/orders/:id` | **superadmin** | Видалити замовлення + print-файли |
 | `GET` | `/api/admin/cleanup?days=N` | `products.manage` | Preview очистки uploads/ |
 | `POST` | `/api/admin/cleanup` | `products.manage` | Видалити старі файли |
 | `POST` | `/api/upload` | — | Завантажити зображення товару |
+| `GET` | `/api/backgrounds/admin/all` | JWT | Усі фони альбомів |
+| `POST/PUT/DELETE` | `/api/backgrounds[/:id]` | JWT | Керування фонами альбомів |
+| `GET` | `/api/push/vapid-public-key` | JWT | Публічний VAPID-ключ для підписки пристрою |
+| `GET` | `/api/push/status` | JWT | Кількість підписаних пристроїв |
+| `POST` | `/api/push/subscribe` · `/unsubscribe` | JWT | Підписка/відписка пристрою на пуш про замовлення |
+| `POST` | `/api/push/test` | JWT | Тестовий пуш власнику |
 | `GET` | `/api/admin/settings/site-config` | `settings.system` | Увесь конфіг сайту для адмінки |
 | `PUT` | `/api/admin/settings/site-config/:section` | `settings.system` | Зберегти секцію конфігу |
 | `POST` | `/api/admin/settings/site-config/telegram/test` | `settings.system` | Тест Telegram («надіслати тест») |
@@ -209,13 +233,20 @@ VITE_DESIGNER_URL=http://localhost:5174
 
 | Розділ | Доступ | Функціонал |
 |---|---|---|
-| Замовлення | `orders.view` | Перегляд, зміна статусу, скачування print-макетів |
+| Замовлення | `orders.view` | Перегляд, масова зміна статусу + причина скасування, ТТН Нової Пошти, бейдж знижки, скачування print-макетів, «скачати всі фото» (ZIP) + друк/накладна |
+| Клієнти | `orders.view` | Список клієнтів за замовленнями |
 | Товари | `products.view` | Каталог (designer_type товари приховані) |
-| Категорії | — | Створення, редагування, видалення |
+| Категорії | `products.view` | Створення, редагування, видалення |
+| Слайди | — | Банер-слайди головної |
+| Фони | — | Готові фони альбомів (керують конструктором) |
 | Дизайни | `designs.view` | Збережені дизайни з конструктора |
 | Прайс | `services.view` | Список послуг, імпорт через Excel |
-| Налаштування | superadmin | Профіль, пароль, користувачі, очистка сховища |
 | Сайт | `settings.system` | «Налаштування сайту»: контакти/філії, доставка, знижки на фотодрук, банер/SEO, Telegram, сховище фото (SFTP) — редагується власником без розробника |
+| Сповіщення | — | Web-push про нові замовлення: увімкнення на цьому пристрої, тест (VAPID-ключі генеруються автоматично) |
+| Налаштування | — | Профіль, пароль, користувачі, очистка сховища |
+| Посібник | — | Вбудована інструкція для власника |
+
+Адмін-оболонка адаптивна: на телефоні бічне меню згортається у висувний drawer.
 
 ### Система дозволів
 
@@ -236,8 +267,20 @@ VITE_DESIGNER_URL=http://localhost:5174
 | `polaroid` | Полароїд | 2D flat | Квадратна зона друку |
 | `instax-mini` | Instax Mini | 2D flat | Формат 54×86 мм |
 | `photo-*` | Фото (7 форматів) | 2D flat | 10×15, 15×21, A4, квадрат тощо |
+| `slim-book` / `print-book` | Фотокнига / альбом | 2D розвороти | Карусель мініатюр під холстом, drag-reorder, готові фони, шов + поля + підказки розміру |
 
 Поле `designer_type` в таблиці `products` пов'язує товар з конкретним типом конструктора.
+
+**Пачка фото (multi-photo, `isMultiPhoto`):** для фото-форматів можна завантажити багато фото одразу
+(input `multiple`) — кожне редагується як окрема сторінка, але в кошик іде **однією позицією**.
+Навігація сторінками — каруселлю мініатюр під холстом (з drag-reorder, мишка + тач). Знижка за
+кількістю фото застосовується й до таких пачок.
+
+**Альбом/фотокнига:** готові фони з адмінки (`BackgroundDropdownBtn`, серверна таблиця `backgrounds`),
+навігація розворотами каруселлю мініатюр під холстом із drag-reorder (мишка + тач), показ зони шва +
+безпечних полів + підказок розміру друку, ціна рахує кожне фото розвороту понад базу. Десктоп має
+більший холст (fit-to-height через `matchMedia`), мобільний вписується без вертикального скролу, 3D-прев'ю
+чашки на мобільному згортається в акордеон.
 
 ---
 
@@ -247,8 +290,10 @@ VITE_DESIGNER_URL=http://localhost:5174
 |---|---|---|
 | **Рамка** | 20 векторних рамок (без растрових ассетів). Рамка — це Fabric-група поверх зони друку, потрапляє у друкарський файл. Пікер розширюваний (можна додавати PNG-рамки). | `src/constants/frames.js`, `src/components/FrameDropdownBtn.jsx` |
 | **Колаж** | 9 шаблонів розкладки (2/3/4/6 слотів). Клік по слоту → фото вписується (cover-fit) й обрізається по слоту, лишаючись рухомим і масштабованим. | `src/constants/collageLayouts.js`, `src/components/CollageDropdownBtn.jsx` |
-| **Текст** | Шрифт за замовчуванням — **Caveat** (рукописний, повна кирилиця). Додавання тексту одразу вмикає редагування (можна друкувати). При виділенні з'являється плавна анімована панель `TextEditPanel` (шрифт/розмір/колір + курсив/жирний). ~40 шрифтів із підтримкою кирилиці (RU + UA: і ї є ґ), згруповані (Рукописні / Без засічок / З засічками / Системні / Лише латиниця). Латиниця-only декоративні (Pacifico, Great Vibes…) лишені, але позначені «(лат.)». | `src/constants/designConstants.js` (`FONT_OPTIONS`, `FONT_GROUPS`), `src/components/FontOptions.jsx`, `src/components/TextEditPanel.jsx`; Google Fonts із кириличними сабсетами в `index.html` |
-| **Навчання** | Покроковий тур із підсвічуванням для нових відвідувачів: 5 кроків, кнопка «Пропустити навчання», показується один раз (localStorage `mm_designer_tour_v1`). Плавна кнопка «Підказки» повторює тур. | `src/components/DesignerTour.jsx` |
+| **Текст** | Шрифт за замовчуванням — **Caveat** (рукописний, повна кирилиця). Додавання тексту одразу вмикає редагування (можна друкувати). При виділенні з'являється плавна анімована панель `TextEditPanel` (шрифт/розмір/колір + курсив/жирний). Панель — **оверлей** поверх верху холста (absolute), тож поява/зникнення не штовхає холст. ~40 шрифтів із підтримкою кирилиці (RU + UA: і ї є ґ), згруповані (Рукописні / Без засічок / З засічками / Системні / Лише латиниця). Латиниця-only декоративні (Pacifico, Great Vibes…) лишені, але позначені «(лат.)». | `src/constants/designConstants.js` (`FONT_OPTIONS`, `FONT_GROUPS`), `src/components/FontOptions.jsx`, `src/components/TextEditPanel.jsx`; Google Fonts із кириличними сабсетами в `index.html` |
+| **Шари** | Панель шарів: список усіх обʼєктів холста (зверху = передній план) з вибором, показ/сховати (👁), зміною z-порядку (вище/нижче, на перед/на зад) і видаленням. Керувати на макеті можна **лише активним** шаром — решта тимчасово блокується (`layerLock.js`), щоб при перекритті не хапати чужий обʼєкт. Фон альбому завжди заблокований. | `src/components/LayersDropdownBtn.jsx`, `src/utils/layerLock.js` |
+| **Фон альбому** | Готові фони (керуються в адмінці, розділ «Фони») лягають нижнім шаром на весь формат (cover), зафіксовані. Доступно лише для фотокниг. | `src/components/BackgroundDropdownBtn.jsx`, server `backgrounds` table + `routes/backgrounds.js` |
+| **Навчання** | Покроковий тур із підсвічуванням для нових відвідувачів: до 6 кроків (включно з кроком про панель «Шари»), кнопка «Пропустити навчання», показується один раз (localStorage `mm_designer_tour_v1`); відсутні на сторінці кроки автоматично пропускаються. Плавна кнопка «Підказки» повторює тур. | `src/components/DesignerTour.jsx` |
 
 **Мобільні:** верхній/нижній ряди інструментів горизонтально прокручуються пальцем на телефонах
 (вертикальні колонки на десктопі).
@@ -257,12 +302,20 @@ VITE_DESIGNER_URL=http://localhost:5174
 
 ## Зв'язок конструктора з маркетплейсом
 
-Конструктор вбудовується через `<iframe>` і спілкується з батьківською сторінкою через `postMessage` (компонент `EmbedBridge`). При оформленні замовлення:
+**Спільний кошик.** Конструктор і маркетплейс на одному домені користуються одним кошиком
+(IndexedDB `mm_shop`, `lib/sharedCart.js` — ІДЕНТИЧНИЙ у обох). Кожна позиція самодостатня для
+оформлення: `toOrderItem` будує payload для `POST /api/orders` (типи `design` / `catalog` /
+`photo_print`). Окремої кнопки «Маркетплейс» у конструкторі більше немає — позиції видно в одному
+кошику звідусіль. Конструктор шле замовлення напряму на `/api/orders`
+(`sendOrderToMarketplace` у `utils/canvasSyncManager.js`). `EmbedBridge`/`postMessage` лишається для
+вбудованого режиму, але вже не несе кошик.
+
+При оформленні замовлення:
 
 1. Canvas-текстури (base64 PNG) передаються як `print_front` / `print_back`
 2. Сервер зберігає їх у `uploads/print_ORDER_TS_front.png`
 3. URL зберігається в `order_items.design_data` (JSON)
-4. Адмін скачує готові файли для друку з картки замовлення
+4. Адмін скачує готові файли для друку (або весь ZIP) з картки замовлення
 
 ---
 
@@ -282,6 +335,21 @@ node marketplace/server/src/scripts/cleanUploads.js --days=30
 ```
 
 Захист: зображення товарів та файли замовлень молодших N днів не видаляються.
+
+---
+
+## Сповіщення
+
+- **Web-push власнику про нові замовлення.** VAPID-ключі генеруються автоматично і зберігаються в
+  налаштуваннях; пуш вмикається **на кожному пристрої окремо** в адмінці (розділ «Сповіщення»),
+  є тестова кнопка. Service worker — `push-sw.js` у корені (`marketplace/client/public/push-sw.js`).
+  Реалізація: `server/src/routes/push.js`, `server/src/utils/push.js`, `client/src/lib/push.js`.
+- **Листи клієнту на кожну зміну статусу** (включно з причиною скасування `cancel_reason`). При
+  статусі «Відправлено» вводиться ТТН Нової Пошти → у листі зʼявляється посилання для відстеження
+  (колонка `orders.tracking_number`).
+- **Фолбек при недоступному SFTP:** замість вкладення файлів Telegram надсилає **токен-захищене**
+  посилання на скачування ZIP із власного сервера (`GET /api/orders/:id/photos-download?token=…`,
+  `utils/downloadToken.js`) — потрібен `PUBLIC_URL`.
 
 ---
 

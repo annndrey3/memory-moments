@@ -1,5 +1,7 @@
 # 🚀 Деплой Memory Moments на хостинг
 
+> _Обновлено: 2026-06-20_
+
 Инструкция по развёртыванию на **Linux-сервере (VPS, Ubuntu 22.04+)** — самый универсальный вариант.
 В конце — краткий вариант для PaaS (Render/Railway + статик-хостинг).
 
@@ -76,9 +78,16 @@ ADMIN_PASSWORD=надёжный-пароль
 TG_BOT_TOKEN=ваш_токен_бота
 TG_CHAT_ID=ваш_chat_id
 
-# Базовый URL для ссылки на скачивание в Telegram-сообщении при заказе
-# с >3 фото (опционально). Например:
+# Публичный URL сайта (прод). По нему сервер строит ЗАЩИЩЁННУЮ ТОКЕНОМ ссылку на
+# скачивание фото заказа и шлёт её владельцу в Telegram, когда ПК дизайнера (SFTP)
+# офлайн. Без него fallback-ссылка не отправляется. Например:
 PUBLIC_URL=https://shop.example.com
+
+# Web-push владельцу о новых заказах: VAPID-ключи НЕ задаются в .env — они
+# генерируются автоматически при первом обращении и хранятся в таблице settings
+# (push_vapid_public / push_vapid_private). Нужны только HTTPS и service worker
+# push-sw.js в корне (он лежит в marketplace/client/public/ и едет с билдом клиента).
+# PUSH_SUBJECT=mailto:admin@example.com   # необязательно (по умолчанию admin@memory-moments.online)
 ```
 
 > 🔧 Telegram-токен, скидки на фотопечать, контакты, доставку, баннер/SEO и SFTP-хранилище можно
@@ -178,8 +187,10 @@ Certbot сам добавит 443-блоки и редирект с 80. Авто
 ## 7. Данные: персистентность и бэкапы
 
 Файлы, которые **нельзя терять** (вне `git`, не пересоздаются):
-- `t-shirt-designer-webapp-main/marketplace/server/marketplace.db` — база (товары, заказы, прайс, дизайны, админы)
-- `t-shirt-designer-webapp-main/marketplace/server/uploads/` — загруженные изображения
+- `t-shirt-designer-webapp-main/marketplace/server/marketplace.db` — база (товары, заказы, прайс,
+  дизайны, фоны, push-подписки, админы)
+- `t-shirt-designer-webapp-main/marketplace/server/uploads/` — загруженные изображения,
+  print-макеты, фото заказов и ZIP-архивы фотокниг
 
 Простой ежедневный бэкап (cron):
 ```bash
@@ -207,7 +218,8 @@ pm2 restart mm-api                         # перезапустить API
 
 > Миграции БД применяются автоматически при старте API (идемпотентные `CREATE TABLE IF NOT EXISTS`
 > и проверки колонок в `db.js`) — существующие данные сохраняются. Новые колонки `orders`
-> (`photo_delivery_*`) и ключи конфига сайта в `settings` появляются без ручных шагов.
+> (`photo_delivery_*`, `archive_*`), новые таблицы (`backgrounds`, `push_subscriptions`) и ключи
+> конфига сайта в `settings` появляются без ручных шагов — отдельной команды миграции нет.
 
 > 🛠️ Если деплоите через `deploy/update.sh` — он сам делает `npm ci` при изменении lock-файла,
 > поэтому новая зависимость `ssh2-sftp-client` (доставка фото по SFTP) ставится автоматически.
