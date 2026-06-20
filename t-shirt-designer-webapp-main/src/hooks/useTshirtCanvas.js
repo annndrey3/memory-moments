@@ -6,6 +6,7 @@ import { useCanvas } from "@/hooks/useCanvas";
 import canvasStorageManager from "@/utils/canvasStorageManager";
 import { canvasSyncManager } from "@/utils/canvasSyncManager";
 import { markDesignDirty } from "@/features/tshirtSlice";
+import { lockToActive, unlockAll } from "@/utils/layerLock";
 
 export const useTshirtCanvas = ({
   svgPath,
@@ -108,17 +109,21 @@ export const useTshirtCanvas = ({
       canvas.renderAll();
     }
 
-    // Handle Object Selection
+    // Handle Object Selection. Керувати на макеті можна лише активним шаром:
+    // при виборі блокуємо інші обʼєкти, при знятті виділення — розблоковуємо всі.
     canvas.on("selection:created", (e) => {
       setSelectedObject(e.selected[0]);
+      lockToActive(canvas);
     });
 
     canvas.on("selection:updated", (e) => {
       setSelectedObject(e.selected[0]);
+      lockToActive(canvas);
     });
 
     canvas.on("selection:cleared", () => {
       setSelectedObject(null);
+      unlockAll(canvas);
     });
 
     // Listen for any changes on the canvas. Будь-яка зміна макета означає, що

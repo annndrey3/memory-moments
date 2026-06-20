@@ -6,6 +6,7 @@ import {
   Trash2, Lock, Image as ImageIcon, Type, Minus, Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { lockToActive, unlockAll } from "@/utils/layerLock";
 
 const RAIL_BTN =
   "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed";
@@ -46,8 +47,12 @@ export default function LayersDropdownBtn({ manualSync }) {
   const count = objects.length;
 
   const select = (obj) => {
-    if (!activeCanvas || obj.evented === false) return;
+    if (!activeCanvas) return;
+    // Тимчасово робимо обʼєкт обираним (раптом він заблокований як неактивний),
+    // активуємо його та блокуємо решту — далі ним можна керувати на макеті.
+    obj.selectable = true; obj.evented = true;
     activeCanvas.setActiveObject(obj);
+    lockToActive(activeCanvas);
     activeCanvas.requestRenderAll();
     setSelectedObject?.(obj);
   };
@@ -67,7 +72,8 @@ export default function LayersDropdownBtn({ manualSync }) {
   const remove = (obj) => {
     if (!activeCanvas) return;
     activeCanvas.remove(obj);
-    if (selectedObject === obj) setSelectedObject?.(null);
+    if (selectedObject === obj) { setSelectedObject?.(null); activeCanvas.discardActiveObject?.(); }
+    unlockAll(activeCanvas); // після видалення немає активного — розблоковуємо все
     activeCanvas.requestRenderAll();
     bump();
     manualSync?.();

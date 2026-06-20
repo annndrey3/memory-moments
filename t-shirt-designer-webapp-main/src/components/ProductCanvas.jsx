@@ -43,10 +43,11 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
     return () => ro.disconnect();
   }, [canvasW]);
 
-  // Висотний бюджет: на десктопі — vhBudgetWide (якщо вид його задає), інакше
-  // звичайний vhBudget. px-стелю теж піднімаємо, але лише коли є wide-бюджет.
-  const wideBudget = isWide && viewConfig.vhBudgetWide;
-  const vhBudget = wideBudget ? viewConfig.vhBudgetWide : (viewConfig.vhBudget ?? 34);
+  // Висотний бюджет: на десктопі полотно більше для ВСІХ товарів. Вид може задати
+  // власний vhBudgetWide (книги), інакше беремо базовий × 1.6. px-стелю теж піднімаємо.
+  const baseBudget = viewConfig.vhBudget ?? 34;
+  const wideBudget = isWide ? (viewConfig.vhBudgetWide ?? Math.round(baseBudget * 1.6)) : 0;
+  const vhBudget = wideBudget || baseBudget;
   const pxCap = wideBudget ? 620 : 450;
 
   const pz = viewConfig.printZone;
