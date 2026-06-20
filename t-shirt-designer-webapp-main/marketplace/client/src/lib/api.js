@@ -148,8 +148,8 @@ export const api = {
 
   getOrder: (id) => request(`/orders/${id}`),
 
-  updateOrderStatus: (id, status, reason) =>
-    request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason }) }),
+  updateOrderStatus: (id, status, reason, tracking) =>
+    request(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, reason, tracking }) }),
 
   // Web-push (сповіщення власника)
   getVapidKey: () => request("/push/vapid-public-key"),

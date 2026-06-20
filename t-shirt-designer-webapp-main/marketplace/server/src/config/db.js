@@ -307,6 +307,8 @@ if (process.env.DATABASE_URL) {
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS photo_delivery_attempts INTEGER NOT NULL DEFAULT 0;");
   // Причина скасування (показуємо в адмінці + у листі клієнту).
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;");
+  // Номер ТТН (Нова Пошта) — вводиться при статусі «Відправлено», йде клієнту в листі.
+  await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;");
   // Частковий унікальний індекс: дублі ключа заборонені, але багато NULL дозволені.
   await _pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");
 
@@ -710,6 +712,10 @@ if (process.env.DATABASE_URL) {
   // Причина скасування (показуємо в адмінці + у листі клієнту).
   if (orderCols.length && !orderCols.some((c) => c.name === "cancel_reason")) {
     db.exec("ALTER TABLE orders ADD COLUMN cancel_reason TEXT;");
+  }
+  // Номер ТТН (Нова Пошта) — при статусі «Відправлено».
+  if (orderCols.length && !orderCols.some((c) => c.name === "tracking_number")) {
+    db.exec("ALTER TABLE orders ADD COLUMN tracking_number TEXT;");
   }
   // Частковий унікальний індекс: дублі ключа заборонені, NULL дозволені.
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");

@@ -224,7 +224,7 @@ const STATUS_EMAIL = {
 
 function buildStatusEmailHtml(order, status, reason) {
   const t = STATUS_EMAIL[status];
-  const { order_number, customer_name, total } = order;
+  const { order_number, customer_name, total, tracking_number } = order;
   const reasonBlock =
     status === "cancelled" && reason
       ? `<tr><td style="padding:16px 40px 0;">
@@ -236,6 +236,19 @@ function buildStatusEmailHtml(order, status, reason) {
            </table>
          </td></tr>`
       : "";
+  // ТТН + кнопка відстеження Нової Пошти (лише для «Відправлено» з номером).
+  const ttn = status === "shipped" && tracking_number ? String(tracking_number).replace(/[^0-9A-Za-z]/g, "") : "";
+  const trackingBlock = ttn
+    ? `<tr><td style="padding:16px 40px 0;">
+         <table width="100%" cellpadding="0" cellspacing="0" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+           <tr><td style="padding:16px;text-align:center;">
+             <p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.6px;">Номер для відстеження (ТТН)</p>
+             <p style="margin:0 0 12px;font-size:20px;font-weight:800;color:#1e3a8a;letter-spacing:1px;">${ttn}</p>
+             <a href="https://novaposhta.ua/tracking/?cargo_number=${ttn}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:10px 22px;border-radius:24px;">📦 Відстежити посилку</a>
+           </td></tr>
+         </table>
+       </td></tr>`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="uk"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>${t.heading} — ${order_number}</title></head>
@@ -254,6 +267,7 @@ function buildStatusEmailHtml(order, status, reason) {
         <p style="margin:0;font-size:15px;color:#334155;line-height:1.6;">Вітаємо, <strong>${customer_name || "клієнте"}</strong>!<br/>${t.body}</p>
       </td></tr>
       ${reasonBlock}
+      ${trackingBlock}
       ${total != null && status !== "cancelled" ? `<tr><td style="padding:20px 40px 0;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;"><tr><td style="padding:14px 16px;font-size:14px;color:#1e293b;">Сума замовлення</td><td style="padding:14px 16px;font-size:16px;font-weight:700;color:#7c3aed;text-align:right;">${formatPrice(total)}</td></tr></table></td></tr>` : ""}
       <tr><td style="padding:24px 40px 0;text-align:center;">
         <p style="margin:0;font-size:14px;color:#64748b;line-height:1.6;">Питання? Ми завжди на звʼязку:</p>

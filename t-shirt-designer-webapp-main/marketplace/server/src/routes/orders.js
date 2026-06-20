@@ -675,6 +675,7 @@ router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), 
   try {
     const { status } = req.body;
     const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    const tracking = typeof req.body?.tracking === "string" ? req.body.tracking.trim() : "";
     if (!ORDER_STATUSES.includes(status)) {
       return res.status(400).json({ error: `Недопустимий статус. Дозволені: ${ORDER_STATUSES.join(", ")}` });
     }
@@ -691,6 +692,9 @@ router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), 
 
     // Причину пишемо лише при скасуванні; при іншому статусі — очищаємо.
     const cancelReason = willCancel ? (reason || null) : null;
+    // ТТН пишемо при «Відправлено» (якщо вказали); COALESCE зберігає наявний при
+    // інших статусах і не затирає його порожнім значенням.
+    const trackingVal = status === "shipped" && tracking ? tracking : null;
 
     // Корекція складу + зміна статусу — атомарно в одній транзакції.
     await transaction(async (tx) => {
@@ -702,8 +706,8 @@ router.patch("/:id/status", authMiddleware, requirePermission("orders.manage"), 
         for (const it of items) await holdStock(tx, it);
       }
       await tx.run(
-        "UPDATE orders SET status = :status, cancel_reason = :reason, updated_at = CURRENT_TIMESTAMP WHERE id = :id",
-        { status, reason: cancelReason, id: req.params.id }
+        "UPDATE orders SET status = :status, cancel_reason = :reason, tracking_number = COALESCE(:tracking, tracking_number), updated_at = CURRENT_TIMESTAMP WHERE id = :id",
+        { status, reason: cancelReason, tracking: trackingVal, id: req.params.id }
       );
     });
 

@@ -28,6 +28,8 @@ export default function AdminOrdersPage() {
   const [bulk, setBulk] = useState(null); // {done,total,label} під час масової дії
   const [reasonModal, setReasonModal] = useState(null); // {ids:[...]} — причина скасування
   const [reasonText, setReasonText] = useState("");
+  const [shipModal, setShipModal] = useState(null); // {id} — введення ТТН при «Відправлено»
+  const [trackText, setTrackText] = useState("");
 
   const loadOrders = () => {
     setLoading(true);
@@ -194,10 +196,33 @@ export default function AdminOrdersPage() {
   const changeStatus = async (orderId, status) => {
     // Скасування — через модалку причини (вона піде клієнту в листі).
     if (status === "cancelled") { askCancel([orderId]); return; }
+    // Відправлено — через модалку ТТН (номер піде клієнту в листі з кнопкою відстеження).
+    if (status === "shipped") {
+      const cur = detail[orderId]?.tracking_number || "";
+      setTrackText(cur);
+      setShipModal({ id: orderId });
+      return;
+    }
     setUpdating(orderId);
     try {
       const updated = await api.updateOrderStatus(orderId, status);
       setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)));
+      setDetail((d) => ({ ...d, [orderId]: updated }));
+    } catch (err) {
+      alert(err.message || "Не вдалося оновити статус");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const confirmShip = async () => {
+    const orderId = shipModal.id;
+    const tracking = trackText.trim();
+    setShipModal(null);
+    setUpdating(orderId);
+    try {
+      const updated = await api.updateOrderStatus(orderId, "shipped", undefined, tracking);
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status: "shipped" } : o)));
       setDetail((d) => ({ ...d, [orderId]: updated }));
     } catch (err) {
       alert(err.message || "Не вдалося оновити статус");
@@ -523,6 +548,15 @@ export default function AdminOrdersPage() {
                             {full.cancel_reason && (
                               <div className="text-red-600"><dt className="inline text-red-400">Причина скасування: </dt>{full.cancel_reason}</div>
                             )}
+                            {full.tracking_number && (
+                              <div>
+                                <dt className="inline text-slate-400">ТТН: </dt>
+                                <a href={`https://novaposhta.ua/tracking/?cargo_number=${encodeURIComponent(full.tracking_number)}`}
+                                  target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">
+                                  {full.tracking_number}
+                                </a>
+                              </div>
+                            )}
                           </dl>
                         </div>
                       </div>
@@ -567,6 +601,43 @@ export default function AdminOrdersPage() {
               <button onClick={confirmCancel}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600">
                 <Ban className="h-4 w-4" /> Скасувати замовлення
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модалка ТТН при «Відправлено». Номер + кнопка відстеження йдуть клієнту в листі. */}
+      {shipModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setShipModal(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-slate-900">Відправити замовлення</h3>
+              <button onClick={() => setShipModal(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-2">
+              Номер ТТН (Нова Пошта) — клієнт отримає його в листі з кнопкою «Відстежити». Необовʼязково.
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={trackText}
+              onChange={(e) => setTrackText(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") confirmShip(); }}
+              placeholder="напр.: 20450000000000"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm tracking-wide focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setShipModal(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                Назад
+              </button>
+              <button onClick={confirmShip}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                📦 Відправлено
               </button>
             </div>
           </div>
