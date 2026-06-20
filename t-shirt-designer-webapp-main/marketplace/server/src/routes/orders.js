@@ -355,6 +355,13 @@ router.post("/", createOrderLimiter, async (req, res) => {
           ...(isBook ? { book: { type: item.product_type, format: item.format || item.canvas_size || null, spreads: item.spreads || null, extra: item.extra_spreads || null } } : {}),
         });
 
+        // Пачка фото з конструктора (multi-photo, не книга) — рахуємо у знижку
+        // за кількістю фото (як і звичайний фотодрук photo_print).
+        if (!isBook && innerPhotoUrls.length > 0) {
+          photoCount += Math.max(quantity, innerPhotoUrls.length);
+          photoSubtotal += unitPrice * quantity;
+        }
+
         resolved.push({
           product_id: null,
           variant_id: null,

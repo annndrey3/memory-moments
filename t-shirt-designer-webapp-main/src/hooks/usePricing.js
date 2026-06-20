@@ -83,5 +83,22 @@ export function usePricing() {
     return p ? Number(p.price) : null;
   };
 
-  return { priceFor, tshirtPrice, canvasPrice, bookPrice, cartItemPrice, productStartingPrice, loaded: data !== null };
+  // Відсоток знижки за кількістю фото (пороги з адмінки або дефолт). Та сама
+  // система знижок, що на сайті/в прайсі — застосовується й до пачки фото.
+  const photoDiscountPct = (count) => {
+    const tiers = (Array.isArray(data?.discountTiers) && data.discountTiers.length ? data.discountTiers : DEFAULT_TIERS)
+      .map((t) => ({ min: Number(t.min), pct: Number(t.pct) }))
+      .filter((t) => t.min > 0)
+      .sort((a, b) => b.min - a.min);
+    for (const t of tiers) if (count >= t.min) return t.pct;
+    return 0;
+  };
+
+  return { priceFor, tshirtPrice, canvasPrice, bookPrice, cartItemPrice, productStartingPrice, photoDiscountPct, loaded: data !== null };
 }
+
+// Фолбек-пороги (якщо адмінка не повернула) — збігаються з дефолтами сервера.
+const DEFAULT_TIERS = [
+  { min: 400, pct: 30 }, { min: 300, pct: 25 }, { min: 200, pct: 20 },
+  { min: 150, pct: 15 }, { min: 100, pct: 10 }, { min: 50, pct: 5 },
+];

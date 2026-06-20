@@ -4,6 +4,7 @@ import { authMiddleware } from "../middleware/auth.js";
 import { requirePermission } from "../middleware/requirePermission.js";
 import { getProductById, logAuditSync, slugify, uniqueSlug } from "../utils/helpers.js";
 import { DESIGNER_SERVICE_MAP, buildTshirtMatrix, buildCanvasMatrix, buildBookMatrix, servicePriceFor } from "../utils/designerPricing.js";
+import { getPhotoDiscountTiers } from "../utils/siteConfig.js";
 
 const router = Router();
 
@@ -117,8 +118,10 @@ router.get("/designer-prices", async (req, res) => {
     // Фотокниги — матриця формат → { s10, s15, extra } по типу.
     const slimBook = buildBookMatrix(services, "slim-book");
     const printBook = buildBookMatrix(services, "print-book");
+    // Пороги знижки за кількістю фото (з адмінки) — щоб конструктор показував знижку.
+    const discountTiers = await getPhotoDiscountTiers();
 
-    res.json({ types, tshirt, canvas, slimBook, printBook });
+    res.json({ types, tshirt, canvas, slimBook, printBook, discountTiers });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch designer prices" });

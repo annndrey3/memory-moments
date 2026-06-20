@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { toggleCart, removeFromCart, updateQuantity, clearCart, setSelectedType } from "@/features/tshirtSlice";
 import { usePricing } from "@/hooks/usePricing";
+import { isMultiPhoto } from "@/constants/designConstants";
 import { sendOrderToMarketplace } from "@/utils/canvasSyncManager";
 import { useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -59,11 +60,18 @@ const Header = () => {
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
-  const { cartItemPrice, productStartingPrice } = usePricing();
+  const { cartItemPrice, productStartingPrice, photoDiscountPct } = usePricing();
   // Підсумок кошика: множимо ціну позиції на кількість. Якщо хоч у однієї позиції
   // ціна невідома (немає коду в прайсі / ще не завантажено) — показуємо «від», бо
   // фінальну суму уточнить менеджер при оформленні.
-  const cartTotal = cartItems.reduce((sum, item) => sum + (cartItemPrice(item) || 0) * item.quantity, 0);
+  const grossTotal = cartItems.reduce((sum, item) => sum + (cartItemPrice(item) || 0) * item.quantity, 0);
+  // Знижка за кількістю фото (та сама, що на сайті) — на позиції-пачки фото.
+  const photoItems = cartItems.filter((i) => isMultiPhoto(i.productType));
+  const photoCount = photoItems.reduce((s, i) => s + (i.innerPhotos?.length || i.quantity || 0), 0);
+  const photoSubtotal = photoItems.reduce((s, i) => s + (cartItemPrice(i) || 0) * i.quantity, 0);
+  const cartDiscountPct = photoDiscountPct(photoCount);
+  const cartDiscount = Math.round((photoSubtotal * cartDiscountPct) / 100);
+  const cartTotal = Math.max(0, grossTotal - cartDiscount);
   const hasUnknownPrice = cartItems.some((item) => cartItemPrice(item) == null);
 
   // Тап по плитці кросс-селлу — перемкнути конструктор на цей товар і закрити кошик
@@ -356,6 +364,12 @@ const Header = () => {
 
           {cartItems.length > 0 && (
             <div className="shrink-0 border-t border-border/60 pt-3 mt-3">
+              {cartDiscount > 0 && (
+                <div className="flex items-baseline justify-between mb-1 text-sm">
+                  <span className="text-rose-600 font-medium">Знижка на фото −{cartDiscountPct}%</span>
+                  <span className="text-rose-600 font-semibold">−{formatPrice(cartDiscount)} ₴</span>
+                </div>
+              )}
               <div className="flex items-baseline justify-between mb-3">
                 <span className="text-sm font-medium text-muted-foreground">
                   Разом{hasUnknownPrice ? " (від)" : ""}

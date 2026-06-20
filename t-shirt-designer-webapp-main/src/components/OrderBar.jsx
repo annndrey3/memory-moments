@@ -36,7 +36,7 @@ const OrderBar = () => {
   const quantity = useSelector((state) => state.tshirt.quantity);
   const cartItems = useSelector((state) => state.tshirt.cartItems || []);
   const { addCurrentDesignToCart, hasDesign } = useAddToCart();
-  const { priceFor, tshirtPrice, canvasPrice, bookPrice } = usePricing();
+  const { priceFor, tshirtPrice, canvasPrice, bookPrice, photoDiscountPct } = usePricing();
   const spreadInputRef = useRef(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMin, setPreviewMin] = useState(false);
@@ -116,14 +116,17 @@ const OrderBar = () => {
       secondNote = `${totalSpreads} ${bookUnit(selectedType)} · фото: ${slimBookPhotos.length}`;
     }
   } else if (isMulti) {
-    // Пачка фото: ціна = (к-ть завантажених фото) × ціна формату.
+    // Пачка фото: ціна = (к-ть фото) × ціна формату − знижка за кількістю (з адмінки).
     const p = priceFor(selectedType);
     if (p) {
       const n = Math.max(1, slimBookPhotos.length);
       unit = p.price;
-      total = p.price * n;
+      const gross = p.price * n;
+      const pct = photoDiscountPct(slimBookPhotos.length);
+      total = pct ? Math.round(gross * (1 - pct / 100)) : gross;
+      if (pct) compareTotal = gross;
       secondNote = slimBookPhotos.length > 0
-        ? `${slimBookPhotos.length} фото × ${formatPrice(p.price)} ₴`
+        ? `${slimBookPhotos.length} фото × ${formatPrice(p.price)} ₴${pct ? ` · знижка −${pct}%` : ""}`
         : "завантажте фото для друку";
     }
   } else {
