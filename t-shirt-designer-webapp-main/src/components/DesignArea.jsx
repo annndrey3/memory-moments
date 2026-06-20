@@ -13,7 +13,7 @@ import CollageDropdownBtn from "./CollageDropdownBtn";
 import ObjectControls from "./ObjectControls";
 import FillDropdownBtn from "./FillDropdownBtn";
 import PropertiesBtn from "./PropertiesBtn";
-import { setSelectedView } from "../features/tshirtSlice";
+import { setSelectedView, reorderSlimBookPhotos } from "../features/tshirtSlice";
 import { useCanvas } from "@/hooks/useCanvas";
 import { useAddImage } from "@/hooks/useAddImage";
 import canvasStorageManager from "@/utils/canvasStorageManager";
@@ -206,6 +206,55 @@ const DesignArea = ({ manualSync }) => {
     }
   };
 
+  // ── Перетягування мініатюр розворотів у каруселі (миша + тач) ──
+  // Тач: перетяг вмикається довгим натисканням (200мс), щоб швидкий свайп лишався
+  // прокруткою каруселі. Миша: перетяг після руху >6px. Реордер — reorderSlimBookPhotos.
+  const dragRef = useRef({ from: null, active: false, timer: null, startX: 0, type: "", over: null, didDrag: false });
+  const [dragIdx, setDragIdx] = useState(null);
+  const [overIdx, setOverIdx] = useState(null);
+
+  const spreadIdxAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const tile = el?.closest?.("[data-spread-idx]");
+    return tile ? Number(tile.getAttribute("data-spread-idx")) : null;
+  };
+  const resetDrag = () => {
+    if (dragRef.current.timer) clearTimeout(dragRef.current.timer);
+    dragRef.current = { from: null, active: false, timer: null, startX: 0, type: "", over: null, didDrag: dragRef.current.didDrag };
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+  const onThumbPointerDown = (e, idx) => {
+    dragRef.current = { from: idx, active: false, timer: null, startX: e.clientX, type: e.pointerType, over: null, didDrag: false };
+    if (e.pointerType !== "mouse") {
+      dragRef.current.timer = setTimeout(() => { dragRef.current.active = true; setDragIdx(idx); }, 200);
+    }
+  };
+  const onThumbsPointerMove = (e) => {
+    const d = dragRef.current;
+    if (d.from == null) return;
+    if (!d.active) {
+      if (d.type === "mouse") {
+        if (Math.abs(e.clientX - d.startX) > 6) { d.active = true; setDragIdx(d.from); }
+      } else if (d.timer && Math.abs(e.clientX - d.startX) > 8) {
+        // рух до спрацювання таймера = прокрутка → скасовуємо перетяг
+        clearTimeout(d.timer); d.timer = null; d.from = null; return;
+      }
+      if (!d.active) return;
+    }
+    e.preventDefault();
+    const over = spreadIdxAt(e.clientX, e.clientY);
+    if (over != null && over !== d.over) { d.over = over; setOverIdx(over); }
+  };
+  const onThumbsPointerUp = () => {
+    const d = dragRef.current;
+    if (d.active && d.from != null && d.over != null && d.over !== d.from) {
+      dispatch(reorderSlimBookPhotos({ from: d.from, to: d.over }));
+      d.didDrag = true; // придушити наступний click (щоб не перемикав вид)
+    }
+    resetDrag();
+  };
+
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
     if (e.dataTransfer.types.includes("Files")) setDragOver(true);
@@ -313,32 +362,47 @@ const DesignArea = ({ manualSync }) => {
               {/* Книга: карусель мініатюр обкладинок/розворотів — навігація ПІД холстом
                   (видно ескіз кожного розвороту; клік перемикає редагування). */}
               {isBookType(selectedType) && views.length > 1 && (
-                <div className="w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+                <div
+                  className="w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
+                  style={{ touchAction: dragIdx != null ? "none" : "pan-x" }}
+                  onPointerMove={onThumbsPointerMove}
+                  onPointerUp={onThumbsPointerUp}
+                  onPointerLeave={onThumbsPointerUp}
+                >
                   {views.map(([view, viewConfig]) => {
                     const spreadIdx = view.startsWith("spread-") ? Number(view.slice(7)) : -1;
-                    const thumb = spreadIdx >= 0 ? slimBookPhotos[spreadIdx] : null;
+                    const isSpread = spreadIdx >= 0;
+                    const thumb = isSpread ? slimBookPhotos[spreadIdx] : null;
                     const active = selectedView === view;
                     return (
                       <button
                         key={view}
                         type="button"
-                        onClick={() => handleViewChange(view)}
-                        title={viewConfig.label}
+                        data-spread-idx={isSpread ? spreadIdx : undefined}
+                        onPointerDown={isSpread ? (e) => onThumbPointerDown(e, spreadIdx) : undefined}
+                        onClick={() => {
+                          if (dragRef.current.didDrag) { dragRef.current.didDrag = false; return; }
+                          handleViewChange(view);
+                        }}
+                        title={isSpread ? `${viewConfig.label} — перетягніть, щоб змінити порядок` : viewConfig.label}
                         className={cn(
-                          "shrink-0 w-12 rounded-md border-2 overflow-hidden bg-card transition-all",
+                          "shrink-0 w-12 rounded-md border-2 overflow-hidden bg-card transition-all select-none",
                           active
                             ? "border-primary ring-2 ring-primary/30 shadow-glow"
-                            : "border-border/60 hover:border-primary/40"
+                            : "border-border/60 hover:border-primary/40",
+                          isSpread && "cursor-grab",
+                          isSpread && dragIdx === spreadIdx && "opacity-40",
+                          isSpread && overIdx === spreadIdx && dragIdx !== spreadIdx && "border-violet-500 ring-2 ring-violet-400"
                         )}
                       >
-                        <div className="h-8 w-full bg-muted flex items-center justify-center overflow-hidden">
+                        <div className="h-8 w-full bg-muted flex items-center justify-center overflow-hidden pointer-events-none">
                           {thumb ? (
-                            <img src={thumb} alt={viewConfig.label} className="h-full w-full object-cover" />
+                            <img src={thumb} alt={viewConfig.label} draggable={false} className="h-full w-full object-cover" />
                           ) : (
                             <ImagePlus className="h-4 w-4 text-muted-foreground/50" />
                           )}
                         </div>
-                        <div className="text-[8px] font-medium leading-none py-0.5 px-0.5 truncate text-center">
+                        <div className="text-[8px] font-medium leading-none py-0.5 px-0.5 truncate text-center pointer-events-none">
                           {viewConfig.label}
                         </div>
                       </button>
