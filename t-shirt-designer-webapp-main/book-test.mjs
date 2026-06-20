@@ -138,11 +138,16 @@ async function runBook(browser, type, label, unitWord, basePrice, s15Price, extr
   check(hasPrice(t1, priceWithExtra), `ціна враховує дод. фото: ${PHOTOS} фото → ${priceWithExtra} ₴ (база ${basePrice} + ${overBase}×${extraUnit})`);
   await page.screenshot({ path: `${OUT}/03-spreads.png` });
 
-  // 7) Перемикаємось на вкладку «Розворот 1» — має бути редагований холст + інструменти.
+  // 7) Карусель мініатюр + перемикання на «Розворот 1» (редагований холст, Ліва/Права).
+  const thumbs = await page.evaluate(() =>
+    [...document.querySelectorAll("button img")].filter((i) => /Розворот/.test(i.alt)).length);
+  check(thumbs >= 2, `карусель мініатюр розворотів під холстом (${thumbs} ескізів)`);
   try { await clickByText(page, "Розворот 1"); await sleep(700); } catch (e) { issues.push("open spread: " + e.message); }
   const t2 = await bodyText(page);
   check(/Фото/.test(t2) && /Текст/.test(t2), "на розвороті доступні інструменти (Фото/Текст)");
-  check(/Ліва/.test(t2) && /Права/.test(t2), "розворот двосторінковий: підписи «Ліва»/«Права»");
+  // SVG-текст (Ліва/Права) не завжди потрапляє в innerText → читаємо textContent.
+  const t2c = await page.evaluate(() => document.body.textContent);
+  check(/Ліва/.test(t2c) && /Права/.test(t2c), "розворот двосторінковий: підписи «Ліва»/«Права»");
   await page.screenshot({ path: `${OUT}/04-spread-edit.png` });
 
   // 8) Передперегляд книги.

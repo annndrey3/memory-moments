@@ -229,7 +229,9 @@ const DesignArea = ({ manualSync }) => {
         {/* ── Верх: товар + опції + сторони ── */}
         <div className="px-3 py-3 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center justify-between gap-3">
           <ProductControls />
-          {views.length > 1 && (
+          {/* Книга має навігацію мініатюрами-каруселлю ПІД холстом — тут текстові
+              вкладки не показуємо (для решти товарів лишаються тут зверху). */}
+          {views.length > 1 && !isBookType(selectedType) && (
             <div className="flex gap-1.5 p-1 bg-white/70 rounded-xl max-w-full flex-nowrap overflow-x-auto">
               {views.map(([view, viewConfig]) => (
                 <button
@@ -307,6 +309,43 @@ const DesignArea = ({ manualSync }) => {
                   </div>
                 )}
               </div>
+
+              {/* Книга: карусель мініатюр обкладинок/розворотів — навігація ПІД холстом
+                  (видно ескіз кожного розвороту; клік перемикає редагування). */}
+              {isBookType(selectedType) && views.length > 1 && (
+                <div className="w-full flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
+                  {views.map(([view, viewConfig]) => {
+                    const spreadIdx = view.startsWith("spread-") ? Number(view.slice(7)) : -1;
+                    const thumb = spreadIdx >= 0 ? slimBookPhotos[spreadIdx] : null;
+                    const active = selectedView === view;
+                    return (
+                      <button
+                        key={view}
+                        type="button"
+                        onClick={() => handleViewChange(view)}
+                        title={viewConfig.label}
+                        className={cn(
+                          "shrink-0 w-[68px] rounded-lg border-2 overflow-hidden bg-card transition-all",
+                          active
+                            ? "border-primary ring-2 ring-primary/30 shadow-glow"
+                            : "border-border/60 hover:border-primary/40"
+                        )}
+                      >
+                        <div className="h-[52px] w-full bg-muted flex items-center justify-center overflow-hidden">
+                          {thumb ? (
+                            <img src={thumb} alt={viewConfig.label} className="h-full w-full object-cover" />
+                          ) : (
+                            <ImagePlus className="h-5 w-5 text-muted-foreground/50" />
+                          )}
+                        </div>
+                        <div className="text-[9px] font-medium leading-tight py-0.5 px-0.5 truncate text-center">
+                          {viewConfig.label}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
             </div>
 
