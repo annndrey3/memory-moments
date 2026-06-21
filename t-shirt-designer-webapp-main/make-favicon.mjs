@@ -1,6 +1,8 @@
-// Генерує КРУГЛІ фавікони Memory Moments: брунатне (#7c3d2b) коло + біла
-// емблема-камера. Малюємо у headless Chrome (canvas2D), пишемо PNG-и кожного
-// розміру та збираємо favicon.ico вручну (PNG-в-ICO). Кладемо у public/ обох застосунків.
+// Генерує круглі фавікони Memory Moments з логотипу (og-image): обрізаємо поля
+// й вписуємо лого у біле коло з брунатним обідком — для ВСІХ розмірів
+// (16/32, apple-touch 180, 192, 512 та favicon.ico).
+// Малюємо у headless Chrome (canvas2D), favicon.ico збираємо вручну (PNG-в-ICO).
+// Пишемо у public/ та dist/ обох застосунків.
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,33 +10,56 @@ import puppeteer from "puppeteer-core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const DESIGNER = path.join(__dirname, "public");
-const MARKET = path.join(__dirname, "marketplace", "client", "public");
+const OG = path.join(__dirname, "public", "og-image.png");
+const ogDataUrl = "data:image/png;base64," + fs.readFileSync(OG).toString("base64");
 
-const drawFn = `(S) => {
-  const BRAND = "#7c3d2b", WHITE = "#ffffff";
+const TARGETS = [
+  path.join(__dirname, "public"),
+  path.join(__dirname, "dist"),
+  path.join(__dirname, "marketplace", "client", "public"),
+  path.join(__dirname, "marketplace", "client", "dist"),
+];
+
+// --- кругла іконка: лого Memory Moments у білому колі з обідком ---
+const drawLogo = `async (S, dataUrl, pad) => {
+  const BRAND = "#7c3d2b";
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl; });
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+
+  // обрізаємо прозорі / майже-білі поля -> рамка контенту лого
+  const off = document.createElement("canvas");
+  off.width = iw; off.height = ih;
+  const octx = off.getContext("2d");
+  octx.drawImage(img, 0, 0);
+  const d = octx.getImageData(0, 0, iw, ih).data;
+  let minX = iw, minY = ih, maxX = 0, maxY = 0;
+  for (let y = 0; y < ih; y++) {
+    for (let x = 0; x < iw; x++) {
+      const i = (y*iw + x)*4;
+      const nearWhite = d[i] > 245 && d[i+1] > 245 && d[i+2] > 245;
+      if (d[i+3] > 16 && !nearWhite) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX) { minX = 0; minY = 0; maxX = iw-1; maxY = ih-1; }
+  const cw = maxX - minX + 1, ch = maxY - minY + 1;
+
   const c = document.createElement("canvas");
   c.width = S; c.height = S;
   const ctx = c.getContext("2d");
-  const u = (f) => f * S;
-  const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
-
-  // брунатне коло на всю іконку (поза колом — прозоро)
-  ctx.fillStyle = BRAND;
-  ctx.beginPath(); ctx.arc(S/2, S/2, S/2, 0, Math.PI*2); ctx.fill();
-
-  // біла камера
-  ctx.fillStyle = WHITE;
-  rr(u(0.405), u(0.330), u(0.19), u(0.075), u(0.025)); ctx.fill();   // спалах/видошукач
-  rr(u(0.225), u(0.385), u(0.55), u(0.30), u(0.06));  ctx.fill();    // корпус
-
-  // об'єктив: брунатна дірка → білий обідок → брунатний центр → блік
-  const cx = S/2, cy = u(0.545);
-  ctx.fillStyle = BRAND; ctx.beginPath(); ctx.arc(cx, cy, u(0.115), 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = WHITE; ctx.beginPath(); ctx.arc(cx, cy, u(0.072), 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = BRAND; ctx.beginPath(); ctx.arc(cx, cy, u(0.042), 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = WHITE; ctx.beginPath(); ctx.arc(cx - u(0.03), cy - u(0.03), u(0.016), 0, Math.PI*2); ctx.fill();
-
+  ctx.save();
+  ctx.beginPath(); ctx.arc(S/2, S/2, S/2, 0, Math.PI*2); ctx.clip();
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, S, S);
+  const scale = Math.min(S/cw, S/ch) * pad;
+  const w = cw*scale, h = ch*scale;
+  ctx.drawImage(img, minX, minY, cw, ch, (S-w)/2, (S-h)/2, w, h);
+  ctx.restore();
+  ctx.lineWidth = Math.max(1, S*0.03);
+  ctx.strokeStyle = BRAND;
+  ctx.beginPath(); ctx.arc(S/2, S/2, S/2 - ctx.lineWidth/2, 0, Math.PI*2); ctx.stroke();
   return c.toDataURL("image/png");
 }`;
 
@@ -62,28 +87,27 @@ function buildIco(frames) {
 
 const b = await puppeteer.launch({ executablePath: CHROME, headless: "new", args: ["--no-sandbox"] });
 const p = await b.newPage();
-const png = async (S) => {
-  const url = await p.evaluate(new Function("return " + drawFn)(), S);
-  return Buffer.from(url.split(",")[1], "base64");
-};
+const logoFn = new Function("return " + drawLogo)();
+const logo = async (S) => Buffer.from((await p.evaluate(logoFn, S, ogDataUrl, 0.96)).split(",")[1], "base64");
 
 const outputs = {
-  "favicon-16x16.png": await png(16),
-  "favicon-32x32.png": await png(32),
-  "apple-touch-icon.png": await png(180),
-  "favicon-192.png": await png(192),
-  "favicon-512.png": await png(512),
+  "favicon-16x16.png": await logo(16),
+  "favicon-32x32.png": await logo(32),
+  "apple-touch-icon.png": await logo(180),
+  "favicon-192.png": await logo(192),
+  "favicon-512.png": await logo(512),
   "favicon.ico": buildIco([
-    { size: 16, buf: await png(16) },
-    { size: 32, buf: await png(32) },
-    { size: 48, buf: await png(48) },
+    { size: 16, buf: await logo(16) },
+    { size: 32, buf: await logo(32) },
+    { size: 48, buf: await logo(48) },
   ]),
 };
 await b.close();
 
-for (const dir of [DESIGNER, MARKET]) {
+for (const dir of TARGETS) {
+  if (!fs.existsSync(dir)) { console.log("skip (missing)", dir); continue; }
   for (const [name, buf] of Object.entries(outputs)) {
     fs.writeFileSync(path.join(dir, name), buf);
   }
-  console.log("wrote", Object.keys(outputs).length, "icons →", dir);
+  console.log("wrote", Object.keys(outputs).length, "icons ->", dir);
 }
