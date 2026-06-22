@@ -45,6 +45,10 @@ export function MugModel({
   const innerGeometry = useMemo(() => new THREE.CylinderGeometry(0.95, 0.95, 2.2, 64, 1, false), []);
   const bottomGeometry = useMemo(() => new THREE.CylinderGeometry(1, 1, 0.05, 64, 1, false), []);
   const handleGeometry = useMemo(() => new THREE.TorusGeometry(0.65, 0.15, 16, 64, Math.PI), []);
+  // Кольорова каемка ~3мм по ВЕРХНЬОМУ краю чашки (height 0.07 ≈ 3мм при висоті 2.2).
+  // Радіус трохи більший за корпус (1.004), щоб смужка лягала поверх білої глазурі
+  // без z-fighting. Колір — як у ручки (для білої з кольоровими ручками = кольоровий).
+  const rimGeometry = useMemo(() => new THREE.CylinderGeometry(1.004, 1.004, 0.07, 64, 1, true), []);
 
   // Print area: starts slightly past the handle (Math.PI / 2 + gap) and leaves a gap
   const gapAngle = Math.PI / 3.5; // About 50 degrees gap
@@ -121,10 +125,22 @@ export function MugModel({
           />
         </mesh>
 
-        {/* Bottom */}
+        {/* Кольорова каемка по верхньому краю (3мм). Низ лишається білим. */}
+        <mesh geometry={rimGeometry} position={[0, 1.1 - 0.035, 0]} castShadow>
+          <meshPhysicalMaterial
+            color={handleCol}
+            roughness={0.12}
+            metalness={0}
+            clearcoat={0.6}
+            clearcoatRoughness={0.2}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Bottom — зовнішня основа біла («низ білий») */}
         <mesh geometry={bottomGeometry} position={[0, -1.1, 0]} receiveShadow>
           <meshStandardMaterial
-            color={innerColor}
+            color={bodyColor}
             roughness={0.25}
             metalness={0}
           />

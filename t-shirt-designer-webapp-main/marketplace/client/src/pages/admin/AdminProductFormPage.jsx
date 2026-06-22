@@ -47,6 +47,7 @@ const emptyForm = {
   design_id: null,
   is_active: true,
   is_featured: false,
+  sort_order: "0",
   images: [{ image_url: "", alt_text: "", is_primary: true }],
   variants: [],
 };
@@ -87,6 +88,7 @@ export default function AdminProductFormPage() {
           design_id: p.design_id || null,
           is_active: Boolean(p.is_active),
           is_featured: Boolean(p.is_featured),
+          sort_order: String(p.sort_order ?? 0),
           images: p.images?.length
             ? p.images.map((img) => ({
                 image_url: img.image_url,
@@ -176,6 +178,7 @@ export default function AdminProductFormPage() {
         design_id: form.design_id || null,
         is_active: form.is_active,
         is_featured: form.is_featured,
+        sort_order: Number(form.sort_order) || 0,
         images: form.images.filter((img) => img.image_url),
         variants: form.variants
           .filter((v) => v.attribute_value)
@@ -273,6 +276,11 @@ export default function AdminProductFormPage() {
             <div className="space-y-1.5">
               <Label>Кількість на складі</Label>
               <Input type="number" value={form.stock_quantity} onChange={(e) => set("stock_quantity", e.target.value)} className="rounded-xl" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Пріоритет відображення</Label>
+              <Input type="number" value={form.sort_order} onChange={(e) => set("sort_order", e.target.value)} className="rounded-xl" />
+              <p className="text-xs text-slate-400">Більше число — вище у каталозі. 0 — звичайний порядок.</p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Тип конструктора</Label>

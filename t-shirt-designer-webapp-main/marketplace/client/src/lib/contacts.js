@@ -6,12 +6,13 @@ export const CONTACTS = {
   viber: "+38(068) 555-05-64", // номер Viber (зазвичай той самий, що телефон)
   address: "вул. Артура Савельєва, 12, м. Одеса", // фізична адреса (текст)
   mapsUrl: "https://maps.app.goo.gl/DHby2xSEnGdzn1gZA", // точне посилання на карту
-  // Філіали з посиланнями на Google Maps (показуються у футері).
+  // Філіали: назва, адреса, власний телефон і посилання на Google Maps.
+  // Показуються у футері та на сторінці «Контакти» (з вбудованою картою).
   branches: [
-    { address: "просп. Князя Ярослава Мудрого, 14/4, Одеса", mapsUrl: "https://maps.app.goo.gl/By3bwyX4DNDwsuqBA" },
-    { address: "вул. Академіка Корольова, 70/1, Одеса", mapsUrl: "https://share.google/0TE04wraWVbbZsvTR" },
-    { address: "вул. Преображенська, 48, Одеса", mapsUrl: "https://maps.app.goo.gl/g8moWYVnz2aUyCTt8" },
-    { address: "вул. Артура Савельєва, 12, Одеса", mapsUrl: "https://maps.app.goo.gl/DHby2xSEnGdzn1gZA" },
+    { name: "Князя Ярослава Мудрого", address: "просп. Князя Ярослава Мудрого, 14/4, Одеса", phone: "+38(068) 555-05-64", mapsUrl: "https://maps.app.goo.gl/By3bwyX4DNDwsuqBA" },
+    { name: "Академіка Корольова", address: "вул. Академіка Корольова, 70/1, Одеса", phone: "+38(068) 555-05-64", mapsUrl: "https://share.google/0TE04wraWVbbZsvTR" },
+    { name: "Преображенська", address: "вул. Преображенська, 48, Одеса", phone: "+38(068) 555-05-64", mapsUrl: "https://maps.app.goo.gl/g8moWYVnz2aUyCTt8" },
+    { name: "Артура Савельєва", address: "вул. Артура Савельєва, 12, Одеса", phone: "+38(068) 555-05-64", mapsUrl: "https://maps.app.goo.gl/DHby2xSEnGdzn1gZA" },
   ],
   // Години роботи
   hours: [

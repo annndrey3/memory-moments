@@ -88,7 +88,7 @@ const BackgroundDropdownBtn = ({ manualSync }) => {
         </button>
       </PopoverTrigger>
       <PopoverContent side="right" align="start" sideOffset={8} className="w-[296px] p-3">
-        <p className="text-[11px] text-muted-foreground mb-2.5 font-semibold uppercase tracking-wider">Фон альбому</p>
+        <p className="text-[11px] text-muted-foreground mb-2.5 font-semibold uppercase tracking-wider">Готовий фон</p>
         {items === null ? (
           <div className="flex justify-center py-6 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
         ) : (

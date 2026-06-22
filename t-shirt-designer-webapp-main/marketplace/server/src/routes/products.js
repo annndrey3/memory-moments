@@ -30,14 +30,14 @@ async function listProducts(filters = {}) {
 
   const items = await query(
     `SELECT p.id, p.name, p.slug, p.short_description, p.price, p.compare_at_price,
-            p.stock_quantity, p.designer_type, p.is_active, p.is_featured,
+            p.stock_quantity, p.designer_type, p.is_active, p.is_featured, p.sort_order,
             c.name AS category_name, c.slug AS category_slug,
             (SELECT image_url FROM product_images pi
              WHERE pi.product_id = p.id AND pi.is_primary = 1 LIMIT 1) AS primary_image
      FROM products p
      JOIN categories c ON c.id = p.category_id
      ${where}
-     ORDER BY p.is_featured DESC, p.created_at DESC
+     ORDER BY p.sort_order DESC, p.is_featured DESC, p.created_at DESC
      LIMIT :limit OFFSET :offset`,
     params
   );
@@ -91,7 +91,7 @@ router.get("/designer-prices", async (req, res) => {
       `SELECT designer_type, price, compare_at_price, name
        FROM products
        WHERE designer_type IS NOT NULL AND is_active = 1
-       ORDER BY is_featured DESC, id`
+       ORDER BY sort_order DESC, is_featured DESC, id`
     );
     const catalog = {};
     for (const r of catRows) if (!catalog[r.designer_type]) catalog[r.designer_type] = r;
@@ -183,6 +183,7 @@ router.post("/", authMiddleware, requirePermission("products.manage"), async (re
       category_id, name, short_description, description,
       price, compare_at_price, sku, stock_quantity,
       designer_type, design_id, is_active = true, is_featured = false,
+      sort_order = 0,
       images = [], variants = [],
     } = req.body;
 
@@ -196,9 +197,9 @@ router.post("/", authMiddleware, requirePermission("products.manage"), async (re
       const { insertId } = await tx.run(
         `INSERT INTO products
          (category_id, name, slug, short_description, description, price, compare_at_price,
-          sku, stock_quantity, designer_type, design_id, is_active, is_featured)
+          sku, stock_quantity, designer_type, design_id, is_active, is_featured, sort_order)
          VALUES (:category_id, :name, :slug, :short_description, :description, :price,
-                 :compare_at_price, :sku, :stock_quantity, :designer_type, :design_id, :is_active, :is_featured)`,
+                 :compare_at_price, :sku, :stock_quantity, :designer_type, :design_id, :is_active, :is_featured, :sort_order)`,
         {
           category_id, name, slug,
           short_description: short_description || null,
@@ -209,6 +210,7 @@ router.post("/", authMiddleware, requirePermission("products.manage"), async (re
           design_id: design_id || null,
           is_active: is_active ? 1 : 0,
           is_featured: is_featured ? 1 : 0,
+          sort_order: Number(sort_order) || 0,
         }
       );
 
@@ -269,7 +271,7 @@ router.put("/:id", authMiddleware, requirePermission("products.manage"), async (
     const {
       category_id, name, slug, short_description, description,
       price, compare_at_price, sku, stock_quantity,
-      designer_type, design_id, is_active, is_featured,
+      designer_type, design_id, is_active, is_featured, sort_order,
       images, variants,
     } = req.body;
 
@@ -292,7 +294,8 @@ router.put("/:id", authMiddleware, requirePermission("products.manage"), async (
            designer_type = :designer_type,
            design_id = :design_id,
            is_active = COALESCE(:is_active, is_active),
-           is_featured = COALESCE(:is_featured, is_featured)
+           is_featured = COALESCE(:is_featured, is_featured),
+           sort_order = COALESCE(:sort_order, sort_order)
          WHERE id = :id`,
         {
           id: productId,
@@ -309,6 +312,7 @@ router.put("/:id", authMiddleware, requirePermission("products.manage"), async (
           design_id: design_id !== undefined ? design_id : existing.design_id || null,
           is_active: is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active,
           is_featured: is_featured !== undefined ? (is_featured ? 1 : 0) : existing.is_featured,
+          sort_order: sort_order !== undefined ? (Number(sort_order) || 0) : existing.sort_order,
         }
       );
 

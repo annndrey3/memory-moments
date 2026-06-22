@@ -446,6 +446,7 @@ export default function AdminOrdersPage() {
                                   const isPhoto = meta?.type === "photo_print";
                                   const printFrontUrl = meta?.printFrontUrl || null;
                                   const printBackUrl = meta?.printBackUrl || null;
+                                  const printFrontMirrorUrl = meta?.printFrontMirrorUrl || null;
                                   const rawFrontUrl = meta?.rawFrontUrl || null;
                                   const rawBackUrl = meta?.rawBackUrl || null;
                                   return (
@@ -531,6 +532,16 @@ export default function AdminOrdersPage() {
                                             className="text-xs text-emerald-700 hover:underline text-left font-medium"
                                           >
                                             ⬇ Друк — Ззаду (PNG)
+                                          </button>
+                                        )}
+                                        {printFrontMirrorUrl && (
+                                          <button
+                                            onClick={() =>
+                                              triggerDownload(printFrontMirrorUrl, `${full.order_number}-${item.id}-print-mirror.png`)
+                                            }
+                                            className="text-xs text-emerald-700 hover:underline text-left font-medium"
+                                          >
+                                            🪞 Друк — Дзеркальний (чашка, PNG)
                                           </button>
                                         )}
                                         {rawBackUrl && (

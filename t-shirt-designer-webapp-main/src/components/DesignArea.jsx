@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import * as fabric from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
-import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, buildSpreadView, isBookType, isMultiPhoto } from "../constants/designConstants";
+import { PRODUCT_TYPES, DEFAULT_TEXT_CONFIG, CANVAS_CONFIG, buildCanvasView, buildSlimBookView, buildSpreadView, isBookType, isMultiPhoto, tshirtSizeScale, tshirtPrintZone } from "../constants/designConstants";
 import ProductCanvas from "./ProductCanvas";
 import ProductControls from "./ProductControls";
 import SaveDesign from "./SaveDesign";
@@ -17,14 +17,16 @@ import PropertiesBtn from "./PropertiesBtn";
 import { setSelectedView, reorderSlimBookPhotos, addSlimBookPhotos } from "../features/tshirtSlice";
 import { useCanvas } from "@/hooks/useCanvas";
 import { useAddImage } from "@/hooks/useAddImage";
+import { useCanvasHistory } from "@/hooks/useCanvasHistory";
+import { usePolaroidCaption } from "@/hooks/usePolaroidCaption";
 import canvasStorageManager from "@/utils/canvasStorageManager";
 import { cn } from "@/lib/utils";
-import { ImagePlus, Type, Slash, Trash, Trash2 } from "lucide-react";
+import { ImagePlus, Type, Slash, Trash, Trash2, Undo2 } from "lucide-react";
 
 // Кнопка інструмента по периметру редактора (іконка + підпис). На ПК — вертикальні
 // ряди зліва/справа, на мобільному ряди стають горизонтальними над/під холстом.
 const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all";
+  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border/70 disabled:hover:bg-card";
 const RAIL_BTN_DANGER =
   "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-red-500/30 bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
 
@@ -45,11 +47,16 @@ const DesignArea = ({ manualSync }) => {
   const dispatch = useDispatch();
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
+  const size = useSelector((state) => state.tshirt.size);
+  const printSize = useSelector((state) => state.tshirt.printSize);
   const canvasSize = useSelector((state) => state.tshirt.canvasSize);
   const slimBookFormat = useSelector((state) => state.tshirt.slimBookFormat);
   const slimBookPhotos = useSelector((state) => state.tshirt.slimBookPhotos);
   const { activeCanvas, selectedObject, setSelectedObject } = useCanvas();
   const { addImageFile } = useAddImage();
+  const { undo, canUndo } = useCanvasHistory({ activeCanvas, manualSync });
+  // Підпис на нижній смузі полароїда — додається кліком по ній.
+  usePolaroidCaption({ activeCanvas, manualSync });
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
   // Кожен вид несе свою геометрію (пропорції зони друку), щоб ProductCanvas
   // отримував стабільний viewConfig (без перестворення на кожен рендер):
@@ -77,11 +84,27 @@ const DesignArea = ({ manualSync }) => {
       const front = product.views.front;
       return (slimBookPhotos || []).map((_, i) => [`spread-${i}`, { ...front, label: `Фото ${i + 1}` }]);
     }
+    // Футболка: зона друку залежить від формату (А4/А3) — щоб було видно різницю.
+    if (selectedType === "crew-neck") {
+      const pz = tshirtPrintZone(printSize);
+      return base.map(([v, c]) => [v, { ...c, printZone: pz }]);
+    }
     return base;
-  }, [product, selectedType, slimBookPhotos, slimBookFormat, canvasSize]);
+  }, [product, selectedType, slimBookPhotos, slimBookFormat, canvasSize, printSize]);
   const [dragOver, setDragOver] = useState(false);
   const [hasObjects, setHasObjects] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Пачка фото (полароїд/інстакс/фотодрук) не має виду «front» — лише розвороти
+  // spread-N. Після завантаження фото selectedView лишався б «front» (його немає
+  // у списку видів) → холст ховався, екран білів. Тримаємо активним валідний розворот.
+  useEffect(() => {
+    if (!isMultiPhoto(selectedType)) return;
+    const n = slimBookPhotos?.length || 0;
+    if (n === 0) return;
+    const idx = selectedView.startsWith("spread-") ? Number(selectedView.slice(7)) : -1;
+    if (idx < 0 || idx >= n) dispatch(setSelectedView(`spread-${Math.min(Math.max(idx, 0), n - 1)}`));
+  }, [selectedType, slimBookPhotos, selectedView, dispatch]);
 
   // Поки на активному полотні порожньо — показуємо підказку «натисніть, щоб додати фото».
   useEffect(() => {
@@ -103,6 +126,14 @@ const DesignArea = ({ manualSync }) => {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
       if (!activeCanvas) return;
+
+      // Ctrl/Cmd+Z — скасувати останню дію (працює і без вибраного шару).
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === "z" || e.key === "Z" || e.key === "я" || e.key === "Я")) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+
       const obj = activeCanvas.getActiveObject();
       if (!obj) return;
 
@@ -128,7 +159,7 @@ const DesignArea = ({ manualSync }) => {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [activeCanvas, manualSync]);
+  }, [activeCanvas, manualSync, undo]);
 
   const getPrintableArea = () =>
     activeCanvas?.printArea || { left: 0, top: 0, width: CANVAS_CONFIG.width, height: CANVAS_CONFIG.height };
@@ -352,16 +383,27 @@ const DesignArea = ({ manualSync }) => {
               <CollageDropdownBtn manualSync={manualSync} />
               <FrameDropdownBtn manualSync={manualSync} />
               <FillDropdownBtn manualSync={manualSync} />
-              {/* Готові фони — для альбомів (на весь формат, нижній шар) */}
-              {isBookType(selectedType) && <BackgroundDropdownBtn manualSync={manualSync} />}
+              {/* Готові фони — для будь-якого товару (на весь формат, нижній шар) */}
+              <BackgroundDropdownBtn manualSync={manualSync} />
             </div>
 
             {/* CANVAS + контекстне редагування */}
             <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
-              {/* Холст + ПЛАВАЮЧА панель тексту. Панель — оверлей над верхом холста
-                  (absolute), а не елемент у потоці: інакше її поява/зникнення при
-                  виборі/знятті шару штовхала холст і весь макет «стрибав» вгору-вниз. */}
-              <div className="relative w-full flex flex-col items-center">
+              {/* Холст, а ПІД ним — акуратний віджет редагування тексту (у потоці).
+                  Раніше панель висіла оверлеєм над верхом холста й перекривала дизайн
+                  та перехоплювала кліки — тепер вона нижче й нічому не заважає. */}
+              <div className="relative w-full flex flex-col items-center gap-2">
+              {/* Кнопка «Скасувати» (undo) — НАД фото/холстом. */}
+              <button
+                type="button"
+                data-tour="undo"
+                onClick={undo}
+                disabled={!canUndo}
+                title="Скасувати останню дію (Ctrl+Z)"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 h-9 text-xs font-medium text-foreground/80 hover:border-primary/40 hover:bg-muted transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border/70 disabled:hover:bg-card"
+              >
+                <Undo2 className="h-4 w-4" /> Скасувати
+              </button>
               <div
                 className="relative rounded-xl ring-1 ring-border/40 shadow-elevated overflow-hidden"
                 onDragOver={handleDragOver}
@@ -374,6 +416,7 @@ const DesignArea = ({ manualSync }) => {
                       view={view}
                       viewConfig={viewConfig}
                       seedImage={view.startsWith("spread-") ? slimBookPhotos[Number(view.slice(7))] : undefined}
+                      shirtScale={selectedType === "crew-neck" ? tshirtSizeScale(size) : null}
                     />
                   </div>
                 ))}
@@ -400,18 +443,51 @@ const DesignArea = ({ manualSync }) => {
                   </div>
                 )}
               </div>
-                {/* Оверлей текстової панелі: коли тексту не вибрано — TextEditPanel
-                    повертає null, і pointer-events-none пропускає кліки на холст. */}
-                <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center">
-                  <div className="pointer-events-auto w-full">
+                {/* Віджет редагування тексту — акуратний оверлей ВНИЗУ холста.
+                    Показується лише коли вибрано текст (інакше TextEditPanel = null);
+                    лягає на нижній (порожній) край полотна під зоною друку, тож не
+                    штовхає макет і не перекриває дизайн. Рівень wrapper (повна ширина,
+                    випадайки шрифтів не обрізаються overflow-hidden холста). */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center p-2">
+                  <div className="pointer-events-auto w-full max-w-2xl">
                     <TextEditPanel manualSync={manualSync} />
                   </div>
                 </div>
               </div>
 
-              {/* Книга: карусель мініатюр обкладинок/розворотів — навігація ПІД холстом
-                  (видно ескіз кожного розвороту; клік перемикає редагування). */}
-              {(isBookType(selectedType) || isMultiPhoto(selectedType)) && views.length > 1 && (
+              {/* Книга: окремий блок «Обкладинки» з кнопками Перед / Зад
+                  (обкладинки редагуються тут, а не в каруселі розворотів). */}
+              {isBookType(selectedType) && (
+                <div className="mx-auto flex flex-wrap items-center justify-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Обкладинки
+                  </span>
+                  {["front", "back"].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => handleViewChange(v)}
+                      className={cn(
+                        "rounded-lg h-8 px-5 text-xs font-medium transition-all border",
+                        selectedView === v
+                          ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-transparent shadow-glow"
+                          : "bg-white/70 text-muted-foreground border-border/60 hover:text-foreground hover:border-primary/40"
+                      )}
+                    >
+                      {v === "front" ? "Перед" : "Зад"}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Карусель мініатюр розворотів/фото (для книги — лише розвороти,
+                  обкладинки — кнопками вище). Клік перемикає редагування. */}
+              {(isBookType(selectedType) || isMultiPhoto(selectedType)) && (() => {
+                const list = isMultiPhoto(selectedType)
+                  ? views
+                  : views.filter(([v]) => v.startsWith("spread-"));
+                if (list.length < 1) return null;
+                return (
                 <div
                   className="mx-auto w-fit max-w-full flex gap-1.5 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]"
                   style={{ touchAction: dragIdx != null ? "none" : "pan-x" }}
@@ -419,7 +495,7 @@ const DesignArea = ({ manualSync }) => {
                   onPointerUp={onThumbsPointerUp}
                   onPointerLeave={onThumbsPointerUp}
                 >
-                  {views.map(([view, viewConfig]) => {
+                  {list.map(([view, viewConfig]) => {
                     const spreadIdx = view.startsWith("spread-") ? Number(view.slice(7)) : -1;
                     const isSpread = spreadIdx >= 0;
                     const thumb = isSpread ? slimBookPhotos[spreadIdx] : null;
@@ -459,7 +535,8 @@ const DesignArea = ({ manualSync }) => {
                     );
                   })}
                 </div>
-              )}
+                );
+              })()}
 
             </div>
 

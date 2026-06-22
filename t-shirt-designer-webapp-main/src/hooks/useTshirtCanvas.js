@@ -136,6 +136,25 @@ export const useTshirtCanvas = ({
     canvas.on("object:added", onCanvasChange);
     canvas.on("object:removed", onCanvasChange);
 
+    // Template-формати (полароїд/інстакс): кліп полотна навмисно ширший за вікно
+    // друку (щоб дозволити підпис у нижній білій смузі). Тож кожне ФОТО клипуємо
+    // окремо до ВІКНА друку (printArea) — інакше воно вилазить за зону друку в смугу.
+    const clipImageToWindow = (e) => {
+      const o = e?.target;
+      const c = fabricCanvasRef.current;
+      if (!o || o.type !== "image" || !c?.isTemplate || !c.printArea || o.clipPath) return;
+      const pa = c.printArea;
+      o.clipPath = new fabric.Rect({
+        left: pa.left, top: pa.top, width: pa.width, height: pa.height, absolutePositioned: true,
+      });
+      // Без кешу: інакше fabric лишає растровий кеш фото, відрендерений ДО кліпу,
+      // і на екрані фото «вилазить» за зону друку (хоча у файл друку йде обрізаним).
+      o.objectCaching = false;
+      o.set("dirty", true);
+      c.requestRenderAll();
+    };
+    canvas.on("object:added", clipImageToWindow);
+
     // Cleanup
     return () => {
       saveCanvas();
@@ -143,6 +162,7 @@ export const useTshirtCanvas = ({
       canvas.off("object:modified", onCanvasChange);
       canvas.off("object:added", onCanvasChange);
       canvas.off("object:removed", onCanvasChange);
+      canvas.off("object:added", clipImageToWindow);
       canvas.dispose();
       fabricCanvasRef.current = null;
       unregisterCanvas(selectedType, view, canvas);
@@ -193,7 +213,10 @@ export const useTshirtCanvas = ({
         left: printArea.left,
         top: printArea.top,
         width: printArea.width,
-        height: printArea.height,
+        // Шаблонні формати (полароїд/інстакс): подовжуємо кліп донизу до краю
+        // полотна, щоб у нижній білій смузі можна було робити підпис. Фото
+        // лишається у вікні друку (printArea), L/R-поля рамки захищені шириною кліпа.
+        height: templateOverlay ? Math.max(printArea.height, effectiveSize.height - printArea.top) : printArea.height,
         originX: "left",
         originY: "top",
         absolutePositioned: true,

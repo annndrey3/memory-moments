@@ -20,12 +20,15 @@ const FrameDropdownBtn = ({ manualSync }) => {
     };
 
   // Рамка завжди має лишатися поверх інших обʼєктів — навіть якщо фото додали пізніше.
+  // Підписи полароїда тримаємо ще вище — інакше біла смуга рамки сховала б їх.
   useEffect(() => {
     if (!activeCanvas) return;
     const toFront = (e) => {
-      const frame = activeCanvas.getObjects().find((o) => o.mmRole === "frame");
+      const objs = activeCanvas.getObjects();
+      const frame = objs.find((o) => o.mmRole === "frame");
       if (frame && e?.target !== frame) {
         activeCanvas.bringObjectToFront?.(frame);
+        objs.filter((o) => o.mmRole === "caption").forEach((c) => activeCanvas.bringObjectToFront?.(c));
       }
     };
     activeCanvas.on("object:added", toFront);
@@ -40,9 +43,11 @@ const FrameDropdownBtn = ({ manualSync }) => {
     if (!activeCanvas) return;
     removeFrame(activeCanvas);
     if (frame.id !== "none" && frame.spec) {
-      const group = buildFrameObjects(frame.spec, getArea());
+      const group = buildFrameObjects(frame.spec, getArea(), frame.id);
       activeCanvas.add(group);
       activeCanvas.bringObjectToFront?.(group);
+      // підписи (полароїд) лишаються поверх щойно доданої рамки
+      activeCanvas.getObjects().filter((o) => o.mmRole === "caption").forEach((c) => activeCanvas.bringObjectToFront?.(c));
     }
     activeCanvas.discardActiveObject?.();
     activeCanvas.requestRenderAll?.();

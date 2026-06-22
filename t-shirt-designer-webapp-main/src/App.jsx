@@ -14,6 +14,7 @@ import OrderBar from "./components/OrderBar";
 import EmbedBridge from "./components/EmbedBridge";
 import DesignerTour from "./components/DesignerTour";
 import { PRODUCT_TYPES, isMugType } from "./constants/designConstants";
+import { ensureCanvasFonts, rerenderText } from "./utils/fontSync";
 import { Sparkles } from "lucide-react";
 
 function App() {
@@ -21,8 +22,22 @@ function App() {
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
   const dispatch = useDispatch();
-  const { getCanvas } = useCanvas();
+  const { getCanvas, canvasesByKey } = useCanvas();
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
+
+  // Кирилиця у веб-шрифтах: сабсет вантажиться асинхронно, а fabric кешує гліфи —
+  // тож текст міг лишитись із запасним шрифтом («шрифти не працюють для рос/укр»).
+  // Коли веб-шрифти дозавантажились (loadingdone) — позначаємо текст брудним і
+  // перемальовуємо ВСІ полотна. Плюс підвантажуємо сабсети шрифтів поточних макетів
+  // (напр. після перезавантаження збереженого дизайну).
+  useEffect(() => {
+    const all = () => Object.values(canvasesByKey || {});
+    const onDone = () => rerenderText(all());
+    document.fonts?.addEventListener?.("loadingdone", onDone);
+    document.fonts?.ready?.then(() => rerenderText(all())).catch(() => {});
+    ensureCanvasFonts(all());
+    return () => document.fonts?.removeEventListener?.("loadingdone", onDone);
+  }, [canvasesByKey]);
   // Панель превʼю — лише для чашок (3D). Футболку й так видно в редакторі;
   // для решти (фото, полароїд, чохол, полотно) окремого превʼю не показуємо.
   const showPreview = isMugType(selectedType);

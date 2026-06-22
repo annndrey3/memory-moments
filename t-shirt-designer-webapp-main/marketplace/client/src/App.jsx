@@ -22,6 +22,7 @@ import AdminServicesPage from "./pages/admin/AdminServicesPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminSiteConfigPage from "./pages/admin/AdminSiteConfigPage";
 import PhotoPrintPage from "./pages/PhotoPrintPage";
+import ContactsPage from "./pages/ContactsPage";
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminSlidesPage from "./pages/admin/AdminSlidesPage";
 import AdminBackgroundsPage from "./pages/admin/AdminBackgroundsPage";
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/product/:slug" element={<ProductDetailPage />} />
         <Route path="/prices" element={<PricesPage />} />
         <Route path="/print" element={<PhotoPrintPage />} />
+        <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order/:number" element={<OrderSuccessPage />} />

@@ -306,6 +306,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
         };
         const printFrontUrl = scheduleImage(item.print_front, `print_${idxKey}_front.png`);
         const printBackUrl = scheduleImage(item.print_back, `print_${idxKey}_back.png`);
+        // Чашка: окремий дзеркальний файл для друку (поряд із прямим).
+        const printFrontMirrorUrl = scheduleImage(item.print_front_mirror, `print_${idxKey}_front_mirror.png`);
         // Сирий кроп зони друку (фото клієнта без рамки шаблону) — для прев'ю в адмінці.
         const rawFrontUrl = scheduleImage(item.raw_front, `raw_${idxKey}_front.png`);
         const rawBackUrl = scheduleImage(item.raw_back, `raw_${idxKey}_back.png`);
@@ -335,6 +337,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
         if (isData(item.design_preview_back)) tgImages.push({ data: item.design_preview_back, caption: `${productName} — Ззаду` });
         if (isData(item.print_front)) tgDocuments.push({ data: item.print_front, caption: `🖨 ${productName} — Спереду (друк)` });
         if (isData(item.print_back)) tgDocuments.push({ data: item.print_back, caption: `🖨 ${productName} — Ззаду (друк)` });
+        if (isData(item.print_front_mirror)) tgDocuments.push({ data: item.print_front_mirror, caption: `🪞 ${productName} — Дзеркальний (друк чашки)` });
         if (Array.isArray(item.inner_photos)) {
           const unitWord = isBookPhotos ? "розворот" : "фото";
           item.inner_photos.forEach((d, i) => { if (isData(d)) tgDocuments.push({ data: d, caption: `📖 ${productName} — ${unitWord} ${i + 1}` }); });
@@ -349,6 +352,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
           ...fabricData,
           ...(printFrontUrl ? { printFrontUrl } : {}),
           ...(printBackUrl ? { printBackUrl } : {}),
+          ...(printFrontMirrorUrl ? { printFrontMirrorUrl } : {}),
           ...(rawFrontUrl ? { rawFrontUrl } : {}),
           ...(rawBackUrl ? { rawBackUrl } : {}),
           ...(innerPhotoUrls.length ? { innerPhotos: innerPhotoUrls } : {}),

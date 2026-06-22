@@ -90,6 +90,7 @@ export function toOrderItem(i) {
       design_preview_back: i.design_preview_back || null,
       print_front: i.print_front || null,
       print_back: i.print_back || null,
+      print_front_mirror: i.print_front_mirror || null,
       raw_front: i.raw_front || null,
       raw_back: i.raw_back || null,
     };

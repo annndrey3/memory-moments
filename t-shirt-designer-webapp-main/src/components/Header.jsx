@@ -88,7 +88,10 @@ const Header = () => {
   // Формуємо рядок доставки так само, як у маркетплейс-чекауті.
   const buildShippingAddress = () => {
     if (deliveryType === "pickup") return `Самовивіз: ${pickupBranch}`;
-    return novaPoshtaAddress.trim() || null;
+    const addr = novaPoshtaAddress.trim();
+    if (!addr) return null;
+    // Спосіб отримання разом з адресою — щоб метод був видимий у листах/адмінці.
+    return `Нова Пошта: ${addr}`;
   };
 
   const handleOrderSubmit = async (e) => {

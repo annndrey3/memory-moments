@@ -25,6 +25,44 @@ if (!fabric.Object.prototype.__mmPatched) {
   fabric.Object.prototype.__mmPatched = true;
 }
 
+// Редагування тексту: fabric тримає приховану textarea для вводу й позиціонує її
+// в координатах полотна (без урахування CSS-scale), ще й з padding-top = розмір
+// шрифту (для підпису полароїда це ~100px). Тому при ФОКУСІ й при НАБОРІ браузер
+// прокручує сторінку до каретки textarea — холст «їде»/зникає. Курсор малює сам
+// fabric на полотні, тож textarea потрібна лише для вводу: пришпилюємо її крихітною
+// у видимій зоні (fixed, 1px, без padding) і блокуємо репозиціонування fabric.
+if (fabric.IText && !fabric.IText.prototype.__mmNoScrollPatched) {
+  const pin = (ta) => {
+    if (!ta) return;
+    ta.style.position = "fixed";
+    ta.style.top = "8px";
+    ta.style.left = "8px";
+    ta.style.width = "1px";
+    ta.style.height = "1px";
+    ta.style.padding = "0";
+    ta.style.fontSize = "16px"; // 16px — щоб мобільний не зумив при фокусі
+    ta.style.opacity = "0";
+    ta.style.zIndex = "-999";
+  };
+  const _initHiddenTextarea = fabric.IText.prototype.initHiddenTextarea;
+  fabric.IText.prototype.initHiddenTextarea = function (...args) {
+    _initHiddenTextarea.apply(this, args);
+    const ta = this.hiddenTextarea;
+    if (ta && !ta.__mmFocusPatched) {
+      const _focus = ta.focus.bind(ta);
+      ta.focus = (opts) => _focus({ ...(opts || {}), preventScroll: true });
+      ta.__mmFocusPatched = true;
+    }
+    pin(ta);
+  };
+  // updateTextareaPosition лише рухає textarea (left/top) — синхронізація вводу/
+  // виділення робиться в _updateTextarea окремо. Тож просто тримаємо pin.
+  fabric.IText.prototype.updateTextareaPosition = function () {
+    pin(this.hiddenTextarea);
+  };
+  fabric.IText.prototype.__mmNoScrollPatched = true;
+}
+
 // Шар-рамка (прямокутна обводка): inset — відступ від краю, sw — товщина.
 const L = (inset, sw, extra = {}) => ({ inset, sw, color: DARK, ...extra });
 
@@ -149,12 +187,35 @@ function shapeToFabric(s) {
 }
 
 // Готова рамка як єдина (заблокована) група fabric поверх зони друку.
-export function buildFrameObjects(spec, area) {
+export function buildFrameObjects(spec, area, frameId) {
   const shapes = specToShapes(spec, { x: area.left, y: area.top, w: area.width, h: area.height });
   const objs = shapes.map(shapeToFabric).filter(Boolean);
   const group = new fabric.Group(objs, { ...LOCK, excludeFromExport: false });
   group.mmRole = "frame";
+  if (frameId) group.mmFrameId = frameId;
   return group;
+}
+
+// Рамки-полароїди мають широку білу смугу знизу — місце для рукописного підпису.
+export const POLAROID_FRAME_IDS = ["polaroid", "vintage"];
+// Частки нижньої смуги полароїда (відповідають spec.mat у FRAMES вище).
+const POLAROID_MAT = { b: 0.17, l: 0.05, r: 0.05 };
+
+// Прямокутник нижньої смуги полароїда (зона підпису) в координатах полотна.
+// Рахуємо з габаритів самої групи-рамки, тож переживає undo/переміщення.
+export function polaroidCaptionZone(group) {
+  if (!group || !POLAROID_FRAME_IDS.includes(group.mmFrameId)) return null;
+  const r = group.getBoundingRect();
+  const S = Math.min(r.width, r.height);
+  const b = POLAROID_MAT.b * S;
+  const l = POLAROID_MAT.l * S;
+  const rr = POLAROID_MAT.r * S;
+  return {
+    left: r.left + l,
+    top: r.top + r.height - b,
+    width: r.width - l - rr,
+    height: b,
+  };
 }
 
 // ── spec → SVG-прев'ю для пікера ──

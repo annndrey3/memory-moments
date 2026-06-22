@@ -44,7 +44,11 @@ export default function CheckoutPage() {
     if (sel?.kind === "pickup") {
       return `${sel.label}: ${effectiveBranch}`;
     }
-    return novaPoshtaAddress.trim() || null;
+    const addr = novaPoshtaAddress.trim();
+    if (!addr) return null;
+    // Зберігаємо разом зі способом отримання (напр. «Нова Пошта: Одеса, відд. №5»),
+    // щоб метод доставки був видимий у листах та адмінці, а не лише адреса.
+    return sel?.label ? `${sel.label}: ${addr}` : addr;
   }
 
   const handleSubmit = async (e) => {

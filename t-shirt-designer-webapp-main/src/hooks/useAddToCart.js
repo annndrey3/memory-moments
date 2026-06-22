@@ -131,6 +131,12 @@ export function useAddToCart() {
     const rawDesignBack = backHas ? canvasSyncManager.getRawDesignTexture(backCanvas) : null;
     const printFront = frontHas ? canvasSyncManager.getPrintTexture(frontCanvas) : null;
     const printBack = backHas ? canvasSyncManager.getPrintTexture(backCanvas) : null;
+    // Чашка: окремий ДЗЕРКАЛЬНИЙ (по горизонталі) файл для друку — поряд із прямим
+    // (прямий = як бачить клієнт у 3D/мокапі; дзеркальний = для сублімаційного друку).
+    const isMugItem = selectedType.startsWith("mug");
+    const printFrontMirror = isMugItem && frontHas
+      ? canvasSyncManager.getPrintTexture(frontCanvas, { mirror: true })
+      : null;
     const fabricFront = frontHas ? frontCanvas.toJSON() : null;
     const fabricBack = backHas ? backCanvas.toJSON() : null;
     const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
@@ -212,6 +218,7 @@ export function useAddToCart() {
       design_preview_back: designTextureBack,
       print_front: printFront,
       print_back: printBack,
+      print_front_mirror: printFrontMirror,
       raw_front: rawDesignFront,
       raw_back: rawDesignBack,
     }));

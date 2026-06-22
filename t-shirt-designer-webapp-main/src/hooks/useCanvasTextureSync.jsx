@@ -25,7 +25,11 @@ export const useCanvasTextureSync = (options = {}) => {
     ];
 
     const updateTexture = async (view) => {
-      const { canvas, setter } = canvasMap[view];
+      // Розвороти (spread-N) книги/мультифото не мають окремого прев'ю тут —
+      // canvasMap знає лише front/back. Без цієї перевірки був би краш деструктуризації.
+      const entry = canvasMap[view];
+      if (!entry) return;
+      const { canvas, setter } = entry;
       if (!canvas) {
         setter(null);
         return;
@@ -97,7 +101,9 @@ export const useCanvasTextureSync = (options = {}) => {
         back: { canvas: backCanvas, setter: setDesignTextureBack },
       };
 
-      const { canvas, setter } = canvasMap[view];
+      const entry = canvasMap[view];
+      if (!entry) return; // spread-N (книга/мультифото) — окремого прев'ю немає
+      const { canvas, setter } = entry;
 
       if (!canvas) {
         console.warn(

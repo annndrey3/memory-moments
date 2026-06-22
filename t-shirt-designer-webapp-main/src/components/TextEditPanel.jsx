@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Type, Italic, Bold, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import FontOptions, { FONT_SAMPLE } from "./FontOptions";
+import FontOptions from "./FontOptions";
+import { loadFont } from "@/utils/fontSync";
 
 // Плаваюча панель редагування тексту. З'являється автоматично щойно вибрано/додано
 // текст і спливає красивою анімацією поряд з робочою зоною (як панель маски/рамки).
@@ -18,18 +19,16 @@ const TextEditPanel = ({ manualSync }) => {
   const [color, setColor] = useState("#000000");
   const [italic, setItalic] = useState(false);
   const [bold, setBold] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
-  // Синхронізація стану панелі з вибраним текстом (та скидання «закрито»).
+  // Синхронізація стану панелі з вибраним текстом.
   useEffect(() => {
     if (!isText) return;
     setText(selectedObject.text || "");
-    setFont(selectedObject.fontFamily || "Pacifico");
-    setFontSize(selectedObject.fontSize || 28);
+    setFont(selectedObject.fontFamily || "Caveat");
+    setFontSize(Math.round(selectedObject.fontSize || 28));
     setColor(selectedObject.fill || "#000000");
     setItalic(selectedObject.fontStyle === "italic");
     setBold(selectedObject.fontWeight === "bold" || selectedObject.fontWeight === 700);
-    setDismissed(false);
   }, [selectedObject, isText]);
 
   // Друк прямо на полотні (enterEditing) — підхоплюємо зміни в поле вводу панелі.
@@ -43,7 +42,7 @@ const TextEditPanel = ({ manualSync }) => {
     return () => activeCanvas.off("text:changed", onChanged);
   }, [activeCanvas]);
 
-  if (!isText || dismissed) return null;
+  if (!isText) return null;
 
   const sync = () => { activeCanvas.renderAll(); manualSync?.(); };
 
@@ -60,9 +59,9 @@ const TextEditPanel = ({ manualSync }) => {
     selectedObject.set("fontFamily", v);
     sync();
     // Веб-шрифт (із кириличним сабсетом) міг ще не завантажитись — підтягнемо
-    // потрібні гліфи на зразку лат.+кир. і перемалюємо.
-    document.fonts?.load?.(`${selectedObject.fontSize || 28}px "${v}"`, FONT_SAMPLE)
-      .then(sync).catch(() => {});
+    // кириличні гліфи, скинемо кеш тексту (dirty) і перемалюємо, інакше лишився б
+    // растровий кеш із запасним шрифтом (кирилиця «не змінюється»).
+    loadFont(v, [activeCanvas]).then(() => manualSync?.());
   };
 
   const toggleItalic = () => {
@@ -75,31 +74,34 @@ const TextEditPanel = ({ manualSync }) => {
     setBold(!isBold); selectedObject.set("fontWeight", v); sync();
   };
 
+  // «Готово» — завершуємо редагування й знімаємо виділення (панель сховається).
   const done = () => {
     if (selectedObject.isEditing) selectedObject.exitEditing?.();
-    setDismissed(true);
+    activeCanvas.discardActiveObject();
+    activeCanvas.requestRenderAll();
   };
 
   const TGL =
     "h-9 w-9 flex items-center justify-center rounded-lg border transition-colors shrink-0";
 
+  // Акуратний віджет ПІД холстом: один ряд керування текстом, переноситься на
+  // вузьких екранах. Не перекриває дизайн (раніше панель висіла оверлеєм над холстом).
   return (
-    <div className="w-full rounded-xl border border-violet-200 bg-violet-50/50 px-4 py-3 shadow-soft animate-fade-in-up">
-      <div className="flex items-center gap-2 mb-2.5">
-        <Type className="h-4 w-4 text-violet-500 shrink-0" />
-        <p className="text-xs font-semibold text-foreground/80">Текст — пишіть одразу, оберіть шрифт і стиль</p>
-      </div>
-
+    <div className="w-full max-w-2xl rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-elevated animate-fade-in-up">
       <div className="flex flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 shrink-0">
+          <Type className="h-4 w-4" /> Текст
+        </span>
+
         <Input
           value={text}
           onChange={(e) => applyText(e.target.value)}
           placeholder="Ваш текст…"
-          className="h-9 flex-1 min-w-[160px] rounded-lg"
+          className="h-9 flex-1 min-w-[140px] rounded-lg"
         />
 
         <Select value={font} onValueChange={applyFont}>
-          <SelectTrigger className="h-9 w-[150px] rounded-lg" style={{ fontFamily: font }}>
+          <SelectTrigger className="h-9 w-[140px] rounded-lg" style={{ fontFamily: font }}>
             <SelectValue placeholder="Шрифт" />
           </SelectTrigger>
           <SelectContent className="max-h-72">
@@ -112,7 +114,7 @@ const TextEditPanel = ({ manualSync }) => {
           min="1"
           value={fontSize}
           onChange={applyFontSize}
-          title="Розмір"
+          title="Розмір шрифту"
           className="h-9 w-16 rounded-lg"
         />
 
@@ -149,6 +151,7 @@ const TextEditPanel = ({ manualSync }) => {
         <button
           type="button"
           onClick={done}
+          title="Готово"
           className="h-9 px-3 flex items-center gap-1.5 rounded-lg bg-violet-500 hover:bg-violet-600 text-white text-xs font-semibold transition-colors shrink-0"
         >
           <Check className="h-4 w-4" />

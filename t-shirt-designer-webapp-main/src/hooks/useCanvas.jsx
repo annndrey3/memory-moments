@@ -46,6 +46,7 @@ export const CanvasProvider = ({ children }) => {
         registerCanvas,
         unregisterCanvas,
         getCanvas,
+        canvasesByKey,
       }}
     >
       {children}

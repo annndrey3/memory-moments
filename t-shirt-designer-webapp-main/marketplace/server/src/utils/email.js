@@ -238,7 +238,23 @@ const STATUS_EMAIL = {
 
 function buildStatusEmailHtml(order, status, reason) {
   const t = STATUS_EMAIL[status];
-  const { order_number, customer_name, total, tracking_number } = order;
+  const { order_number, customer_name, total, tracking_number, shipping_address, customer_phone } = order;
+  // Спосіб отримання + адреса/відділення, вказані при оформленні (shipping_address
+  // вже містить і метод, і адресу: «Нова Пошта: …» / «Самовивіз: …»). Показуємо
+  // в кожному листі про зміну статусу — окрім скасування, де це зайве.
+  const esc = (v) => String(v).replace(/</g, "&lt;");
+  const deliveryBlock =
+    status !== "cancelled" && (shipping_address || customer_phone)
+      ? `<tr><td style="padding:20px 40px 0;">
+           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;">
+             <tr><td style="padding:16px;">
+               <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;">Отримання</p>
+               ${shipping_address ? `<p style="margin:4px 0;font-size:14px;color:#334155;"><strong>Доставка:</strong> ${esc(shipping_address)}</p>` : ""}
+               ${customer_phone ? `<p style="margin:4px 0;font-size:14px;color:#334155;"><strong>Телефон:</strong> ${esc(customer_phone)}</p>` : ""}
+             </td></tr>
+           </table>
+         </td></tr>`
+      : "";
   const reasonBlock =
     status === "cancelled" && reason
       ? `<tr><td style="padding:16px 40px 0;">
@@ -282,6 +298,7 @@ function buildStatusEmailHtml(order, status, reason) {
       </td></tr>
       ${reasonBlock}
       ${trackingBlock}
+      ${deliveryBlock}
       ${total != null && status !== "cancelled" ? `<tr><td style="padding:20px 40px 0;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;"><tr><td style="padding:14px 16px;font-size:14px;color:#1e293b;">Сума замовлення</td><td style="padding:14px 16px;font-size:16px;font-weight:700;color:#7c3aed;text-align:right;">${formatPrice(total)}</td></tr></table></td></tr>` : ""}
       <tr><td style="padding:24px 40px 0;text-align:center;">
         <p style="margin:0;font-size:14px;color:#64748b;line-height:1.6;">Питання? Ми завжди на звʼязку:</p>

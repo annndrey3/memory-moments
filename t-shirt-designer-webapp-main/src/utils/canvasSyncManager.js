@@ -106,7 +106,7 @@ const printRegion = (fabricCanvas) => {
 // Коли multiplier ≤ 1 (UI-прев'ю, ескізи): читаємо з lowerCanvasEl — дешево і
 // достатньо. lowerCanvasEl зберігається у фізичних пікселях (width = logical * DPR),
 // тому враховуємо DPR при розрахунку координат зрізу.
-const cropCanvasToRegion = (fabricCanvas, region, multiplier = 1) => {
+const renderRegionToCanvas = (fabricCanvas, region, multiplier = 1) => {
   const src = fabricCanvas.lowerCanvasEl;
   if (!src) return null;
   const dstW = Math.round(region.width * multiplier);
@@ -121,6 +121,7 @@ const cropCanvasToRegion = (fabricCanvas, region, multiplier = 1) => {
     // Fabric re-renders all objects at target scale → original image resolution used.
     // toDataURL({left,top,…}) з enableRetinaScaling нестабільний у Fabric v6,
     // тому рендеримо повний canvas і вручну кропаємо зону друку.
+    // toCanvasElement сам вмикає skipControlsDrawing — рамка виділення не потрапляє.
     const hiRes = fabricCanvas.toCanvasElement(multiplier);
     ctx.drawImage(
       hiRes,
@@ -142,7 +143,29 @@ const cropCanvasToRegion = (fabricCanvas, region, multiplier = 1) => {
     );
   }
 
-  return off.toDataURL("image/png");
+  return off;
+};
+
+const cropCanvasToRegion = (fabricCanvas, region, multiplier = 1) => {
+  const off = renderRegionToCanvas(fabricCanvas, region, multiplier);
+  return off ? off.toDataURL("image/png") : null;
+};
+
+// Прев'ю не має містити рамку виділення активного шару. Fabric v6 малює контролі
+// (бордюр + кутові маркери) на НИЖНЬОМУ полотні під час renderAll (drawControls),
+// а прев'ю читає саме його — тож виділення «протікало» в превʼю та на 3D-модель.
+// beginCleanRender вмикає skipControlsDrawing і робить чистий renderAll (для зчитування),
+// НЕ знімаючи виділення. endCleanRender одразу (синхронно, у тому ж кадрі) повертає
+// контролі — тож на екрані виділення не блимає, а в прев'ю його немає.
+const beginCleanRender = (fabricCanvas) => {
+  const prevSkip = fabricCanvas.skipControlsDrawing;
+  fabricCanvas.skipControlsDrawing = true;
+  fabricCanvas.renderAll();
+  return prevSkip;
+};
+const endCleanRender = (fabricCanvas, prevSkip) => {
+  fabricCanvas.skipControlsDrawing = prevSkip || false;
+  if (!prevSkip) fabricCanvas.renderAll(); // синхронне відновлення контролів — без мерехтіння
 };
 
 // Composite helper for template formats (polaroid, instax, phone-case).
@@ -175,8 +198,8 @@ export const canvasSyncManager = {
   // Для інших форматів повертає лише вміст зони друку.
   getCanvasTexture: (fabricCanvas, { multiplier = 1 } = {}) => {
     if (!fabricCanvas) return null;
+    const prevSkip = beginCleanRender(fabricCanvas);
     try {
-      fabricCanvas.renderAll();
       // isTemplate встановлюється синхронно в useTshirtCanvas при наявності templateOverlay,
       // навіть до того як templateImg завантажиться.
       const region = fabricCanvas.isTemplate
@@ -186,6 +209,8 @@ export const canvasSyncManager = {
     } catch (error) {
       console.error("Error generating texture:", error);
       return null;
+    } finally {
+      endCleanRender(fabricCanvas, prevSkip);
     }
   },
 
@@ -194,20 +219,24 @@ export const canvasSyncManager = {
   // Для всіх інших: те саме, що і кроп printRegion.
   getRawDesignTexture: (fabricCanvas, { multiplier = 1 } = {}) => {
     if (!fabricCanvas) return null;
+    const prevSkip = beginCleanRender(fabricCanvas);
     try {
-      fabricCanvas.renderAll();
       const region = printRegion(fabricCanvas);
       return cropCanvasToRegion(fabricCanvas, region, multiplier);
     } catch (error) {
       console.error("Error generating raw texture:", error);
       return null;
+    } finally {
+      endCleanRender(fabricCanvas, prevSkip);
     }
   },
 
   // Друкарський макет: лише зона друку, у максимальній роздільності.
   // Для template-форматів полотно вже у повній друкарській роздільності (300 DPI),
   // тому просто компонуємо: білий папір → рамка шаблону → дизайн замовника.
-  getPrintTexture: (fabricCanvas, { targetLongSide = 2400, maxMultiplier = 12 } = {}) => {
+  // mirror: true → горизонтально віддзеркалений ОКРЕМИЙ файл (для сублімаційного
+  // друку чашки), щоб поряд із «прямим» (як бачить клієнт) був і дзеркальний.
+  getPrintTexture: (fabricCanvas, { targetLongSide = 2400, maxMultiplier = 12, mirror = false } = {}) => {
     if (!fabricCanvas) return null;
     try {
       fabricCanvas.discardActiveObject();
@@ -221,7 +250,19 @@ export const canvasSyncManager = {
       const region = printRegion(fabricCanvas);
       const longest = Math.max(region.width, region.height) || 1;
       const multiplier = Math.max(1, Math.min(maxMultiplier, targetLongSide / longest));
-      return cropCanvasToRegion(fabricCanvas, region, multiplier);
+      const el = renderRegionToCanvas(fabricCanvas, region, multiplier);
+      if (!el) return null;
+      if (!mirror) return el.toDataURL("image/png");
+
+      // Дзеркальна по горизонталі копія — окремий файл такого ж розміру.
+      const m = document.createElement("canvas");
+      m.width = el.width;
+      m.height = el.height;
+      const mctx = m.getContext("2d");
+      mctx.translate(el.width, 0);
+      mctx.scale(-1, 1);
+      mctx.drawImage(el, 0, 0);
+      return m.toDataURL("image/png");
     } catch (error) {
       console.error("Error generating print texture:", error);
       return null;

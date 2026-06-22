@@ -309,6 +309,8 @@ if (process.env.DATABASE_URL) {
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;");
   // Номер ТТН (Нова Пошта) — вводиться при статусі «Відправлено», йде клієнту в листі.
   await _pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;");
+  // Пріоритет відображення товару у вітрині (більше = вище). Керується в адмінці.
+  await _pool.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;");
   // Частковий унікальний індекс: дублі ключа заборонені, але багато NULL дозволені.
   await _pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;");
 
@@ -665,6 +667,9 @@ if (process.env.DATABASE_URL) {
   const productCols = db.prepare("PRAGMA table_info(products)").all();
   if (!productCols.some((c) => c.name === "design_id")) {
     db.exec("ALTER TABLE products ADD COLUMN design_id INTEGER;");
+  }
+  if (!productCols.some((c) => c.name === "sort_order")) {
+    db.exec("ALTER TABLE products ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;");
   }
 
   const orderCols = db.prepare("PRAGMA table_info(orders)").all();

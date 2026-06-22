@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CANVAS_CONFIG } from "@/constants/designConstants";
 import { useTshirtCanvas } from "@/hooks/useTshirtCanvas";
 
-const ProductCanvas = ({ view, viewConfig, seedImage }) => {
+const ProductCanvas = ({ view, viewConfig, seedImage, shirtScale }) => {
   const canvasW = viewConfig.canvasSize?.width ?? CANVAS_CONFIG.width;
   const canvasH = viewConfig.canvasSize?.height ?? CANVAS_CONFIG.height;
   const isTemplate = Boolean(viewConfig.templateOverlay);
@@ -77,12 +77,23 @@ const ProductCanvas = ({ view, viewConfig, seedImage }) => {
       {!isTemplate && (
         <div className="absolute inset-0 pointer-events-none">
           <svg viewBox={viewConfig.viewBox} className="w-full h-full">
-            <path
-              d={viewConfig.path}
-              fill={viewConfig.surfaceColor || tshirtColor}
-              stroke="#111827"
-              strokeWidth="3"
-            />
+            {/* Силует футболки масштабуємо під обраний розмір навколо центру зони
+                друку: виріб росте/меншає, а зона друку (і дизайн) лишаються — видно,
+                як реально сяде малюнок. Решта товарів — без масштабу (shirtScale=null). */}
+            <g
+              transform={
+                shirtScale && pz
+                  ? `translate(${pz.x + pz.width / 2} ${pz.y + pz.height / 2}) scale(${shirtScale.sx} ${shirtScale.sy}) translate(${-(pz.x + pz.width / 2)} ${-(pz.y + pz.height / 2)})`
+                  : undefined
+              }
+            >
+              <path
+                d={viewConfig.path}
+                fill={viewConfig.surfaceColor || tshirtColor}
+                stroke="#111827"
+                strokeWidth="3"
+              />
+            </g>
             {pz && (
               <>
                 <rect

@@ -568,18 +568,67 @@ export const FONT_OPTIONS = [
 ];
 
 // ── Опції товару: розмір футболки та тип паперу для фотодруку ────────────────
-export const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+export const TSHIRT_SIZES = ["S", "M", "L", "XL", "XXL"];
 
-// Орієнтовна розмірна сітка унісекс-футболки (см). Обхват грудей + довжина виробу.
-// Допомагає клієнту зрозуміти посадку; значення приблизні (±2 см).
+// Розмірна сітка футболки (см) — реальні числа з таблиці постачальника.
+// Лишаємо звичні мітки S…XXL; XXL = рядок 2XL із таблиці.
+// chest = обхват грудей (повне коло, Bust); length = довжина виробу;
+// shoulder = ширина плечей; sleeve = довжина рукава. Відхилення ±1–2 см.
 export const TSHIRT_SIZE_TABLE = [
-  { size: "XS",  chest: 88,  length: 68 },
-  { size: "S",   chest: 94,  length: 71 },
-  { size: "M",   chest: 100, length: 74 },
-  { size: "L",   chest: 108, length: 76 },
-  { size: "XL",  chest: 116, length: 79 },
-  { size: "XXL", chest: 124, length: 81 },
+  { size: "S",   chest: 96,  length: 67, shoulder: 44, sleeve: 19 },
+  { size: "M",   chest: 100, length: 69, shoulder: 46, sleeve: 20 },
+  { size: "L",   chest: 106, length: 71, shoulder: 48, sleeve: 20 },
+  { size: "XL",  chest: 112, length: 73, shoulder: 50, sleeve: 21 },
+  { size: "XXL", chest: 118, length: 75, shoulder: 52, sleeve: 21 },
 ];
+
+// ── Реальний масштаб «1:1»: формати друку (А4/А3) на футболці у справжніх пропорціях ──
+// Реальні розміри аркушів друку (портрет, см):
+export const PRINT_FORMAT_CM = {
+  A4: { w: 21, h: 29.7 },
+  A3: { w: 29.7, h: 42 },
+};
+// Силует футболки намальований = найбільший розмір (XXL). Заміряно з контуру
+// (viewBox 810): ширина ПЛЕЧЕЙ (по шву плеча) ≈464, верх торса (плече) y≈95,
+// поділ y≈739, центр x≈405.
+const SHIRT_DRAW = { shoulderW: 464, bodyTop: 95, bodyBottom: 739, cx: 405 };
+const SHIRT_MAX = TSHIRT_SIZE_TABLE[TSHIRT_SIZE_TABLE.length - 1]; // найбільший (XXL)
+// Єдиний масштаб см→viewBox від ШИРИНИ ПЛЕЧЕЙ: плечі намальованого силуету (464 vb)
+// = ширина плечей XXL (52 см). Тобто силует = XXL, менші — меншають за плечима.
+const SHIRT_PPC = SHIRT_DRAW.shoulderW / SHIRT_MAX.shoulder;
+const SHIRT_DRAW_BODY_H = SHIRT_DRAW.bodyBottom - SHIRT_DRAW.bodyTop; // 644 vb = довжина XXL
+// Центр зони друку = геометричний центр корпусу футболки. Силует масштабуємо
+// навколо цієї точки (ProductCanvas) → зона лишається по ЦЕНТРУ виробу за будь-якого
+// розміру (бо масштабування навколо центру не зсуває сам центр).
+const PRINT_ANCHOR_Y = (SHIRT_DRAW.bodyTop + SHIRT_DRAW.bodyBottom) / 2; // ≈417
+
+// Зона друку у viewBox = реальний розмір аркуша (см) × масштаб. Не залежить від
+// розміру футболки (аркуш фізично однаковий) — змінюється лише сам виріб.
+export const tshirtPrintZone = (printSize) => {
+  const f = PRINT_FORMAT_CM[printSize === "A3" ? "A3" : "A4"];
+  const width = Math.round(f.w * SHIRT_PPC);
+  const height = Math.round(f.h * SHIRT_PPC);
+  return {
+    x: Math.round(SHIRT_DRAW.cx - width / 2),
+    y: Math.round(PRINT_ANCHOR_Y - height / 2),
+    width,
+    height,
+  };
+};
+
+// Масштаб силуету під обраний розмір у тому самому масштабі см→vb:
+//  • по ширині — від ШИРИНИ ПЛЕЧЕЙ (як просив власник);
+//  • по висоті — від довжини виробу.
+// Разом із фіксованою зоною друку це дає реальне співвідношення «аркуш ↔ футболка»:
+// на меншому розмірі той самий А4/А3 виглядає більшим — як у житті.
+export const tshirtSizeScale = (size) => {
+  const row = TSHIRT_SIZE_TABLE.find((r) => r.size === size)
+    || TSHIRT_SIZE_TABLE.find((r) => r.size === "M");
+  return {
+    sx: row.shoulder / SHIRT_MAX.shoulder,
+    sy: (row.length * SHIRT_PPC) / SHIRT_DRAW_BODY_H,
+  };
+};
 
 export const PAPER_TYPES = [
   { value: "matte", label: "Матовий" },

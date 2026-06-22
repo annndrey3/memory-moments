@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Palette, Store, ShoppingCart, Tag, Phone, Camera } from "lucide-react";
 import { Button } from "./ui";
 import { useCart } from "@/lib/cart";
-import { scrollToCatalog, scrollToId } from "@/lib/scroll";
+import { scrollToCatalog } from "@/lib/scroll";
 
 const DESIGNER_URL = import.meta.env.VITE_DESIGNER_URL || "http://localhost:5173";
 
@@ -56,15 +56,12 @@ export function SiteHeader() {
               <span className="hidden sm:inline">Ціни</span>
             </Button>
           </Link>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="rounded-xl"
-            onClick={() => scrollToId("contacts", "end")}
-          >
-            <Phone className="h-4 w-4" />
-            <span className="hidden sm:inline">Контакти</span>
-          </Button>
+          <Link to="/contacts">
+            <Button variant="ghost" size="sm" className="rounded-xl">
+              <Phone className="h-4 w-4" />
+              <span className="hidden sm:inline">Контакти</span>
+            </Button>
+          </Link>
           <Link to="/cart" className="relative">
             <Button variant="ghost" size="sm" className="rounded-xl">
               <ShoppingCart className="h-4 w-4" />

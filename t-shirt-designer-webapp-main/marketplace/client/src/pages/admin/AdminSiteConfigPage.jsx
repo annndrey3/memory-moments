@@ -102,19 +102,25 @@ export default function AdminSiteConfigPage() {
         </div>
 
         <div className="space-y-2">
-          <Label className={LBL}>Філії (показуються у футері)</Label>
+          <Label className={LBL}>Філії (футер + сторінка «Контакти» з картами)</Label>
           {(contacts.branches || []).map((b, i) => (
-            <div key={i} className="flex flex-col sm:flex-row gap-2">
-              <Input placeholder="Адреса" value={b.address}
+            <div key={i} className="flex flex-col gap-2 rounded-lg border border-slate-200 p-2.5">
+              <div className="flex gap-2">
+                <Input placeholder="Назва (напр. Преображенська)" value={b.name || ""}
+                  onChange={(e) => setList("contacts", "branches", i, { name: e.target.value })} />
+                <Input placeholder="Телефон філії" value={b.phone || ""}
+                  onChange={(e) => setList("contacts", "branches", i, { phone: e.target.value })} />
+                <button className={ICON_BTN} onClick={() => removeItem("contacts", "branches", i)} title="Видалити філію">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <Input placeholder="Адреса (для карти)" value={b.address || ""}
                 onChange={(e) => setList("contacts", "branches", i, { address: e.target.value })} />
-              <Input placeholder="Посилання на карту" value={b.mapsUrl}
+              <Input placeholder="Посилання на Google Maps (кнопка «Маршрут»)" value={b.mapsUrl || ""}
                 onChange={(e) => setList("contacts", "branches", i, { mapsUrl: e.target.value })} />
-              <button className={ICON_BTN} onClick={() => removeItem("contacts", "branches", i)} title="Видалити">
-                <Trash2 className="h-4 w-4" />
-              </button>
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={() => addItem("contacts", "branches", { address: "", mapsUrl: "" })}>
+          <Button variant="outline" size="sm" onClick={() => addItem("contacts", "branches", { name: "", phone: "", address: "", mapsUrl: "" })}>
             <Plus className="h-4 w-4" /> Філія
           </Button>
         </div>

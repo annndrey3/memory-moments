@@ -17,16 +17,18 @@ export default function TshirtSizeTable({ selected }) {
           <span className="hidden sm:inline">Розміри</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={8} className="w-[260px] p-3">
+      <PopoverContent align="start" sideOffset={8} className="w-[320px] p-3">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
           Таблиця розмірів (см)
         </p>
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <tr className="text-[10px] uppercase tracking-wide text-muted-foreground">
               <th className="text-left font-medium pb-1">Розмір</th>
-              <th className="text-right font-medium pb-1">Обхват грудей</th>
-              <th className="text-right font-medium pb-1">Довжина</th>
+              <th className="text-right font-medium pb-1">Груди</th>
+              <th className="text-right font-medium pb-1">Довж.</th>
+              <th className="text-right font-medium pb-1">Плечі</th>
+              <th className="text-right font-medium pb-1">Рукав</th>
             </tr>
           </thead>
           <tbody>
@@ -40,13 +42,15 @@ export default function TshirtSizeTable({ selected }) {
               >
                 <td className="py-1.5 pl-1 rounded-l-md">{r.size}</td>
                 <td className="py-1.5 text-right tabular-nums">{r.chest}</td>
-                <td className="py-1.5 pr-1 text-right tabular-nums rounded-r-md">{r.length}</td>
+                <td className="py-1.5 text-right tabular-nums">{r.length}</td>
+                <td className="py-1.5 text-right tabular-nums">{r.shoulder}</td>
+                <td className="py-1.5 pr-1 text-right tabular-nums rounded-r-md">{r.sleeve}</td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          Значення приблизні (±2 см). Обхват грудей — повне коло; довжина — від плеча донизу.
+          Значення приблизні (±1–2 см). Груди — повне коло; довжина — від плеча донизу.
         </p>
       </PopoverContent>
     </Popover>

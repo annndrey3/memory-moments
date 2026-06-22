@@ -1,32 +1,18 @@
-import { Phone, Instagram, Send, MessageCircle, MapPin, Clock } from "lucide-react";
-import { contactLinks } from "@/lib/contacts";
+import { Clock, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useSiteConfig } from "@/lib/siteConfig";
 
-// Контакти у футері — клікабельні, відкривають дзвінок/застосунок/чат напряму.
+// Футер: години роботи + посилання на сторінку «Контакти» (адреси філій і карти
+// тепер живуть там, тож у футері їх не дублюємо).
 export function SiteFooter() {
   const { contacts } = useSiteConfig();
-  const links = contactLinks(contacts);
-  const tgValue = contacts.telegram?.startsWith("+")
-    ? contacts.telegram
-    : `@${(contacts.telegram || "").replace(/^@/, "")}`;
-
-  const items = [
-    { key: "phone", href: links.phone, label: "Телефон", value: contacts.phone, Icon: Phone, color: "bg-emerald-500" },
-    {
-      key: "instagram", href: links.instagram, label: "Instagram",
-      value: `@${(contacts.instagram || "").replace(/^@/, "")}`, Icon: Instagram,
-      color: "bg-gradient-to-br from-fuchsia-500 via-rose-500 to-amber-400", external: true,
-    },
-    { key: "telegram", href: links.telegram, label: "Telegram", value: tgValue, Icon: Send, color: "bg-sky-500", external: true },
-    { key: "viber", href: links.viber, label: "Viber", value: contacts.viber, Icon: MessageCircle, color: "bg-violet-600" },
-  ];
 
   return (
     <footer id="contacts" className="mt-16 scroll-mt-20 border-t border-slate-200/80 bg-white/70 backdrop-blur">
-      <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 space-y-8">
+      <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 space-y-6">
 
-        {/* Години роботи + адреса — по центру */}
         <div className="flex flex-wrap justify-center gap-3">
+          {/* Години роботи */}
           <div className="inline-flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-soft">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500 text-white">
               <Clock className="h-4 w-4" />
@@ -41,25 +27,21 @@ export function SiteFooter() {
             </span>
           </div>
 
-          {(contacts.branches || []).map((b) => (
-            <a
-              key={b.address}
-              href={b.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group inline-flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-elevated"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500 text-white">
-                <MapPin className="h-4 w-4" />
+          {/* Посилання на сторінку контактів (усі філії + карти) */}
+          <Link
+            to="/contacts"
+            className="group inline-flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-elevated"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-500 text-white">
+              <MapPin className="h-4 w-4" />
+            </span>
+            <span className="leading-tight">
+              <span className="block text-[11px] uppercase tracking-wide text-slate-400">Наші філії</span>
+              <span className="block text-sm font-medium text-slate-800 group-hover:text-violet-700">
+                Адреси та карти →
               </span>
-              <span className="leading-tight">
-                <span className="block text-[11px] uppercase tracking-wide text-slate-400">Адреса</span>
-                <span className="block max-w-[220px] text-sm font-medium text-slate-800 group-hover:text-violet-700">
-                  {b.address}
-                </span>
-              </span>
-            </a>
-          ))}
+            </span>
+          </Link>
         </div>
 
         <div className="border-t border-slate-100 pt-5 text-center text-xs text-slate-400">
