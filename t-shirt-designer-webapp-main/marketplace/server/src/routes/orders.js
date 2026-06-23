@@ -121,8 +121,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
     // Замовлення з конструктора приходять без email, але з телефоном.
     const orderSource = source === "designer" ? "designer" : "marketplace";
 
-    if (!name || (!email && !phone)) {
-      return res.status(400).json({ error: "Вкажіть ім'я та email або телефон" });
+    if (!name || !email || !phone) {
+      return res.status(400).json({ error: "Вкажіть ім'я, email та телефон" });
     }
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: "Кошик порожній" });

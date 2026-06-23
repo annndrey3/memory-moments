@@ -96,8 +96,12 @@ const Header = () => {
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !phone) {
-      toast({ variant: "destructive", title: "Помилка", description: "Заповніть обов'язкові поля (Ім'я та Телефон)." });
+    if (!name || !phone || !email.trim()) {
+      toast({ variant: "destructive", title: "Помилка", description: "Заповніть обов'язкові поля (Ім'я, Телефон та Email)." });
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast({ variant: "destructive", title: "Помилка", description: "Вкажіть коректний email." });
       return;
     }
     if (deliveryType === "nova_poshta" && !novaPoshtaAddress.trim()) {
@@ -303,8 +307,8 @@ const Header = () => {
                   <Input id="phone" required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+38 (000) 000-00-00" className="rounded-lg" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="rounded-lg" />
+                  <Label htmlFor="email">Email *</Label>
+                  <Input id="email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" className="rounded-lg" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Спосіб отримання *</Label>
