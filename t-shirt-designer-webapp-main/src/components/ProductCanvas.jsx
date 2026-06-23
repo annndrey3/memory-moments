@@ -175,15 +175,10 @@ const ProductCanvas = ({ view, viewConfig, seedImage, shirtScale }) => {
         return (
           <div className="absolute inset-0 z-20 pointer-events-none">
             <svg viewBox={viewConfig.viewBox} className="w-full h-full">
-              {/* Зона шва (корінець): смуга по центру розвороту, де не варто
-                  розміщувати важливе — там згин/палітурка. */}
-              {safe.seam > 0 && (
-                <rect x={cx - safe.seam} y={pz.y} width={safe.seam * 2} height={pz.height}
-                  fill="#ef4444" opacity="0.10" />
-              )}
-              {/* Лінія згину по центру */}
+              {/* Межа розвороту (корінець/згин) по центру — суцільна червона лінія
+                  БЕЗ прозорості (де проходить згин/палітурка, важливе не розміщувати). */}
               <line x1={cx} y1={pz.y} x2={cx} y2={pz.y + pz.height}
-                stroke="#7c3aed" strokeWidth="2.5" strokeDasharray="8 7" opacity="0.7" />
+                stroke="#ef4444" strokeWidth="3" />
               {/* Безпечні поля (0.5 см) — тримайте важливе всередині цієї рамки */}
               {(safe.edgeX > 0 || safe.edgeY > 0) && (
                 <rect x={pz.x + safe.edgeX} y={pz.y + safe.edgeY}
