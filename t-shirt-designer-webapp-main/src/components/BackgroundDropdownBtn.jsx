@@ -6,8 +6,7 @@ import { ImageIcon, Ban, Loader2 } from "lucide-react";
 import { CANVAS_CONFIG } from "@/constants/designConstants";
 import { fetchBackgrounds } from "@/utils/canvasSyncManager";
 
-const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+import { RAIL_BTN } from "@/components/ui/railButton";
 
 // Абсолютний URL картинки фону: у проді /api → той самий домен; у деві → localhost:3001.
 const API_ORIGIN = (import.meta.env.VITE_MARKETPLACE_API || "http://localhost:3001/api").replace(/\/api\/?$/, "");
@@ -83,7 +82,7 @@ const BackgroundDropdownBtn = ({ manualSync }) => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" title="Фон" className={RAIL_BTN}>
-          <ImageIcon className="h-5 w-5" />
+          <ImageIcon className="h-3.5 w-3.5" />
           <span className="text-[10px] font-medium leading-none">Фон</span>
         </button>
       </PopoverTrigger>

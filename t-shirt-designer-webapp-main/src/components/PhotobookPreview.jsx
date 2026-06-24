@@ -46,6 +46,33 @@ export default function PhotobookPreview({
   const [w, h] = String(format).split("x").map(Number);
   const ratio = w && h ? w / h : 0.7;
 
+  // Передперегляд = РЕАЛЬНИЙ друкований результат: білі поля по краях (0.5 см) і
+  // СХОВАНІ 10 мм біля корінця (по 0.5 см з кожної половини — те, що «з'їдає» палітурка,
+  // позначене червоним у редакторі). Тож клієнт бачить, що буде надруковано, а не сирий
+  // макет «під обріз». Кожна половина показує лише свою видиму (обрізану) частину фото
+  // у білій рамці. Геометрія в см → частки сторінки.
+  const M = 0.5;   // біле поле по зовнішніх краях, см
+  const BND = 0.5; // половина корінця (1 см на розворот), см
+  const spreadHalfStyle = (src, half) => {
+    if (!w || !h) {
+      // запасний варіант (нерозпізнаний формат): як раніше — повна половина
+      return { backgroundImage: `url(${src})`, backgroundSize: "200% 100%", backgroundPosition: half === "left" ? "left center" : "right center", backgroundRepeat: "no-repeat" };
+    }
+    const innerW = w - M - BND;       // видима ширина сторінки, см
+    const insetL = (half === "left" ? M : BND) / w * 100;   // ліворуч: зовн. поле / корінець
+    const insetR = (half === "left" ? BND : M) / w * 100;
+    const insetTB = M / h * 100;
+    const startX = half === "left" ? M : (w + BND);          // звідки починається видима частина у спреді (2w)
+    return {
+      position: "absolute",
+      top: `${insetTB}%`, bottom: `${insetTB}%`, left: `${insetL}%`, right: `${insetR}%`,
+      backgroundImage: `url(${src})`,
+      backgroundSize: `${(2 * w) / innerW * 100}% ${h / (h - 2 * M) * 100}%`,
+      backgroundPosition: `${startX / (w + M + BND) * 100}% 50%`,
+      backgroundRepeat: "no-repeat",
+    };
+  };
+
   // Кожне фото-розворот = ДВІ сторінки книги (як у редакторі): ліва половина на
   // лівій сторінці, права — на правій, тож відкритий розворот = цілісне фото.
   const pages = useMemo(() => {
@@ -136,16 +163,11 @@ export default function PhotobookPreview({
                     </div>
                   )
                 ) : p.type === "spread" ? (
-                  // Половина ландшафтного розвороту (2w:h): 200%×100% без спотворення.
-                  <div
-                    className="h-full w-full bg-white"
-                    style={{
-                      backgroundImage: `url(${p.src})`,
-                      backgroundSize: "200% 100%",
-                      backgroundPosition: p.half === "left" ? "left center" : "right center",
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  />
+                  // Друкований вигляд половини розвороту: біла сторінка + фото у полях,
+                  // 10 мм біля корінця сховано (видно лише те, що реально надрукується).
+                  <div className="relative h-full w-full bg-white">
+                    <div style={spreadHalfStyle(p.src, p.half)} />
+                  </div>
                 ) : p.type === "back" ? (
                   backCoverImage ? (
                     <img src={backCoverImage} alt="Обкладинка (зад)" className="h-full w-full object-cover" />

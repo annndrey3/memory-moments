@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Minus, Plus, ShoppingCart, Images, X, BookOpen, Loader2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useCanvas } from "@/hooks/useCanvas";
-import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra, addSlimBookPhotos, clearSlimBookPhotos } from "@/features/tshirtSlice";
-import { TSHIRT_COLORS, MUG_INNER_COLORS, isMugType, SLIMBOOK_SPREADS, isBookType, bookUnit, isMultiPhoto } from "@/constants/designConstants";
+import { setTshirtColor, setPrintSize, setQuantity, toggleCart, setSlimBookSpreads, setSlimBookExtra } from "@/features/tshirtSlice";
+import { TSHIRT_COLORS, MUG_INNER_COLORS, SLIMBOOK_SPREADS, isBookType, bookUnit, isMultiPhoto } from "@/constants/designConstants";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import { usePricing } from "@/hooks/usePricing";
 import { cn } from "@/lib/utils";
@@ -37,13 +37,21 @@ const OrderBar = () => {
   const cartItems = useSelector((state) => state.tshirt.cartItems || []);
   const { addCurrentDesignToCart, hasDesign } = useAddToCart();
   const { priceFor, tshirtPrice, canvasPrice, bookPrice, photoDiscountPct } = usePricing();
-  const spreadInputRef = useRef(null);
+  // Кнопки «Фото розворотів»/«Передперегляд» переїхали в конструктор (поряд з
+  // обкладинками). Передперегляд відкриваємо звідти через подію — стан/модалка
+  // лишаються тут (мають доступ до полотен). Ref тримає актуальний openPreview,
+  // щоб слухач (зареєстрований раз, ДО можливого early-return) кликав свіжу версію.
+  const openPreviewRef = useRef(null);
+  useEffect(() => {
+    const open = () => openPreviewRef.current?.();
+    window.addEventListener("mm:open-preview", open);
+    return () => window.removeEventListener("mm:open-preview", open);
+  }, []);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewMin, setPreviewMin] = useState(false);
   const [coverImage, setCoverImage] = useState(null);
   const [backCoverImage, setBackCoverImage] = useState(null);
   const [spreadPreviews, setSpreadPreviews] = useState([]); // відрендерені розвороти для прев'ю
-  const [uploadProgress, setUploadProgress] = useState(null); // {done,total} під час завантаження фото розворотів
   const [adding, setAdding] = useState(null); // {done,total} під час підготовки позиції (рендер фото) перед кошиком
 
   // Скільки об'єктів на кожній стороні — щоб знати, чи друкуємо обидві сторони
@@ -140,45 +148,6 @@ const OrderBar = () => {
     }
   }
 
-  // Стиснення фото розвороту: даунскейл до 2400px по довшій стороні, JPEG 0.88 —
-  // якість достатня для друку книги, payload лишається помірним.
-  const compressPhoto = (file) =>
-    new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          const MAX = 2400;
-          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-          const w = Math.round(img.width * scale);
-          const h = Math.round(img.height * scale);
-          const c = document.createElement("canvas");
-          c.width = w; c.height = h;
-          c.getContext("2d").drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL("image/jpeg", 0.88));
-        };
-        img.onerror = () => resolve(null);
-        img.src = reader.result;
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(file);
-    });
-
-  const handleSpreadPhotos = async (e) => {
-    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
-    e.target.value = "";
-    if (!files.length) return;
-    // Послідовно: показуємо реальний прогрес і не вантажимо памʼять багатьма
-    // одночасними canvas-декодуваннями великих фото. Кожне готове фото — одразу в книгу.
-    setUploadProgress({ done: 0, total: files.length });
-    for (let i = 0; i < files.length; i++) {
-      const url = await compressPhoto(files[i]);
-      if (url) dispatch(addSlimBookPhotos([url]));
-      setUploadProgress({ done: i + 1, total: files.length });
-    }
-    setUploadProgress(null);
-  };
-
   const openPreview = () => {
     setCoverImage(frontCanvas ? canvasSyncManager.getCanvasTexture(frontCanvas) : null);
     setBackCoverImage(backCanvas ? canvasSyncManager.getCanvasTexture(backCanvas) : null);
@@ -193,6 +162,7 @@ const OrderBar = () => {
     setPreviewMin(false);
     setPreviewOpen(true);
   };
+  openPreviewRef.current = openPreview; // тримаємо актуальну версію для слухача події
 
   const handleOrder = async () => {
     if (adding) return; // вже готуємо — не дублюємо
@@ -220,7 +190,7 @@ const OrderBar = () => {
 
   return (
     <div className="sticky bottom-0 z-30 glass border-t border-border/60 shadow-elevated" data-tour="order">
-      <div className="mx-auto max-w-7xl px-3 py-2 md:px-8 md:py-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-5">
+      <div className="mx-auto max-w-7xl px-3 py-1 md:px-6 md:py-1.5 flex flex-col gap-1.5 lg:flex-row lg:items-center lg:gap-4">
         {/* Опції: колір, формат друку, кількість */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {/* Футболка Soft Style: лише біла/чорна, з ціною біля кожного кольору */}
@@ -347,72 +317,13 @@ const OrderBar = () => {
               )}
             </div>
 
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5">
-                <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadPhotos} className="hidden" />
-                <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5"
-                  disabled={!!uploadProgress}
-                  onClick={() => spreadInputRef.current?.click()}>
-                  {uploadProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
-                  <span className="text-xs font-semibold">
-                    {uploadProgress ? `Завантаження ${uploadProgress.done}/${uploadProgress.total}` : "Фото розворотів"}
-                  </span>
-                </Button>
-                {!uploadProgress && slimBookPhotos.length > 0 && (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
-                    {slimBookPhotos.length}
-                    <button type="button" title="Очистити" onClick={() => dispatch(clearSlimBookPhotos())}
-                      className="text-muted-foreground hover:text-destructive">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                )}
-                <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5" onClick={openPreview}>
-                  <BookOpen className="h-4 w-4" />
-                  <span className="text-xs font-semibold">Передперегляд</span>
-                </Button>
-              </div>
-              {uploadProgress && (
-                <div className="h-1.5 w-full rounded-full bg-violet-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-violet-500 transition-all duration-200"
-                    style={{ width: `${Math.round((uploadProgress.done / Math.max(1, uploadProgress.total)) * 100)}%` }} />
-                </div>
-              )}
-            </div>
+            {/* «Фото розворотів» і «Передперегляд» — тепер у конструкторі, поряд з обкладинками */}
           </>
         )}
 
-        {/* Пачка фото: завантажити багато фото — кожне = окрема редагована сторінка */}
-        {isMulti && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5">
-              <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadPhotos} className="hidden" />
-              <Button type="button" variant="outline" className="h-8 rounded-lg gap-1.5"
-                disabled={!!uploadProgress}
-                onClick={() => spreadInputRef.current?.click()}>
-                {uploadProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
-                <span className="text-xs font-semibold">
-                  {uploadProgress ? `Завантаження ${uploadProgress.done}/${uploadProgress.total}` : "Багато фото"}
-                </span>
-              </Button>
-              {!uploadProgress && slimBookPhotos.length > 0 && (
-                <span className="flex items-center gap-1 text-xs font-semibold text-violet-700">
-                  {slimBookPhotos.length}
-                  <button type="button" title="Очистити" onClick={() => dispatch(clearSlimBookPhotos())}
-                    className="text-muted-foreground hover:text-destructive">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </span>
-              )}
-            </div>
-            {uploadProgress && (
-              <div className="h-1.5 w-full rounded-full bg-violet-100 overflow-hidden">
-                <div className="h-full rounded-full bg-violet-500 transition-all duration-200"
-                  style={{ width: `${Math.round((uploadProgress.done / Math.max(1, uploadProgress.total)) * 100)}%` }} />
-              </div>
-            )}
-          </div>
-        )}
+        {/* «Багато фото» прибрано — фото пачки завантажуються інструментом «Фото»
+            в конструкторі (він приймає кілька файлів), а кожне фото видаляється
+            хрестиком у каруселі. Тут дублювати не потрібно. */}
 
         {/* Кількість — для пачки фото ховаємо (к-ть = число завантажених фото) */}
         {!isMulti && (
@@ -475,16 +386,16 @@ const OrderBar = () => {
           <Button
             onClick={handleOrder}
             disabled={!!adding}
-            className="flex-1 lg:flex-none h-12 rounded-xl px-6 text-base font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white border-0 shadow-glow disabled:opacity-80"
+            className="flex-1 lg:flex-none h-9 rounded-lg px-5 text-sm font-bold bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white border-0 shadow-glow disabled:opacity-80"
           >
             {adding ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 {adding.total > 1 ? `Готуємо ${adding.done}/${adding.total}…` : "Готуємо…"}
               </>
             ) : (
               <>
-                <ShoppingCart className="h-5 w-5" />
+                <ShoppingCart className="h-4 w-4" />
                 Замовити!
               </>
             )}

@@ -4,6 +4,7 @@ import * as fabric from "fabric";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Crop, Heart, Square, Circle, Crosshair, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RAIL_BTN } from "@/components/ui/railButton";
 
 const OvalIcon = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -72,9 +73,6 @@ export function createMaskClipPath(shapeType, width, height) {
 
   return clipPath;
 }
-
-const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed";
 
 const SHAPE_BTN =
   "flex flex-col items-center justify-center gap-1.5 w-16 h-16 rounded-xl border border-border/60 bg-card hover:border-violet-400/60 hover:bg-violet-50/60 text-foreground/70 hover:text-violet-600 transition-all";
@@ -219,7 +217,7 @@ const MaskDropdownBtn = ({ manualSync }) => {
             disabled={!isImage}
             className={RAIL_BTN}
           >
-            <Crop className="h-5 w-5" />
+            <Crop className="h-3.5 w-3.5" />
             <span className="text-[10px] font-medium leading-none">Маска</span>
           </button>
         </PopoverTrigger>

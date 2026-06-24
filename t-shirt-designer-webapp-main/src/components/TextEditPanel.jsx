@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCanvas } from "@/hooks/useCanvas";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,10 +9,62 @@ import FontOptions from "./FontOptions";
 import { loadFont } from "@/utils/fontSync";
 
 // Плаваюча панель редагування тексту. З'являється автоматично щойно вибрано/додано
-// текст і спливає красивою анімацією поряд з робочою зоною (як панель маски/рамки).
+// текст і спливає ПОРЯД із самим текстом на холсті (над ним, а якщо місця згори
+// бракує — під ним), а не внизу екрана — «де клацнув, там і інструмент».
+const PANEL_W = 520;
 const TextEditPanel = ({ manualSync }) => {
   const { activeCanvas, selectedObject } = useCanvas();
   const isText = selectedObject?.type === "textbox";
+  const [pos, setPos] = useState(null); // { left, top, below } у координатах вікна
+  // На мобільному панель НЕ плаває біля тексту (вузький екран — перекривала б його
+  // й заважала рухати), а пришпилена донизу екрана на всю ширину.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+
+  // Рахуємо позицію панелі від екранного прямокутника тексту (через DOM-полотно).
+  const computePos = useCallback(() => {
+    const o = selectedObject;
+    if (!activeCanvas || !o || o.type !== "textbox") { setPos(null); return; }
+    const el = activeCanvas.upperCanvasEl;
+    if (!el) { setPos(null); return; }
+    const rect = el.getBoundingClientRect();
+    const scale = rect.width / (activeCanvas.getWidth() || 1);
+    const br = o.getBoundingRect(); // логічні координати полотна
+    const cx = rect.left + (br.left + br.width / 2) * scale;
+    const objTop = rect.top + br.top * scale;
+    const objBottom = rect.top + (br.top + br.height) * scale;
+    const w = Math.min(PANEL_W, window.innerWidth * 0.92);
+    const left = Math.max(8, Math.min(cx - w / 2, window.innerWidth - w - 8));
+    const below = objTop < 140; // згори замало місця → панель під текстом
+    setPos({ left, top: below ? objBottom + 8 : objTop - 8, below });
+  }, [activeCanvas, selectedObject]);
+
+  useEffect(() => { computePos(); }, [computePos]);
+  useEffect(() => {
+    if (!activeCanvas) return;
+    const h = () => computePos();
+    activeCanvas.on("object:moving", h);
+    activeCanvas.on("object:scaling", h);
+    activeCanvas.on("object:modified", h);
+    activeCanvas.on("text:changed", h);
+    window.addEventListener("resize", h);
+    window.addEventListener("scroll", h, true);
+    return () => {
+      activeCanvas.off("object:moving", h);
+      activeCanvas.off("object:scaling", h);
+      activeCanvas.off("object:modified", h);
+      activeCanvas.off("text:changed", h);
+      window.removeEventListener("resize", h);
+      window.removeEventListener("scroll", h, true);
+    };
+  }, [activeCanvas, computePos]);
 
   const [text, setText] = useState("");
   const [font, setFont] = useState("Caveat");
@@ -84,10 +137,21 @@ const TextEditPanel = ({ manualSync }) => {
   const TGL =
     "h-9 w-9 flex items-center justify-center rounded-lg border transition-colors shrink-0";
 
-  // Акуратний віджет ПІД холстом: один ряд керування текстом, переноситься на
-  // вузьких екранах. Не перекриває дизайн (раніше панель висіла оверлеєм над холстом).
-  return (
-    <div className="w-full max-w-2xl rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-elevated animate-fade-in-up">
+  // Плаваючий віджет ПОРЯД із текстом: один ряд керування, переноситься на вузьких
+  // екранах. position:fixed + обчислені координати → з'являється там, де сам текст.
+  // Якщо позицію ще не пораховано — показуємо внизу (запасний варіант, не ламається).
+  const floatStyle = isMobile
+    ? { position: "fixed", left: 8, right: 8, bottom: 8, width: "auto", zIndex: 50 }
+    : pos
+      ? { position: "fixed", left: pos.left, top: pos.top, width: `min(${PANEL_W}px, 92vw)`, zIndex: 50, transform: pos.below ? "none" : "translateY(-100%)" }
+      : undefined;
+  // Портал у body: панель має position:fixed, а предок-секція має CSS-transform
+  // (анімація появи), через що fixed рахувався б ВІД секції, а не від екрана —
+  // тоді панель з'їжджала й перекривала текст. Портал прибирає цю прив'язку.
+  return createPortal(
+    <div
+      style={floatStyle}
+      className="max-w-2xl rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-elevated">
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-violet-600 shrink-0">
           <Type className="h-4 w-4" /> Текст
@@ -158,7 +222,8 @@ const TextEditPanel = ({ manualSync }) => {
           Готово
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

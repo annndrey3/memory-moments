@@ -15,7 +15,7 @@ import EmbedBridge from "./components/EmbedBridge";
 import DesignerTour from "./components/DesignerTour";
 import { PRODUCT_TYPES, isMugType } from "./constants/designConstants";
 import { ensureCanvasFonts, rerenderText } from "./utils/fontSync";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Minimize2, Maximize2, X, Box } from "lucide-react";
 
 function App() {
   const tshirtColor = useSelector((state) => state.tshirt.tshirtColor);
@@ -24,6 +24,10 @@ function App() {
   const dispatch = useDispatch();
   const { getCanvas, canvasesByKey } = useCanvas();
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
+  // Пропорція зони друку чашки (ширина:висота) — щоб 3D-модель обгортала малюнок
+  // тим самим співвідношенням, що й 2D-розгортка (без спотворення).
+  const mugPz = product.views?.front?.printZone;
+  const mugPrintAspect = mugPz ? mugPz.width / mugPz.height : 2.75;
 
   // Кирилиця у веб-шрифтах: сабсет вантажиться асинхронно, а fabric кешує гліфи —
   // тож текст міг лишитись із запасним шрифтом («шрифти не працюють для рос/укр»).
@@ -45,18 +49,26 @@ function App() {
   // «скільки налито кипятку»: чим більше, тим вище піднявся прояв (знизу вгору).
   const isMagic = selectedType === "mug-magic";
   const [magicFill, setMagicFill] = useState(100);
-  // 3D-превʼю чашки на мобільному — згорнуте в акордеон (інакше друга панель під
-  // редактором дає вертикальний скрол). На десктопі (≥xl) показуємо завжди поруч.
-  const [isWide, setIsWide] = useState(false);
-  const [show3d, setShow3d] = useState(false);
+  // Повноекранний режим: лише холст + інструменти (шапка/футер/превʼю сховані).
+  const [fullscreen, setFullscreen] = useState(false);
+  // 3D-перегляд виробу (чашки) — відкривається НА ВЕСЬ ЕКРАН іконкою «3D» у редакторі,
+  // згортається стрілкою у плаваючу кнопку. Доступний і в повноекранному режимі.
+  const [show3d, setShow3d] = useState(false);       // 3D-перегляд відкрито (на весь екран)
+  const [preview3dMin, setPreview3dMin] = useState(false); // згорнуто у плаваючу кнопку
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1280px)");
-    const sync = () => setIsWide(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  const previewVisible = showPreview && (isWide || show3d);
+    if (!fullscreen) return;
+    // Esc виходить з повноекранного — але якщо поверх відкрито 3D-перегляд, спершу
+    // закриваємо його (це робить ефект show3d нижче), а з повноекранного НЕ виходимо.
+    const onKey = (e) => { if (e.key === "Escape" && !(show3d && !preview3dMin)) setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen, show3d, preview3dMin]);
+  useEffect(() => {
+    if (!show3d || preview3dMin) return;
+    const onKey = (e) => { if (e.key === "Escape") setShow3d(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [show3d, preview3dMin]);
   const frontCanvas = getCanvas(selectedType, "front");
   const backCanvas = getCanvas(selectedType, "back");
 
@@ -81,38 +93,33 @@ function App() {
 
   return (
     <div className="min-h-screen bg-mesh-animated flex flex-col">
+          {!fullscreen && (
           <header className="sticky top-0 z-30 glass border-b border-border/50 animate-fade-in">
             <Header />
           </header>
+          )}
 
-          <main className="flex-1 px-3 py-2 md:px-8 md:py-3">
+          <main className={fullscreen ? "flex-1 p-1" : "flex-1 px-2 py-1 md:px-4 md:py-1.5"}>
             <div className="mx-auto max-w-none">
-              <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${showPreview ? "xl:grid-cols-2" : ""}`}>
-                {/* Preview panel — приховано для футболки (видно в редакторі) */}
-                {showPreview && (
-                <section className="order-2 animate-fade-in-up flex flex-col gap-2">
-                  {/* Мобільний акордеон: за замовчуванням 3D згорнуто → редактор без скролу */}
-                  {!isWide && (
-                    <button
-                      type="button"
-                      onClick={() => setShow3d((o) => !o)}
-                      className="self-start rounded-xl border border-border/60 bg-card px-3 py-2 text-sm font-semibold text-foreground/80 shadow-sm hover:border-primary/30"
-                    >
-                      {show3d ? "Сховати 3D-перегляд ▲" : "Показати 3D-перегляд ▼"}
-                    </button>
-                  )}
-                  {previewVisible && (
-                  <div className="flex flex-col flex-1 rounded-2xl border border-border/60 bg-card shadow-soft overflow-hidden transition-shadow hover:shadow-elevated">
-                    <div className="px-4 py-2.5 border-b border-border/50 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50">
-                      <h2 className="text-sm font-semibold text-foreground/80 tracking-wide uppercase">
-                        Попередній перегляд
-                      </h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {product.name}
-                      </p>
+              <div className="grid grid-cols-1 gap-2">
+                {/* Preview panel — приховано для футболки (видно в редакторі) та у повноекранному режимі */}
+                {/* 3D-перегляд виробу — НА ВЕСЬ ЕКРАН; згортається стрілкою у плаваючу кнопку.
+                    Працює і в повноекранному режимі редактора (модалка лягає поверх). */}
+                {showPreview && show3d && !preview3dMin && (
+                  <div className="fixed inset-0 z-[60] flex flex-col bg-slate-900/95 backdrop-blur-sm animate-fade-in">
+                    <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3 text-white">
+                      <span className="truncate text-sm font-semibold">3D-перегляд · {product.name}</span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button type="button" className="rounded-lg p-2 hover:bg-white/15" title="Згорнути" onClick={() => setPreview3dMin(true)}>
+                          <Minimize2 className="h-5 w-5" />
+                        </button>
+                        <button type="button" className="rounded-lg p-2 hover:bg-white/15" title="Закрити" onClick={() => setShow3d(false)}>
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="p-3 flex flex-col flex-1 min-h-0">
+                    <div className="p-3 flex flex-col flex-1 min-h-0 bg-white">
                       <div className="relative flex-1 min-h-[220px]">
                         {product.previewMode === "3d" && product.previewShape === "mug" ? (
                           <>
@@ -128,8 +135,11 @@ function App() {
                                   innerColor={selectedType === "mug-color" ? tshirtColor : "#FFFFFF"}
                                   bodyColor="#FFFFFF"
                                   handleColor={isMagic ? "#1c1c1c" : undefined}
+                                  rimColor={isMagic ? "#1c1c1c" : undefined}
+                                  handleCapColor={selectedType === "mug-color" ? "#FFFFFF" : undefined}
                                   coatLevel={isMagic ? magicFill / 100 : null}
                                   designTexture={designTextureFront}
+                                  printAspect={mugPrintAspect}
                                 />
                                 <Environment preset="studio" />
                                 <ContactShadows
@@ -210,20 +220,34 @@ function App() {
                       </div>
                     </div>
                   </div>
-                  )}
-                </section>
+                )}
+                {/* Згорнуто → плаваюча кнопка «розгорнути 3D» */}
+                {showPreview && show3d && preview3dMin && (
+                  <button type="button" onClick={() => setPreview3dMin(false)}
+                    className="fixed bottom-24 right-4 z-[60] flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-sm font-semibold shadow-elevated hover:border-primary/40">
+                    <Box className="h-4 w-4 text-violet-600" /> 3D-перегляд
+                    <Maximize2 className="h-4 w-4 text-muted-foreground" />
+                  </button>
                 )}
 
                 {/* Design canvas panel */}
                 <section className="order-1 animate-fade-in-up flex flex-col" style={{ animationDelay: "0.1s" }}>
-                  <DesignArea manualSync={manualSync} />
+                  <DesignArea
+                    manualSync={manualSync}
+                    fullscreen={fullscreen}
+                    onToggleFullscreen={() => setFullscreen((f) => !f)}
+                    canShow3d={showPreview}
+                    show3d={show3d}
+                    onToggle3d={() => { setPreview3dMin(false); setShow3d((o) => !o); }}
+                  />
                 </section>
               </div>
             </div>
           </main>
 
-          {/* Залипаюча панель замовлення: ціна в моменті + колір у 1 клік + «Замовити!» */}
-          <OrderBar />
+          {/* Залипаюча панель замовлення: ціна в моменті + колір у 1 клік + «Замовити!».
+              У повноекранному режимі сховано (лише холст + інструменти). */}
+          {!fullscreen && <OrderBar />}
       <Toaster />
       <EmbedBridge />
       <DesignerTour />

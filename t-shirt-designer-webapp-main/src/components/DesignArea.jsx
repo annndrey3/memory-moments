@@ -14,36 +14,18 @@ import ObjectControls from "./ObjectControls";
 import FillDropdownBtn from "./FillDropdownBtn";
 import BackgroundDropdownBtn from "./BackgroundDropdownBtn";
 import PropertiesBtn from "./PropertiesBtn";
-import { setSelectedView, reorderSlimBookPhotos, addSlimBookPhotos } from "../features/tshirtSlice";
+import { setSelectedView, reorderSlimBookPhotos, addSlimBookPhotos, removeSlimBookPhoto, clearSlimBookPhotos } from "../features/tshirtSlice";
 import { useCanvas } from "@/hooks/useCanvas";
 import { useAddImage } from "@/hooks/useAddImage";
 import { useCanvasHistory } from "@/hooks/useCanvasHistory";
+import { useSnapGuides } from "@/hooks/useSnapGuides";
 import { usePolaroidCaption } from "@/hooks/usePolaroidCaption";
 import canvasStorageManager from "@/utils/canvasStorageManager";
 import { cn } from "@/lib/utils";
-import { ImagePlus, Type, Slash, Trash, Trash2, Undo2 } from "lucide-react";
+import { ImagePlus, Type, Slash, Trash, Trash2, Undo2, Maximize2, Minimize2, X, Images, Loader2, Box } from "lucide-react";
+import { RAIL_BTN, ToolBtn } from "@/components/ui/railButton";
 
-// Кнопка інструмента по периметру редактора (іконка + підпис). На ПК — вертикальні
-// ряди зліва/справа, на мобільному ряди стають горизонтальними над/під холстом.
-const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border/70 disabled:hover:bg-card";
-const RAIL_BTN_DANGER =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-red-500/30 bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
-
-const ToolBtn = ({ icon: Icon, label, onClick, danger, disabled }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    title={label}
-    className={danger ? RAIL_BTN_DANGER : RAIL_BTN}
-  >
-    <Icon className="h-5 w-5" />
-    <span className="text-[10px] font-medium leading-none">{label}</span>
-  </button>
-);
-
-const DesignArea = ({ manualSync }) => {
+const DesignArea = ({ manualSync, fullscreen, onToggleFullscreen, canShow3d, show3d, onToggle3d }) => {
   const dispatch = useDispatch();
   const selectedType = useSelector((state) => state.tshirt.selectedType);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
@@ -55,6 +37,8 @@ const DesignArea = ({ manualSync }) => {
   const { activeCanvas, selectedObject, setSelectedObject } = useCanvas();
   const { addImageFile } = useAddImage();
   const { undo, canUndo } = useCanvasHistory({ activeCanvas, manualSync });
+  // Прив'язка до центру зони друку при перетягуванні (рожеві напрямні).
+  useSnapGuides(activeCanvas);
   // Підпис на нижній смузі полароїда — додається кліком по ній.
   usePolaroidCaption({ activeCanvas, manualSync });
   const product = PRODUCT_TYPES[selectedType] || PRODUCT_TYPES["crew-neck"];
@@ -94,6 +78,8 @@ const DesignArea = ({ manualSync }) => {
   const [dragOver, setDragOver] = useState(false);
   const [hasObjects, setHasObjects] = useState(false);
   const fileInputRef = useRef(null);
+  const spreadInputRef = useRef(null); // «Фото розворотів» для книги (поряд з обкладинками)
+  const [spreadUploading, setSpreadUploading] = useState(null); // {done,total}
 
   // Пачка фото (полароїд/інстакс/фотодрук) не має виду «front» — лише розвороти
   // spread-N. Після завантаження фото selectedView лишався б «front» (його немає
@@ -119,6 +105,15 @@ const DesignArea = ({ manualSync }) => {
       c.off("object:removed", update);
     };
   }, [activeCanvas]);
+
+  // Книга/пачка фото: прибираємо збережені дизайни розворотів, у яких більше немає
+  // фото (видалили розворот, оформили замовлення, очистили). Інакше наступна книга
+  // успадкувала б чужі дизайни — бо дизайн розвороту зберігається за ІНДЕКСОМ
+  // (spread-N), а не за фото. (Не чіпає дизайни наявних розворотів.)
+  useEffect(() => {
+    if (!isBookType(selectedType) && !isMultiPhoto(selectedType)) return;
+    canvasStorageManager.clearSpreadStorageFrom(selectedType, slimBookPhotos?.length || 0);
+  }, [slimBookPhotos, selectedType]);
 
   // Delete / Backspace — видалення вибраного; стрілки — переміщення (Shift × 10px)
   useEffect(() => {
@@ -230,6 +225,21 @@ const DesignArea = ({ manualSync }) => {
     manualSync?.();
   };
 
+  // Завантаження фото розворотів книги (кнопка біля обкладинок). Послідовно зі
+  // стисненням і прогресом — кожне готове фото одразу додається в книгу.
+  const handleSpreadUpload = async (e) => {
+    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith("image/"));
+    e.target.value = "";
+    if (!files.length) return;
+    setSpreadUploading({ done: 0, total: files.length });
+    for (let i = 0; i < files.length; i++) {
+      const url = await compressPhoto(files[i]);
+      if (url) dispatch(addSlimBookPhotos([url]));
+      setSpreadUploading({ done: i + 1, total: files.length });
+    }
+    setSpreadUploading(null);
+  };
+
   const handleAddLine = () => {
     if (!activeCanvas) return;
     const printArea = getPrintableArea();
@@ -246,6 +256,7 @@ const DesignArea = ({ manualSync }) => {
     activeCanvas.add(line);
     activeCanvas.setActiveObject(line);
     activeCanvas.renderAll();
+    manualSync?.();
   };
 
   const handleDelete = () => {
@@ -258,10 +269,32 @@ const DesignArea = ({ manualSync }) => {
 
   const handleClearAll = () => {
     if (!activeCanvas) return;
+    // Очищення стирає ВЕСЬ макет поточного виду — перепитуємо (легко натиснути помилково
+    // поруч із «Видалити»). На порожньому полотні не питаємо.
+    if ((activeCanvas.getObjects?.().length || 0) > 0 &&
+        !window.confirm("Очистити весь макет цього виду? Дію складно відновити.")) return;
+    // Прапорець, щоб видалення фото колажу під час очищення НЕ відроджувало комірки.
+    activeCanvas._mmSuppressSlotRestore = true;
     activeCanvas.clear();
+    activeCanvas._mmSuppressSlotRestore = false;
     canvasStorageManager.clearCanvasStorage(selectedView, selectedType);
     activeCanvas.renderAll();
     manualSync?.();
+  };
+
+  // Видалити розворот/фото книги (з каруселі). Перемикаємо вид, якщо поточний став недійсним.
+  const deleteSpread = (idx) => {
+    const n = slimBookPhotos?.length || 0;
+    if (n === 0) return;
+    if (!window.confirm(`Видалити розворот ${idx + 1}? Фото буде прибрано з книги.`)) return;
+    dispatch(removeSlimBookPhoto(idx));
+    const newCount = n - 1;
+    const cur = selectedView.startsWith("spread-") ? Number(selectedView.slice(7)) : -1;
+    if (isBookType(selectedType) && newCount <= 0) {
+      dispatch(setSelectedView("front"));
+    } else if (cur >= 0 && newCount > 0 && cur >= newCount) {
+      dispatch(setSelectedView(`spread-${newCount - 1}`));
+    }
   };
 
   const handleViewChange = (view) => {
@@ -344,37 +377,44 @@ const DesignArea = ({ manualSync }) => {
   return (
     <div className="flex flex-col items-center w-full">
       <Card className="w-full border-border/60 shadow-soft rounded-2xl overflow-hidden">
-        {/* ── Верх: товар + опції + сторони ── */}
-        <div className="px-3 py-2 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center justify-between gap-2">
-          <ProductControls />
-          {/* Книга та пачка фото мають навігацію мініатюрами-каруселлю ПІД холстом
-              — тут текстові вкладки не показуємо (для решти товарів лишаються зверху). */}
-          {views.length > 1 && !isBookType(selectedType) && !isMultiPhoto(selectedType) && (
-            <div className="flex gap-1.5 p-1 bg-white/70 rounded-xl max-w-full flex-nowrap overflow-x-auto">
-              {views.map(([view, viewConfig]) => (
-                <button
-                  key={view}
-                  onClick={() => handleViewChange(view)}
-                  className={cn(
-                    "rounded-lg h-8 px-4 text-xs font-medium transition-all shrink-0 whitespace-nowrap",
-                    selectedView === view
-                      ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-glow"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {viewConfig.label}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* ── Верх: товар + опції + сторони (компактна шапка) ── */}
+        <div className="px-3 py-1 md:px-5 bg-gradient-to-r from-violet-50/80 to-fuchsia-50/50 border-b border-border/50 flex flex-wrap items-center gap-1.5">
+          {/* Сторони (Спереду/Ззаду) передаємо В ProductControls — щоб вони стояли
+              МІЖ вибором товару і розміром. Книга/пачка фото мають навігацію
+              каруселлю ПІД холстом, тож текстові вкладки тут не показуємо. */}
+          <ProductControls
+            viewTabs={
+              views.length > 1 && !isBookType(selectedType) && !isMultiPhoto(selectedType) ? (
+                <div className="flex gap-1.5 p-1 bg-white/70 rounded-xl max-w-full flex-nowrap overflow-x-auto">
+                  {views.map(([view, viewConfig]) => (
+                    <button
+                      key={view}
+                      onClick={() => handleViewChange(view)}
+                      className={cn(
+                        "rounded-lg h-7 px-3 text-xs font-medium transition-all shrink-0 whitespace-nowrap",
+                        selectedView === view
+                          ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-glow"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {viewConfig.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null
+            }
+          />
         </div>
 
-        <CardContent className="p-2 md:p-5 bg-gradient-to-b from-card to-muted/20">
-          {/* ── Периметр: зліва — додати, в центрі — холст, справа — дії ── */}
-          <div className="flex flex-col lg:flex-row lg:items-start gap-2 lg:gap-3">
+        <CardContent className="p-1 md:p-2 bg-gradient-to-b from-card to-muted/20">
+          {/* ── Периметр: зліва — додати, в центрі — холст, справа — дії.
+              На ПК групуємо [рейл][холст][рейл] по центру (justify-center), а холст
+              НЕ розтягуємо (lg:flex-none) — інакше рейли тиснуться до країв екрана, а
+              між рейлом і холстом зяє порожнеча. Тепер інструменти обрамляють холст. ── */}
+          <div data-mm-editor className="flex flex-col lg:flex-row lg:items-start lg:justify-center gap-1 lg:gap-2">
             {/* ADD (ряд на мобільному / стовпчик зліва на ПК). На мобільному —
                 горизонтальна тач-прокрутка, щоб усі інструменти були доступні. */}
-            <div className="flex flex-row lg:flex-col flex-nowrap gap-1.5 justify-start overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 [-webkit-overflow-scrolling:touch]" data-tour="add">
+            <div className="flex flex-row lg:flex-col flex-nowrap gap-1 justify-start overflow-x-auto lg:overflow-x-visible pb-0.5 lg:pb-0 [-webkit-overflow-scrolling:touch]" data-tour="add">
               <input type="file" accept="image/*" multiple={isMultiPhoto(selectedType)} ref={fileInputRef} onChange={handleFileChange} className="hidden" />
               <ToolBtn icon={ImagePlus} label="Фото" onClick={triggerFileInput} />
               <ToolBtn icon={Type} label="Текст" onClick={handleAddText} />
@@ -388,22 +428,57 @@ const DesignArea = ({ manualSync }) => {
             </div>
 
             {/* CANVAS + контекстне редагування */}
-            <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
+            <div className="min-w-0 w-full lg:w-auto flex flex-col items-center gap-1">
               {/* Холст, а ПІД ним — акуратний віджет редагування тексту (у потоці).
                   Раніше панель висіла оверлеєм над верхом холста й перекривала дизайн
                   та перехоплювала кліки — тепер вона нижче й нічому не заважає. */}
-              <div className="relative w-full flex flex-col items-center gap-2">
-              {/* Кнопка «Скасувати» (undo) — НАД фото/холстом. */}
-              <button
-                type="button"
-                data-tour="undo"
-                onClick={undo}
-                disabled={!canUndo}
-                title="Скасувати останню дію (Ctrl+Z)"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 h-9 text-xs font-medium text-foreground/80 hover:border-primary/40 hover:bg-muted transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border/70 disabled:hover:bg-card"
-              >
-                <Undo2 className="h-4 w-4" /> Скасувати
-              </button>
+              <div className="relative w-full flex flex-col items-center gap-1">
+              {/* Над холстом: «Скасувати» (undo) + перемикач повноекранного режиму. */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  data-tour="undo"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  title="Скасувати останню дію (Ctrl+Z)"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border/70 bg-card px-2.5 h-7 text-xs font-medium text-foreground/80 hover:border-primary/40 hover:bg-muted transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-border/70 disabled:hover:bg-card"
+                >
+                  <Undo2 className="h-3.5 w-3.5" /> Скасувати
+                </button>
+                {onToggleFullscreen && (
+                  <button
+                    type="button"
+                    onClick={onToggleFullscreen}
+                    title={fullscreen ? "Вийти з повноекранного режиму (Esc)" : "На весь екран — лише холст та інструменти"}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border/70 bg-card px-2.5 h-7 text-xs font-medium text-foreground/80 hover:border-primary/40 hover:bg-muted transition-all"
+                  >
+                    {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                    {fullscreen ? "Згорнути" : "На весь екран"}
+                  </button>
+                )}
+                {/* 3D-перегляд виробу (чашки) — яскрава анімована кнопка, щоб її помітили:
+                    «живий» градієнт + пульсуюче сяйво + кубик, що обертається в 3D, +
+                    відблиск-промінь на наведення. Анімації вимикаються для motion-reduce. */}
+                {canShow3d && (
+                  <button
+                    type="button"
+                    onClick={onToggle3d}
+                    title={show3d ? "Сховати 3D-перегляд" : "Показати 3D-перегляд виробу"}
+                    className={cn(
+                      "group relative inline-flex items-center gap-1.5 overflow-hidden rounded-lg px-3 h-7 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95",
+                      "bg-[length:200%_100%] bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 animate-gradient-x shadow-glow",
+                      show3d
+                        ? "ring-2 ring-white/70 ring-offset-1 ring-offset-violet-600"
+                        : "animate-pulse-glow"
+                    )}
+                  >
+                    {/* Промінь-відблиск, що пробігає по кнопці при наведенні */}
+                    <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/40 blur-[2px] -translate-x-[200%] transition-transform duration-700 ease-out group-hover:translate-x-[420%] motion-reduce:hidden" />
+                    <Box className="h-3.5 w-3.5 animate-spin-3d motion-reduce:animate-none" />
+                    3D
+                  </button>
+                )}
+              </div>
               <div
                 className="relative rounded-xl ring-1 ring-border/40 shadow-elevated overflow-hidden"
                 onDragOver={handleDragOver}
@@ -417,6 +492,7 @@ const DesignArea = ({ manualSync }) => {
                       viewConfig={viewConfig}
                       seedImage={view.startsWith("spread-") ? slimBookPhotos[Number(view.slice(7))] : undefined}
                       shirtScale={selectedType === "crew-neck" ? tshirtSizeScale(size) : null}
+                      fullscreen={fullscreen}
                     />
                   </div>
                 ))}
@@ -477,6 +553,40 @@ const DesignArea = ({ manualSync }) => {
                       {v === "front" ? "Перед" : "Зад"}
                     </button>
                   ))}
+
+                  {/* Фото розворотів + Передперегляд — поруч з обкладинками */}
+                  <span className="hidden sm:inline mx-1 h-5 w-px bg-border/60" />
+                  <input type="file" accept="image/*" multiple ref={spreadInputRef} onChange={handleSpreadUpload} className="hidden" />
+                  <button
+                    type="button"
+                    disabled={!!spreadUploading}
+                    onClick={() => spreadInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-lg h-8 px-3 text-xs font-medium border border-border/60 bg-white/70 text-foreground/80 hover:border-primary/40 hover:bg-muted transition-all disabled:opacity-50"
+                  >
+                    {spreadUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
+                    {spreadUploading ? `Завантаження ${spreadUploading.done}/${spreadUploading.total}` : "Фото розворотів"}
+                  </button>
+                  {!spreadUploading && (slimBookPhotos?.length || 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700">
+                      {slimBookPhotos.length}
+                      <button type="button" title="Очистити фото" onClick={() => dispatch(clearSlimBookPhotos())} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  )}
+                  {/* 3D-перегляд альбому — яскрава анімована кнопка (як у чашок):
+                      градієнт, що переливається, пульсуюче сяйво, кубик у 3D-обертанні
+                      й промінь-відблиск на наведення. Відкриває гортання сторінок. */}
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new Event("mm:open-preview"))}
+                    title="3D-перегляд альбому — погортати сторінки"
+                    className="group relative inline-flex items-center gap-1.5 overflow-hidden rounded-lg h-8 px-3.5 text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95 bg-[length:200%_100%] bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 animate-gradient-x animate-pulse-glow shadow-glow"
+                  >
+                    <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/40 blur-[2px] -translate-x-[200%] transition-transform duration-700 ease-out group-hover:translate-x-[420%] motion-reduce:hidden" />
+                    <Box className="h-3.5 w-3.5 animate-spin-3d motion-reduce:animate-none" />
+                    3D
+                  </button>
                 </div>
               )}
 
@@ -501,8 +611,8 @@ const DesignArea = ({ manualSync }) => {
                     const thumb = isSpread ? slimBookPhotos[spreadIdx] : null;
                     const active = selectedView === view;
                     return (
+                      <div key={view} className="relative shrink-0">
                       <button
-                        key={view}
                         type="button"
                         data-spread-idx={isSpread ? spreadIdx : undefined}
                         onPointerDown={isSpread ? (e) => onThumbPointerDown(e, spreadIdx) : undefined}
@@ -512,7 +622,7 @@ const DesignArea = ({ manualSync }) => {
                         }}
                         title={isSpread ? `${viewConfig.label} — перетягніть, щоб змінити порядок` : viewConfig.label}
                         className={cn(
-                          "shrink-0 w-12 rounded-md border-2 overflow-hidden bg-card transition-all select-none",
+                          "w-12 rounded-md border-2 overflow-hidden bg-card transition-all select-none block",
                           active
                             ? "border-primary ring-2 ring-primary/30 shadow-glow"
                             : "border-border/60 hover:border-primary/40",
@@ -532,6 +642,19 @@ const DesignArea = ({ manualSync }) => {
                           {viewConfig.label}
                         </div>
                       </button>
+                      {/* Видалити розворот — лише для розворотів (не обкладинок) */}
+                      {isSpread && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); deleteSpread(spreadIdx); }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          title="Видалити розворот"
+                          className="absolute -top-1.5 -right-1.5 z-10 rounded-full bg-slate-700 text-white p-0.5 shadow hover:bg-red-500 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                      </div>
                     );
                   })}
                 </div>
@@ -542,7 +665,7 @@ const DesignArea = ({ manualSync }) => {
 
             {/* ACTIONS (ряд на мобільному / стовпчик справа на ПК). На мобільному —
                 горизонтальна тач-прокрутка. */}
-            <div className="flex flex-row lg:flex-col flex-nowrap gap-1.5 justify-start overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0 [-webkit-overflow-scrolling:touch]">
+            <div className="flex flex-row lg:flex-col flex-nowrap gap-1 justify-start overflow-x-auto lg:overflow-x-visible pb-0.5 lg:pb-0 [-webkit-overflow-scrolling:touch]">
               <PropertiesBtn manualSync={manualSync} />
               <ObjectControls manualSync={manualSync} />
               <ToolBtn icon={Trash} label="Видалити" onClick={handleDelete} danger disabled={!selectedObject} />

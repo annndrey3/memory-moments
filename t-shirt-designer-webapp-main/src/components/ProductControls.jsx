@@ -23,9 +23,10 @@ import { setSelectedType, setSize, setPaperType, setCanvasSize, setSlimBookForma
 import { cn } from "@/lib/utils";
 import TshirtSizeTable from "./TshirtSizeTable";
 
-// Контроли «що друкуємо»: товар + розмір (футболка/полотно) / папір (фото).
-// Живуть у шапці редактора, завжди видно (без сайдбару).
-const ProductControls = () => {
+// Контроли «що друкуємо»: товар + (сторони) + розмір (футболка/полотно) / папір (фото).
+// Живуть у шапці редактора, завжди видно (без сайдбару). viewTabs (Спереду/Ззаду)
+// рендеряться МІЖ вибором товару і вибором розміру (передаються з DesignArea).
+const ProductControls = ({ viewTabs = null }) => {
   const dispatch = useDispatch();
   const selectedType = useSelector((s) => s.tshirt.selectedType);
   const size = useSelector((s) => s.tshirt.size);
@@ -36,7 +37,7 @@ const ProductControls = () => {
   return (
     <div className="flex flex-wrap items-center gap-2" data-tour="product">
       <Select value={selectedType} onValueChange={(v) => dispatch(setSelectedType(v))}>
-        <SelectTrigger className="h-9 w-[180px] rounded-lg bg-card border-border/70">
+        <SelectTrigger className="h-7 w-[180px] rounded-lg bg-card border-border/70">
           <SelectValue placeholder="Оберіть товар" />
         </SelectTrigger>
         <SelectContent>
@@ -50,6 +51,9 @@ const ProductControls = () => {
         </SelectContent>
       </Select>
 
+      {/* Сторони (Спереду/Ззаду) — одразу після вибору товару, ПЕРЕД розміром */}
+      {viewTabs}
+
       {productHasSize(selectedType) && (
         <div className="flex items-center gap-1">
           {TSHIRT_SIZES.map((s) => (
@@ -58,7 +62,7 @@ const ProductControls = () => {
               type="button"
               onClick={() => dispatch(setSize(s))}
               className={cn(
-                "h-9 min-w-9 px-2 rounded-lg text-xs font-semibold border transition-all",
+                "h-7 min-w-7 px-2 rounded-lg text-xs font-semibold border transition-all",
                 size === s
                   ? "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white border-transparent shadow-glow"
                   : "bg-card text-foreground/80 border-border/70 hover:border-primary/40 hover:bg-muted"
@@ -73,7 +77,7 @@ const ProductControls = () => {
 
       {selectedType === "canvas" && (
         <Select value={canvasSize} onValueChange={(v) => dispatch(setCanvasSize(v))}>
-          <SelectTrigger className="h-9 w-[150px] rounded-lg bg-card border-border/70">
+          <SelectTrigger className="h-7 w-[150px] rounded-lg bg-card border-border/70">
             <SelectValue placeholder="Розмір" />
           </SelectTrigger>
           <SelectContent>
@@ -90,7 +94,7 @@ const ProductControls = () => {
 
       {isBookType(selectedType) && (
         <Select value={slimBookFormat} onValueChange={(v) => dispatch(setSlimBookFormat(v))}>
-          <SelectTrigger className="h-9 w-[150px] rounded-lg bg-card border-border/70">
+          <SelectTrigger className="h-7 w-[150px] rounded-lg bg-card border-border/70">
             <SelectValue placeholder="Формат" />
           </SelectTrigger>
           <SelectContent>
@@ -107,7 +111,7 @@ const ProductControls = () => {
 
       {productHasPaper(selectedType) && (
         <Select value={paperType} onValueChange={(v) => dispatch(setPaperType(v))}>
-          <SelectTrigger className="h-9 w-[150px] rounded-lg bg-card border-border/70">
+          <SelectTrigger className="h-7 w-[150px] rounded-lg bg-card border-border/70">
             <SelectValue placeholder="Папір" />
           </SelectTrigger>
           <SelectContent>

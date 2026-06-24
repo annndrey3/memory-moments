@@ -1,3 +1,5 @@
+import { SERIALIZE_PROPS } from "@/constants/canvasSerialization";
+
 export const STORAGE_KEYS = {
   FRONT_CANVAS: "tshirt-designer-front",
   BACK_CANVAS: "tshirt-designer-back",
@@ -15,8 +17,10 @@ const canvasStorageManager = {
 
       // Clear existing design for this view before saving
       localStorage.removeItem(storageKey);
-      // Get and save new objects
-      const objects = canvas.getObjects().map((obj) => obj.toJSON());
+      // Get and save new objects. Серіалізуємо зі службовими полями (SERIALIZE_PROPS),
+      // інакше після перезавантаження зникають блокування, обрізка фото колажу та
+      // хіт-детект по пікселях (perPixelTargetFind).
+      const objects = canvas.getObjects().map((obj) => obj.toObject(SERIALIZE_PROPS));
 
       localStorage.setItem(
         storageKey,
@@ -37,6 +41,19 @@ const canvasStorageManager = {
       console.error("Error loading canvas objects:", error);
       return null;
     }
+  },
+
+  // Прибрати дизайни розворотів книги/пачки, у яких БІЛЬШЕ НЕМАЄ фото (індекс ≥
+  // fromIndex). Викликається при зміні к-ті фото: гарантує, що видалені розвороти
+  // не лишають «привидів», а наступна книга/пачка НЕ успадкує чужі дизайни (бо
+  // дизайн зберігається за індексом spread-N). Дизайни наявних розворотів не чіпає.
+  clearSpreadStorageFrom: (productId, fromIndex = 0) => {
+    const prefix = `memory-moments-${productId}-spread-`;
+    Object.keys(localStorage).forEach((key) => {
+      if (!key.startsWith(prefix)) return;
+      const idx = Number(key.slice(prefix.length));
+      if (Number.isInteger(idx) && idx >= fromIndex) localStorage.removeItem(key);
+    });
   },
 
   // Clear stored objects for a specific view

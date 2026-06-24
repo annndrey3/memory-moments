@@ -2,11 +2,9 @@ import { useState } from "react";
 import { useCanvas } from "@/hooks/useCanvas";
 import * as fabric from "fabric";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { PaintBucket } from "lucide-react";
+import { Droplet } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all";
+import { RAIL_BTN } from "@/components/ui/railButton";
 
 const TAB_ACTIVE = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white text-violet-700 shadow-sm transition-all";
 const TAB_IDLE   = "flex-1 py-1.5 text-xs font-medium rounded-lg text-muted-foreground hover:text-foreground transition-all";
@@ -84,7 +82,7 @@ export default function FillDropdownBtn({ manualSync }) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" title="Заливка / Градієнт" className={RAIL_BTN}>
-          <PaintBucket className="h-5 w-5" />
+          <Droplet className="h-3.5 w-3.5" />
           <span className="text-[10px] font-medium leading-none">Заливка</span>
         </button>
       </PopoverTrigger>

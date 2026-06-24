@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import * as fabric from "fabric";
 import { useCanvas } from "@/hooks/useCanvas";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Blend, FlipHorizontal, FlipVertical } from "lucide-react";
+import { Blend, FlipHorizontal, FlipVertical, RotateCw, Scan } from "lucide-react";
 import LayersDropdownBtn from "./LayersDropdownBtn";
 
-const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+import { RAIL_BTN } from "@/components/ui/railButton";
 
 const SLIDER =
   "flex-1 h-1.5 rounded-full appearance-none cursor-pointer bg-muted " +
@@ -43,13 +43,50 @@ export default function ObjectControls({ manualSync }) {
     manualSync?.();
   };
 
+  // Поворот на 90° навколо ЦЕНТРУ об'єкта (а не кута) — позиція центру не «стрибає».
+  const rotate90 = () => {
+    const o = selectedObject;
+    if (!o || !activeCanvas) return;
+    const c = o.getCenterPoint();
+    o.angle = Math.round(((o.angle || 0) + 90) % 360);
+    o.setPositionByOrigin(c, "center", "center");
+    o.setCoords();
+    activeCanvas.renderAll();
+    manualSync?.();
+  };
+
+  // «Вмістити»: повертає фото в його зону (комірку колажу / маску / зону друку) —
+  // скидає кут і дзеркало, масштабує «cover» і центрує. Рятує, коли фото з'їхало/змалилось.
+  const fitToZone = () => {
+    const o = selectedObject;
+    if (!o || !activeCanvas) return;
+    const cp = o.clipPath;
+    const r = cp && cp.absolutePositioned
+      ? { left: cp.left, top: cp.top, width: cp.width * (cp.scaleX || 1), height: cp.height * (cp.scaleY || 1) }
+      : (activeCanvas.printArea || { left: 0, top: 0, width: activeCanvas.getWidth(), height: activeCanvas.getHeight() });
+    o.set({ angle: 0, flipX: false, flipY: false });
+    if (o.type === "image") {
+      const scale = Math.max(r.width / o.width, r.height / o.height); // cover
+      o.scale(scale);
+      o.set({
+        left: r.left + (r.width - o.getScaledWidth()) / 2,
+        top: r.top + (r.height - o.getScaledHeight()) / 2,
+      });
+    } else {
+      o.setPositionByOrigin(new fabric.Point(r.left + r.width / 2, r.top + r.height / 2), "center", "center");
+    }
+    o.setCoords();
+    activeCanvas.renderAll();
+    manualSync?.();
+  };
+
   return (
     <>
       {/* ── Прозорість ── */}
       <Popover open={open} onOpenChange={(v) => has && setOpen(v)}>
         <PopoverTrigger asChild>
           <button type="button" disabled={!has} title="Прозорість" className={RAIL_BTN}>
-            <Blend className="h-5 w-5" />
+            <Blend className="h-3.5 w-3.5" />
             <span className="text-[10px] font-medium leading-none">
               {has ? `${opacity}%` : "Прозор."}
             </span>
@@ -93,7 +130,7 @@ export default function ObjectControls({ manualSync }) {
         onClick={() => flip("H")}
         className={RAIL_BTN}
       >
-        <FlipHorizontal className="h-5 w-5" />
+        <FlipHorizontal className="h-3.5 w-3.5" />
         <span className="text-[10px] font-medium leading-none">Дзеркало</span>
       </button>
 
@@ -105,8 +142,32 @@ export default function ObjectControls({ manualSync }) {
         onClick={() => flip("V")}
         className={RAIL_BTN}
       >
-        <FlipVertical className="h-5 w-5" />
+        <FlipVertical className="h-3.5 w-3.5" />
         <span className="text-[10px] font-medium leading-none">Верт.</span>
+      </button>
+
+      {/* ── Повернути на 90° ── */}
+      <button
+        type="button"
+        disabled={!has}
+        title="Повернути на 90°"
+        onClick={rotate90}
+        className={RAIL_BTN}
+      >
+        <RotateCw className="h-3.5 w-3.5" />
+        <span className="text-[10px] font-medium leading-none">Поворот</span>
+      </button>
+
+      {/* ── Вмістити фото в зону (скинути зсув/масштаб) ── */}
+      <button
+        type="button"
+        disabled={!has}
+        title="Вмістити в зону (скинути зсув і масштаб)"
+        onClick={fitToZone}
+        className={RAIL_BTN}
+      >
+        <Scan className="h-3.5 w-3.5" />
+        <span className="text-[10px] font-medium leading-none">Вмістити</span>
       </button>
     </>
   );

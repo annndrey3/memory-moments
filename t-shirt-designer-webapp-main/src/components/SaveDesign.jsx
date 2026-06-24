@@ -20,7 +20,7 @@ const compositeTemplateForDownload = (canvas) => {
 
 const SaveDesign = ({ className }) => {
   const { toast } = useToast();
-  const { frontCanvas, backCanvas } = useCanvas();
+  const { frontCanvas, backCanvas, activeCanvas } = useCanvas();
 
   const saveCanvasToFile = async (canvas, filename, includeShirt = false) => {
     try {
@@ -71,11 +71,16 @@ const SaveDesign = ({ className }) => {
 
   const handleSave = async (includeShirt = false) => {
     try {
-      if (!frontCanvas && !backCanvas) {
+      // Зберігаємо обидві сторони футболки; для решти товарів (книга, фото, чашка,
+      // полароїд) front/back може не бути — тоді зберігаємо активне полотно.
+      const canvases = [frontCanvas, backCanvas].filter(Boolean);
+      if (!canvases.length && activeCanvas) canvases.push(activeCanvas);
+
+      if (!canvases.length) {
         toast({
           variant: "destructive",
-          title: "No Design Found",
-          description: "Please create a design before saving.",
+          title: "Немає макета",
+          description: "Спершу створіть дизайн, потім зберігайте.",
           duration: 3000,
         });
         return;
@@ -84,39 +89,32 @@ const SaveDesign = ({ className }) => {
       let savedCount = 0;
       let failedCount = 0;
 
-      if (frontCanvas) {
-        const frontSaved = await saveCanvasToFile(
-          frontCanvas,
-          `tshirt-front-${includeShirt ? "with-shirt" : "design-only"}.png`,
+      for (const c of canvases) {
+        // Ім'я файлу за товаром і видом (латиницею — безпечно для будь-якої ОС):
+        // напр. crew-neck-front.png, slim-book-spread-0.png, mug-front.png.
+        const product = c.productId || "design";
+        const view = c.viewId || "front";
+        const ok = await saveCanvasToFile(
+          c,
+          `${product}-${view}${includeShirt ? "-mockup" : ""}.png`,
           includeShirt
         );
-        frontSaved ? savedCount++ : failedCount++;
-      }
-
-      if (backCanvas) {
-        const backSaved = await saveCanvasToFile(
-          backCanvas,
-          `tshirt-back-${includeShirt ? "with-shirt" : "design-only"}.png`,
-          includeShirt
-        );
-        backSaved ? savedCount++ : failedCount++;
+        ok ? savedCount++ : failedCount++;
       }
 
       if (failedCount > 0) {
         toast({
           variant: "destructive",
-          title: "Save Error",
-          description: `Failed to save ${failedCount} design${
-            failedCount > 1 ? "s" : ""
-          }.`,
+          title: "Помилка збереження",
+          description: `Не вдалося зберегти файлів: ${failedCount}.`,
           duration: 3000,
         });
       } else {
         toast({
-          title: "Design Saved!",
-          description: `Successfully saved ${savedCount} design file${
-            savedCount > 1 ? "s" : ""
-          }.`,
+          title: "Макет збережено!",
+          description: savedCount > 1
+            ? `Завантажено файлів: ${savedCount}.`
+            : "Файл завантажено.",
           duration: 3000,
         });
       }
@@ -124,8 +122,8 @@ const SaveDesign = ({ className }) => {
       console.error("Save error:", error);
       toast({
         variant: "destructive",
-        title: "Save Error",
-        description: "An unexpected error occurred while saving.",
+        title: "Помилка збереження",
+        description: "Сталася неочікувана помилка під час збереження.",
         duration: 3000,
       });
     }
@@ -134,7 +132,7 @@ const SaveDesign = ({ className }) => {
   // Замовлення — через нижню панель «Замовити!». Тут лише завантаження макета.
   return (
     <button type="button" onClick={() => handleSave(false)} className={className} title="Завантажити макет">
-      <Save className="h-5 w-5" />
+      <Save className="h-3.5 w-3.5" />
       <span className="text-[10px] font-medium leading-none">Зберегти</span>
     </button>
   );

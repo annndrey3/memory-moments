@@ -83,6 +83,7 @@ export default {
         "gradient-x": "gradient-x 6s ease infinite",
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
         "badge-pop": "badge-pop 0.45s cubic-bezier(0.22,1,0.36,1) both",
+        "spin-3d": "spin-3d 2.8s linear infinite",
       },
       keyframes: {
         marquee: {
@@ -126,6 +127,12 @@ export default {
           "0%": { transform: "scale(0)" },
           "60%": { transform: "scale(1.25)" },
           "100%": { transform: "scale(1)" },
+        },
+        // Кубик повільно обертається навколо вертикальної осі (з перспективою) —
+        // одразу читається як «3D». Для іконки на кнопці 3D-перегляду.
+        "spin-3d": {
+          "0%": { transform: "perspective(160px) rotateY(0deg)" },
+          "100%": { transform: "perspective(160px) rotateY(360deg)" },
         },
       },
     },

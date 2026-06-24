@@ -25,6 +25,68 @@ if (!fabric.Object.prototype.__mmPatched) {
   fabric.Object.prototype.__mmPatched = true;
 }
 
+// Ручки трансформації: добре видимі фіолетові кружечки по кутах/сторонах + рамка,
+// а замість крапки повороту — КРУГЛА СТРІЛКА (одразу зрозуміло, що це поворот).
+if (fabric.FabricObject && !fabric.FabricObject.prototype.__mmControlsPatched) {
+  Object.assign(fabric.FabricObject.prototype, {
+    transparentCorners: false,
+    cornerColor: "#ffffff",
+    cornerStrokeColor: "#7c3aed",
+    cornerStyle: "circle",
+    cornerSize: 13,
+    touchCornerSize: 22, // більша зона під палець на тачі
+    borderColor: "#7c3aed",
+    borderScaleFactor: 1.5,
+  });
+
+  // Малюнок контролю повороту: біле коло + фіолетова кругова стрілка (~300°).
+  const mmRotateRender = function (ctx, left, top) {
+    const R = 11, ir = R - 4.5;
+    const start = -Math.PI * 0.5, end = Math.PI * 1.25;
+    ctx.save();
+    ctx.translate(left, top);
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, 2 * Math.PI);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "#7c3aed";
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, ir, start, end);
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = "#7c3aed";
+    ctx.stroke();
+    // вістря стрілки на кінці дуги
+    const ex = Math.cos(end) * ir, ey = Math.sin(end) * ir;
+    const tx = -Math.sin(end), ty = Math.cos(end); // дотична
+    ctx.beginPath();
+    ctx.moveTo(ex + tx * 3.5, ey + ty * 3.5);
+    ctx.lineTo(ex + Math.cos(end) * 4.5, ey + Math.sin(end) * 4.5);
+    ctx.lineTo(ex - tx * 3.5, ey - ty * 3.5);
+    ctx.closePath();
+    ctx.fillStyle = "#7c3aed";
+    ctx.fill();
+    ctx.restore();
+  };
+
+  // Контролі створюються ПЕР-об'єкт у createControls() — патчимо статичний метод,
+  // щоб кожен новий об'єкт отримав круглу стрілку повороту. Textbox має свій метод.
+  const inject = (Cls) => {
+    if (!Cls || typeof Cls.createControls !== "function") return;
+    const orig = Cls.createControls.bind(Cls);
+    Cls.createControls = function () {
+      const res = orig();
+      const mtr = res && res.controls && res.controls.mtr;
+      if (mtr) { mtr.render = mmRotateRender; mtr.sizeX = 22; mtr.sizeY = 22; mtr.offsetY = -32; }
+      return res;
+    };
+  };
+  inject(fabric.FabricObject);
+  inject(fabric.Textbox);
+  fabric.FabricObject.prototype.__mmControlsPatched = true;
+}
+
 // Редагування тексту: fabric тримає приховану textarea для вводу й позиціонує її
 // в координатах полотна (без урахування CSS-scale), ще й з padding-top = розмір
 // шрифту (для підпису полароїда це ~100px). Тому при ФОКУСІ й при НАБОРІ браузер

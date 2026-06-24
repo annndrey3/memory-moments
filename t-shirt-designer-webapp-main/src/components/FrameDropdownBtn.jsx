@@ -5,8 +5,7 @@ import { Frame, Ban } from "lucide-react";
 import { CANVAS_CONFIG } from "@/constants/designConstants";
 import { FRAMES, buildFrameObjects, frameThumbSvg } from "@/constants/frames";
 
-const RAIL_BTN =
-  "flex flex-col items-center justify-center gap-1 h-14 w-14 lg:w-16 shrink-0 rounded-xl border border-border/70 bg-card text-foreground/80 hover:border-primary/40 hover:bg-muted hover:text-foreground transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+import { RAIL_BTN } from "@/components/ui/railButton";
 
 const FrameDropdownBtn = ({ manualSync }) => {
   const { activeCanvas } = useCanvas();
@@ -59,7 +58,7 @@ const FrameDropdownBtn = ({ manualSync }) => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" title="Рамка" className={RAIL_BTN}>
-          <Frame className="h-5 w-5" />
+          <Frame className="h-3.5 w-3.5" />
           <span className="text-[10px] font-medium leading-none">Рамка</span>
         </button>
       </PopoverTrigger>

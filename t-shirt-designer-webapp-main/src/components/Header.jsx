@@ -144,7 +144,7 @@ const Header = () => {
   };
 
   return (
-    <div className="w-full flex justify-between items-center gap-4 px-4 py-3 md:px-8 md:py-4">
+    <div className="w-full flex justify-between items-center gap-4 px-3 py-1.5 md:px-6 md:py-2">
       <div className="flex items-center gap-3 min-w-0">
         {/* Фірмовий логотип → на головну маркетплейсу. BASE_URL = "/designer/" у проді
             — інакше лого шукається в корені домену (маркетплейс) і не вантажиться. */}
@@ -152,7 +152,7 @@ const Header = () => {
           <img
             src={`${import.meta.env.BASE_URL}logo-brand.png`}
             alt="Memory Moments"
-            className="h-12 md:h-14 w-auto object-contain"
+            className="h-8 md:h-10 w-auto object-contain"
           />
         </a>
         <p className="hidden lg:block max-w-xs text-xs md:text-sm text-muted-foreground leading-snug">
@@ -164,7 +164,7 @@ const Header = () => {
         <Button
           type="button"
           variant="outline"
-          size="lg"
+          size="sm"
           onClick={() => window.dispatchEvent(new Event("mm:start-tour"))}
           title="Як користуватися конструктором"
           className="rounded-xl border-border/60 shadow-sm hover:border-primary/30"
@@ -177,7 +177,7 @@ const Header = () => {
         <SheetTrigger asChild>
           <Button
             variant="outline"
-            size="lg"
+            size="sm"
             className="relative rounded-xl border-border/60 shadow-sm hover:shadow-soft hover:border-primary/30 transition-all"
           >
             <ShoppingCart className="h-5 w-5" />

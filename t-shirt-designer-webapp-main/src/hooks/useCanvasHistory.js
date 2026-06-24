@@ -1,27 +1,19 @@
 import * as fabric from "fabric";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { unlockAll } from "@/utils/layerLock";
+import { SERIALIZE_PROPS } from "@/constants/canvasSerialization";
 
 // Історія для кнопки «Скасувати» (undo) у конструкторі.
 //
 // Знімок = масив об'єктів активного полотна (canvas.getObjects().map(toObject)).
-// Окрім стандартних полів серіалізуємо службові прапорці: блокування рамки/фону
-// (selectable/evented/…), ролі (mmRole/mmSlot/mmFrameId) — щоб після відкату
-// рамки лишалися заблокованими, а підписи полароїда — впізнаваними.
+// Окрім стандартних полів серіалізуємо службові прапорці (SERIALIZE_PROPS — той самий
+// набір, що й канвас-сховище): блокування рамки/фону, ролі шарів (mmRole/…) та
+// perPixelTargetFind фото колажу — щоб після відкату рамки лишалися заблокованими,
+// колаж не «розсипався», а підписи полароїда були впізнаваними.
 //
 // clipPath полотна (зона друку) НЕ чіпаємо — він керується окремо в useTshirtCanvas;
 // відкочуємо лише вміст (об'єкти).
-const SNAP_PROPS = [
-  "selectable",
-  "evented",
-  "hoverCursor",
-  "objectCaching",
-  "strokeUniform",
-  "excludeFromExport",
-  "mmRole",
-  "mmSlot",
-  "mmFrameId",
-];
+const SNAP_PROPS = SERIALIZE_PROPS;
 const MAX_STEPS = 40;
 
 export function useCanvasHistory({ activeCanvas, manualSync }) {

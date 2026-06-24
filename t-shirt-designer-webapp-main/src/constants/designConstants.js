@@ -27,7 +27,8 @@ const RECTANGLE_PATHS = {
   mug: "M 165 220 C 165 130 645 130 645 220 L 610 650 C 600 730 210 730 200 650 Z M 645 300 C 760 300 770 570 625 570 L 638 505 C 705 500 705 370 640 365 Z",
   // Розгортка друку чашки: широкий прямокутник (обвід чашки мінус зазор під
   // ручкою). Співвідношення довжина:висота ≈ 2.45:1 — як у 3D-моделі (MugModel).
-  mug_wrap: "M 45 258 H 765 V 552 H 45 Z",
+  // Холст чашки тепер вузький-широкий (viewBox 800×360) — без порожнечі згори/знизу.
+  mug_wrap: "M 40 25 H 760 V 315 H 40 Z",
 };
 
 export const PRODUCT_TYPES = {
@@ -69,8 +70,9 @@ export const PRODUCT_TYPES = {
       front: {
         label: "Розгортка",
         path: RECTANGLE_PATHS.mug_wrap,
-        viewBox: "0 0 810 810",
-        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        viewBox: "0 0 800 360",
+        canvasSize: { width: 800, height: 360 },
+        printZone: { x: 62, y: 47, width: 676, height: 246 },
         surfaceColor: "#ffffff",
         seamHint: true,
       },
@@ -86,8 +88,9 @@ export const PRODUCT_TYPES = {
       front: {
         label: "Розгортка",
         path: RECTANGLE_PATHS.mug_wrap,
-        viewBox: "0 0 810 810",
-        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        viewBox: "0 0 800 360",
+        canvasSize: { width: 800, height: 360 },
+        printZone: { x: 62, y: 47, width: 676, height: 246 },
         surfaceColor: "#ffffff",
         seamHint: true,
       },
@@ -102,8 +105,9 @@ export const PRODUCT_TYPES = {
       front: {
         label: "Розгортка",
         path: RECTANGLE_PATHS.mug_wrap,
-        viewBox: "0 0 810 810",
-        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        viewBox: "0 0 800 360",
+        canvasSize: { width: 800, height: 360 },
+        printZone: { x: 62, y: 47, width: 676, height: 246 },
         surfaceColor: "#ffffff",
         seamHint: true,
       },
@@ -118,8 +122,9 @@ export const PRODUCT_TYPES = {
       front: {
         label: "Розгортка",
         path: RECTANGLE_PATHS.mug_wrap,
-        viewBox: "0 0 810 810",
-        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        viewBox: "0 0 800 360",
+        canvasSize: { width: 800, height: 360 },
+        printZone: { x: 62, y: 47, width: 676, height: 246 },
         surfaceColor: "#ffffff",
         seamHint: true,
       },
@@ -134,8 +139,9 @@ export const PRODUCT_TYPES = {
       front: {
         label: "Розгортка",
         path: RECTANGLE_PATHS.mug_wrap,
-        viewBox: "0 0 810 810",
-        printZone: { x: 60, y: 264, width: 690, height: 282 },
+        viewBox: "0 0 800 360",
+        canvasSize: { width: 800, height: 360 },
+        printZone: { x: 62, y: 47, width: 676, height: 246 },
         surfaceColor: "#ffffff",
         seamHint: true,
       },
@@ -398,7 +404,9 @@ export function buildSlimBookView(format) {
     // даємо менший бюджет висоти, щоб усе вмістилось без вертикального скролу
     // навіть на малих екранах (360×800). На десктопі (vhBudgetWide) — більше.
     vhBudget: 28,
-    chromeWide: 360, // десктоп: книга має ще карусель розворотів + вищий ордербар
+    chromeWide: 260, // десктоп: книга має ще карусель розворотів + вищий ордербар
+    chromeNarrow: 440, // вузький екран: + ряд обкладинок/кнопок + карусель розворотів
+    reservedExtra: 70, // під холстом: ряд обкладинок/кнопок + карусель розворотів
   };
 }
 
@@ -428,8 +436,10 @@ export function buildSpreadView(format) {
     safe: { edgeX: Math.round(0.5 * upcX), edgeY: Math.round(0.5 * upcY), seam: Math.round(1 * upcX) },
     sizeLabel: `${w}×${h} см · 300 dpi`,
     // Десктоп: полотно заповнює висоту; chrome більший — є карусель розворотів.
-    vhBudget: 34,
-    chromeWide: 360,
+    vhBudget: 38,
+    chromeWide: 260,
+    chromeNarrow: 420, // вузький екран: + карусель розворотів + кнопки книги
+    reservedExtra: 70, // під холстом: карусель розворотів + кнопки книги
   };
 }
 

@@ -21,6 +21,7 @@ export const useTshirtCanvas = ({
   const canvasRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const seededRef = useRef(false);   // фото розвороту засіяне (один раз)
+  const seededSrcRef = useRef(null); // яке саме фото засіяне (щоб переcіяти при зміні порядку)
   const hadSavedRef = useRef(false); // на холсті вже були збережені обʼєкти
   const tshirtColor = useSelector((state) => state.tshirt.tshirtColor);
   const selectedView = useSelector((state) => state.tshirt.selectedView);
@@ -86,6 +87,7 @@ export const useTshirtCanvas = ({
     fabricCanvasRef.current = canvas;
     canvas.productId = selectedType;
     canvas.viewId = view;
+    let disposed = false; // вид/тип змінили → не додавати об'єкти у вже знищене полотно
 
     registerCanvas(selectedType, view, canvas);
     if (view === "front") setFrontCanvas(canvas);
@@ -98,15 +100,32 @@ export const useTshirtCanvas = ({
     // Save canvas data when the page is about to unload (refresh/close)
     window.addEventListener("beforeunload", saveCanvas);
 
-    // Load saved objects
-    const savedObjects = canvasStorageManager.loadCanvasObjects(
-      view,
-      selectedType
-    );
+    // Load saved objects. fabric.util.enlivenObjects вірно відновлює ВСІ типи
+    // (Image/Textbox/Line/Group/Rect), їхній clipPath, службові ролі (mmRole/mmSlot)
+    // та прапорці інтерактивності. Старий рукописний addFabricObject копіював лише
+    // left/top/scale/angle/opacity і мовчки втрачав clipPath/mmRole — через що колаж
+    // (обрізані фото + комірки) та рамки розсипалися після перезавантаження сторінки
+    // чи зміни виду (фото поверталися без обрізки й знову перехоплювали чужі кліки).
+    const savedObjects = canvasStorageManager.loadCanvasObjects(view, selectedType);
     hadSavedRef.current = Boolean(savedObjects && savedObjects.length);
-    if (savedObjects) {
-      savedObjects.forEach((obj) => addFabricObject(canvas, obj));
-      canvas.renderAll();
+    if (savedObjects && savedObjects.length) {
+      fabric.util
+        .enlivenObjects(savedObjects)
+        .then((objs) => {
+          if (disposed || fabricCanvasRef.current !== canvas) return; // полотно вже не активне
+          objs.forEach((o) => {
+            // perPixelTargetFind/objectCaching могли не зберегтися у СТАРИХ макетах —
+            // повертаємо їх фото колажу, щоб хіт-детект ішов по видимій (обрізаній)
+            // частині, а не по габаритах, що накривають сусідні комірки.
+            if (o.mmRole === "photo") {
+              o.perPixelTargetFind = true;
+              o.objectCaching = false;
+            }
+            canvas.add(o);
+          });
+          canvas.requestRenderAll();
+        })
+        .catch((e) => console.error("Помилка відновлення макета зі сховища:", e));
     }
 
     // Handle Object Selection. Керувати на макеті можна лише активним шаром:
@@ -157,6 +176,7 @@ export const useTshirtCanvas = ({
 
     // Cleanup
     return () => {
+      disposed = true; // скасувати асинхронне відновлення, що ще могло не завершитись
       saveCanvas();
       window.removeEventListener("beforeunload", saveCanvas);
       canvas.off("object:modified", onCanvasChange);
@@ -179,6 +199,8 @@ export const useTshirtCanvas = ({
   useEffect(() => {
     if (selectedView === view && fabricCanvasRef.current) {
       setActiveCanvas(fabricCanvasRef.current);
+      // DEV-хук: доступ до активного полотна з консолі/автотестів (у проді відсутній).
+      if (import.meta.env.DEV) window.__mmCanvas = fabricCanvasRef.current;
     }
   }, [selectedView, dispatch, view]);
 
@@ -250,8 +272,19 @@ export const useTshirtCanvas = ({
     // Засів холста розвороту книги завантаженим фото — один раз, лише якщо холст
     // порожній (немає збережених обʼєктів). Фото заповнює зону друку (cover),
     // далі його можна рухати/масштабувати й накладати колаж/рамку/текст.
-    if (seedImage && !seededRef.current && !hadSavedRef.current && canvas.getObjects().length === 0) {
+    // Засів/переcів фото розвороту. Засіваємо, якщо: (а) холст порожній і без
+    // збережених обʼєктів (перший засів), АБО (б) фото на цій позиції змінилось
+    // (перетягнули порядок розворотів), а користувач НІЧОГО не редагував — на холсті
+    // лише авто-засіяне фото (mmSeed). Так фото СЛІДУЄ за позицією при зміні порядку,
+    // але ручні правки (колаж/текст/рамка) НЕ чіпаємо — лишаються на місці.
+    const objs = canvas.getObjects();
+    const onlyAutoSeed = objs.length === 1 && objs[0]?.mmSeed;
+    const canFreshSeed = !seededRef.current && !hadSavedRef.current && objs.length === 0;
+    const shouldReseed = onlyAutoSeed && seededSrcRef.current && seededSrcRef.current !== seedImage;
+    if (seedImage && (canFreshSeed || shouldReseed)) {
+      if (shouldReseed) canvas.remove(objs[0]); // прибрати старий авто-засів перед новим
       seededRef.current = true;
+      seededSrcRef.current = seedImage;
       const imgEl = new window.Image();
       imgEl.onload = () => {
         const c = fabricCanvasRef.current;
@@ -263,6 +296,7 @@ export const useTshirtCanvas = ({
         fImg.set({
           left: pa.left + (pa.width - fImg.getScaledWidth()) / 2,
           top: pa.top + (pa.height - fImg.getScaledHeight()) / 2,
+          mmSeed: true, // позначка авто-засіву — щоб переcіяти при зміні порядку
         });
         c.add(fImg);
         c.renderAll();
@@ -272,75 +306,4 @@ export const useTshirtCanvas = ({
   }, [svgPath, viewBox, printZone, canvasSize?.width, canvasSize?.height, seedImage]);
 
   return { canvasRef, fabricCanvasRef, tshirtColor };
-};
-
-// Helper function to add objects to canvas
-// Helper function to add objects to canvas
-const addFabricObject = (canvas, objectData) => {
-  switch (objectData.type) {
-    case "Line":
-      canvas.add(
-        new fabric.Line(
-          [objectData.x1, objectData.y1, objectData.x2, objectData.y2],
-          {
-            left: objectData.left || 0,
-            top: objectData.top || 0,
-            stroke: objectData.stroke || "black",
-            strokeWidth: objectData.strokeWidth || 2,
-            strokeLineCap: objectData.strokeLineCap || "round",
-            strokeLineJoin: objectData.strokeLineJoin || "miter",
-            opacity: objectData.opacity || 1,
-            angle: objectData.angle || 0,
-            scaleX: objectData.scaleX || 1,
-            scaleY: objectData.scaleY || 1,
-          }
-        )
-      );
-      break;
-    case "Textbox":
-      const textbox = new fabric.Textbox(objectData.text, {
-        left: objectData.left,
-        top: objectData.top,
-        width: objectData.width,
-        fontSize: objectData.fontSize,
-        fontFamily: objectData.fontFamily,
-        textAlign: objectData.textAlign,
-        fill: objectData.fill,
-        scaleX: objectData.scaleX,
-        scaleY: objectData.scaleY,
-        angle: objectData.angle,
-        opacity: objectData.opacity,
-      });
-
-      // Force text re-rendering and positioning
-      textbox.initDimensions();
-      textbox.set({
-        width: textbox.width,
-        height: textbox.height,
-      });
-
-      canvas.add(textbox);
-
-      // Ensure proper rendering after a short delay
-
-      canvas.renderAll();
-      break;
-    case "Image":
-      if (!objectData.src.startsWith("data:image")) return;
-      const imgElement = new Image();
-      imgElement.src = objectData.src;
-      imgElement.onload = () => {
-        const fabricImg = new fabric.Image(imgElement, {
-          left: objectData.left || 0,
-          top: objectData.top || 0,
-          scaleX: objectData.scaleX || 1,
-          scaleY: objectData.scaleY || 1,
-          angle: objectData.angle || 0,
-          opacity: objectData.opacity || 1,
-        });
-        canvas.add(fabricImg);
-        canvas.renderAll();
-      };
-      break;
-  }
 };
